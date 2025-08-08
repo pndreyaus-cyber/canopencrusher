@@ -9,16 +9,13 @@
 namespace StepDirController{ 
 class MoveControllerBase : public ControllerBase{
     public:
-        //MoveControllerBase();
         MoveControllerBase(MyCanOpen *canOpen);
         
-        //void setJerkSpeedUnits(double jerk) override; // настройка начальной/конечной скорости (рывка) в единицах измерения в секунду
         void setRegularSpeedUnits(double speed) override; // настройка крейсерской скорости в единицах измерения в секунду (градусы в секунду)
         void setAccelerationUnits(double acceleration) override; // настройка ускорения в единицах измерения в секунду^2 (градусы в секунду^2)
 
         double getRegularSpeedUnits() const;
         double getAccelerationUnits() const;
-        //void setDecelerationUnits(double deceleration) override; // настройка замедления в единицах измерения в секунду^2
 
         void setOnMoveStarted(void (*callback)());
         void setOnMoveFinished(void (*callback)());
@@ -26,66 +23,45 @@ class MoveControllerBase : public ControllerBase{
 
 
         template<typename... Axes>
-        ResultParams moveAsync(Axis& axis, Axes&... axes);
-        // void stopAsync() override;
+        void moveAsync(Axis& axis, Axes&... axes);
 
-        //template<typename... Axes>
-        //void move(Axis& axis, Axes&... axes);
-        //void stop() override;
+        void sendMove(); // TODO: точно public?
 
-        //void emergencyStop();
+        // TODO: добавить метод, например, void tick(), вызывать его из loop в ino-файле
+        // метод tick() должен вызывать метод чтения (который нужно написать) у MyCanOpen (который будет разбирать ответы от двигателей в соответствии с протоколом)
+        //  MyCanOpen будет дергать метод receive у MyCanDriver
+        // MyCanOpen может возвращать значения через колбэки
+        // полученные значения через колбэки сохранять в Axis
 
-        void sendMove();
+        //TODO: метод tick должен рассылать запросы по двигателям о их состоянии (напряжение, температура, т.д. - все что есть по протоколу)
 
 
     protected:
-        ResultParams prepareMove();
+        void prepareMove();
         void prepareMoveWithoutSync();
-        //void tick() override; // функия тактирования двигателей, вызываемая генератором
 
         void (*onMoveStarted)() = nullptr; // callback перед началом движения
         void (*onMoveFinished)() = nullptr; // callback после завершения движения
 
         void (*onEmergensyStoped)() = nullptr; // callback после аварийной остановки
-
         
-    
     private:
-        MyCanOpen* canOpen;
-        
+        MyCanOpen* canOpen;  
 };
 
 template <typename... Axes>
-ResultParams MoveControllerBase::moveAsync(Axis& axis, Axes&... axes)
+void MoveControllerBase::moveAsync(Axis& axis, Axes&... axes)
 {
     if (isMoving())
-        return ResultParams();
+        return;
 
     movingInProgress = true;
     attachAxes(axis, axes...);
-    //prepareMoveWithoutSync();
     prepareMove();
-
-    //if (onMoveStarted != nullptr)
-    //        onMoveStarted();
     sendMove();
-    //referenceGenerator.begin([this] { this->tick(); }, period);
-    //return res;
-    movingInProgress = false;
-    return ResultParams();
+    movingInProgress = false; // TODO: снимать флаг при получении ответа от двигателей о завершении движения
 }
 
-/*
-template <typename... Axes>
-inline void MoveControllerBase::move(Axis &axis, Axes &...axes)
-{
-    moveAsync(axis, axes...);
-    while (isMoving())
-    {
-        delay(1);
-    }       
-}
-*/
 }
 
 #endif

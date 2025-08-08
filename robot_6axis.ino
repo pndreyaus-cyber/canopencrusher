@@ -62,20 +62,6 @@ MoveParams stringToMoveParams(String command)
 	params.movementUnits[3] = command.substring(JD_Index + 2, JE_Index).toFloat();
 	params.movementUnits[4] = command.substring(JE_Index + 2, JF_Index).toFloat();
   params.movementUnits[5] = command.substring(JF_Index + 2, speed_Index).toFloat();
-	Serial2.println("Выдергивание из строки:");
-	Serial2.print("0: ");
-	Serial2.println(params.movementUnits[0]);
-	Serial2.print("1: ");
-	Serial2.println(params.movementUnits[1]);
-	Serial2.print("2: ");
-	Serial2.println(params.movementUnits[2]);
-	Serial2.print("3: ");
-	Serial2.println(params.movementUnits[3]);
-	Serial2.print("4: ");
-	Serial2.println(params.movementUnits[4]);
-	Serial2.print("5: ");
-	Serial2.println(params.movementUnits[5]);
-
 
 	params.speed = command.substring(speed_Index + 2, ACC_Index).toFloat();
 	params.acceleration = command.substring(ACC_Index + 2).toFloat();
@@ -140,21 +126,14 @@ void handleMove(MoveParams params, bool isAbsoluteMove){
 	
   for(int i = 0; i < axesNum; ++i){
 
-    if(isAbsoluteMove){
-			axes[i].setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
-			Serial2.print("axes[");
-			Serial2.print(i);
-			Serial2.print("].setTargetPositionAbsoluteInUnits: ");
-			Serial2.print(params.movementUnits[i]);
-			Serial2.print(" ");
-		}
+    if(isAbsoluteMove) axes[i].setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
     else axes[i].setTargetPositionRelativeInUnits(params.movementUnits[i]);
   }
 
   moveController.setRegularSpeedUnits(params.speed);
   moveController.setAccelerationUnits(params.acceleration);
 
-  moveController.moveAsync(axes[0], axes[1], axes[2], axes[3], axes[5]);
+  moveController.moveAsync(axes[0], axes[1], axes[2], axes[3], axes[5]); // TODO: не забыть про ось 4
 }
 
 void handleSetCurrentPositionInSteps(PositionParams params){
@@ -182,20 +161,13 @@ void setup() {
     axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
   }
 
-  
-  axes[0].setCurrentPositionInSteps(25);
-  axes[5].setCurrentPositionInSteps(1789550);
-
 }
 
 void loop() {
-
-	
   if (receiveCommand())
 		handleCommand();
 
 	sendData();
-  
 }
 
 bool receiveCommand()
@@ -204,24 +176,21 @@ bool receiveCommand()
 	if(Serial2.available()){
 		received = Serial2.read();
 		inData += received;
-		bufIndex++;
+		bufIndex++; // TODO: зачем?
 	}
 	return received == '\n';
 }
 
 void handleCommand()
 {
-  Serial2.print("New command: ");
 	inData.replace(" ","");
 	inData.replace("\n", "");
 	inData.replace("\r", "");
 
-  Serial2.println(inData);
-	//Serial2.println(myCmd.length());
 	if (inData.length() < 3)
 	{
 		inData = "";
-		addDataToOutQueue("SHORT COMMAND");
+		addDataToOutQueue("INVALID COMMAND: TOO SHORT");
 		return;
 	}
 
@@ -229,26 +198,26 @@ void handleCommand()
 
 	if (function == COMMAND_MOVE_ABSOLUTE)
 	{
-		addDataToOutQueue("COMMAND_MOVE_ABSOLUTE");
     handleMove(stringToMoveParams(inData), true);
-    addDataToOutQueue("MAJ COMPLETED");
+    addDataToOutQueue("MAJ COMMAND COMPLETED");
 	}
 
 	else if (function == COMMAND_MOVE_RELATIVE)
 	{
-    addDataToOutQueue("COMMAND_MOVE_RELATIVE");
     handleMove(stringToMoveParams(inData), false);
-    addDataToOutQueue("MRJ COMPLETED");
+    addDataToOutQueue("MRJ COMMAND COMPLETED");
 	}
 	else if (function.equals(COMMAND_ECHO))
     addDataToOutQueue(inData.substring(4));  
   else if(function == "SCS")
   {
     handleSetCurrentPositionInSteps(stringToPositionParams(inData));
+		addDataToOutQueue("SCS COMMAND COMPLETED");
   }
   else if(function == "SCU")
   {
     handleSetCurrentPositionInUnits(stringToPositionParams(inData));
+		addDataToOutQueue("SCU COMMAND COMPLETED");
   }
   else
     addDataToOutQueue("INVALID COMMAND");

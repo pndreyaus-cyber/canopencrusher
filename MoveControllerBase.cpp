@@ -11,7 +11,6 @@ MoveControllerBase::MoveControllerBase(MyCanOpen *canOpen) : canOpen(canOpen)
 void MoveControllerBase::setRegularSpeedUnits(double speed)
 {
     speed = std::fabs(speed); // Edited for C++
-    //regularSpeedUnits = speed > jerkSpeedUnits ? speed : jerkSpeedUnits;
     regularSpeedUnits = speed;
 }
 
@@ -47,12 +46,12 @@ void MoveControllerBase::prepareMoveWithoutSync()
     }
 }
 
-ResultParams MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe otehr corner cases
+void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe otehr corner cases
 {
     leadAxis = axisList[0];
 
     if (leadAxis == nullptr)
-        return ResultParams();
+        return ;
 
     stepsDoneAll = 0;
     stepsAll = 0;
@@ -67,7 +66,6 @@ ResultParams MoveControllerBase::prepareMove() // TODO: Does not work for a = 0,
     }
     
 
-    ResultParams p;
     double maxPath = fabs(leadAxis->movementUnits);
     axes = axisList;
     if(accelerationUnits == 0){
@@ -79,10 +77,6 @@ ResultParams MoveControllerBase::prepareMove() // TODO: Does not work for a = 0,
     }
     double tCruising = (maxPath - regularSpeedUnits * regularSpeedUnits / accelerationUnits) / regularSpeedUnits;
     double res = 0;
-    p.maxPath = maxPath;
-    p.tAcceleration = tAcceleration;
-    p.tCruising = tCruising;
-    int i = 0;
     while (*(axes) != nullptr)
     {
         if(maxPath == 0){
@@ -97,34 +91,16 @@ ResultParams MoveControllerBase::prepareMove() // TODO: Does not work for a = 0,
         (*axes)->regularSpeed = (*axes)->acceleration * tAcceleration;
         (*axes)->canOpenCharacteristics.x6083_profileAcceleration = (*axes)->accelerationUnitsTorpmPerSecond((*axes)->acceleration);
         (*axes)->canOpenCharacteristics.x6081_profileVelocity = (*axes)->speedUnitsToRevolutionsPerMinute((*axes)->regularSpeed);
-        //(*axes)->canOpenCharacteristics.x6081_profileVelocity = 0.12321;
-        p.movementUnits[i] = (*axes)->movementUnits;
-        p.syncCoefficient[i] = syncCoefficient;
-        p.acceleration[i] = (*axes)->acceleration;
-        p.regularSpeed[i] = (*axes)->regularSpeed;
-        p.speed[i] = (*axes)->canOpenCharacteristics.x6081_profileVelocity;
-        p.testValue[i] = (*axes)->canOpenCharacteristics.x6083_profileAcceleration;
-        i++;
 
         (*axes++);
     }
 
     axes = axisList;
-    //startGlobalTime = micros();
-    /*
-    while (*(axes) != nullptr)
-    {
-        (*axes++)->startStepTime = startGlobalTime;
-    }
-    */
-    Serial2.println("PREPAREMOVEOK");
-    return p;
 }
 
 void MoveControllerBase::sendMove()
 {
     Axis** axes = axisList;
-    Serial2.println("sendMove()");
     while (*(axes) != nullptr)
     {
         Axis* axis = *axes;
@@ -147,11 +123,7 @@ void MoveControllerBase::sendMove()
         (*axes++);
     }
     delay(5);
-    Serial2.println("SYNC before");
     canOpen->sendSYNC();
-    Serial2.println("SYNC aftere");
-
-
 }
 
 double MoveControllerBase::getRegularSpeedUnits() const
