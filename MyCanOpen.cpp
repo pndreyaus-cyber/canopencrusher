@@ -107,7 +107,7 @@ bool MyCanOpen::sendSYNC()
     return Can->send(0x80, 0, 0);
 }
 
-void MyCanOpen::writeReversedToBuf(const void* data, size_t size, uint8_t* bufStart) {
+void MyCanOpen::writeReversedToBuf(const void* data, size_t size, uint8_t* bufStart) { // Бесполезная функция
     const uint8_t* src_bytes = static_cast<const uint8_t*>(data);
     
     for (size_t i = 0; i < size; ++i) {

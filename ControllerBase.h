@@ -6,7 +6,7 @@ constexpr int MaxAxes = 10;
 namespace StepDirController{
 class ControllerBase{
     public:
-        bool isMoving() const { return movingInProgress; } // Возвращает TRUE, если с овершается перемещение
+        bool isMoving() const { return movingInProgress; } // Возвращает TRUE, если совершается перемещение
         virtual void setRegularSpeedUnits(double speed) { regularSpeedUnits = speed; } // настройка крейсерской скорости в единицах измерения в секунду
         virtual void setAccelerationUnits(double acceleration) { accelerationUnits = acceleration; } // настройка ускорения в единицах измерения в секунду^2
         int getAxesCount() { return axesCnt; }

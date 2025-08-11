@@ -42,9 +42,9 @@ MoveParams stringToMoveParams(String command)
 	int JA_Index = command.indexOf("JA");
 	int JB_Index = command.indexOf("JB");
 	int JC_Index = command.indexOf("JC");
-  int JD_Index = command.indexOf("JD");
-  int JE_Index = command.indexOf("JE");
-  int JF_Index = command.indexOf("JF");
+  	int JD_Index = command.indexOf("JD");
+  	int JE_Index = command.indexOf("JE");
+  	int JF_Index = command.indexOf("JF");
 
 	int speed_Index = command.indexOf("SP");
 	int ACC_Index = command.indexOf("AC");
@@ -176,7 +176,6 @@ bool receiveCommand()
 	if(Serial2.available()){
 		received = Serial2.read();
 		inData += received;
-		bufIndex++; // TODO: зачем?
 	}
 	return received == '\n';
 }

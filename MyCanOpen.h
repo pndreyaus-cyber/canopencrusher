@@ -11,7 +11,6 @@
 //typedef void (*SdoReceiveCallback)(uint8_t nodeId, uint16_t index, uint8_t subindex, const uint8_t* data, uint8_t len);
 //typedef void (*PdoReceiveCallback)(uint16_t cobId, const uint8_t* data, uint8_t len);
 
-
 class MyCanOpen {
 private:
     MyCanDriver* Can;
