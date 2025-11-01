@@ -5,7 +5,8 @@
 #include <cstdint>
 #include "OD.h"
 #include "objdict_objectdefines.h"
-#include "RobotConstants.h"
+
+#define SECONDS_IN_MINUTE 60 // for degrees: 10 full turns
 
 
 namespace StepDirController{

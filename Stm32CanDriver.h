@@ -2,6 +2,7 @@
 #define STM32CANDRIVER_H
 #include "MyCanDriver.h"
 #include "STM32_CAN.h"
+#include "Params.h"
 
 class Stm32CanDriver : public MyCanDriver {
 private:

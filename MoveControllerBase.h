@@ -25,8 +25,6 @@ class MoveControllerBase : public ControllerBase{
         template<typename... Axes>
         void moveAsync(Axis& axis, Axes&... axes);
 
-        void sendMove(); // TODO: точно public?
-
         // TODO: добавить метод, например, void tick(), вызывать его из loop в ino-файле
         // метод tick() должен вызывать метод чтения (который нужно написать) у MyCanOpen (который будет разбирать ответы от двигателей в соответствии с протоколом)
         //  MyCanOpen будет дергать метод receive у MyCanDriver
@@ -46,7 +44,8 @@ class MoveControllerBase : public ControllerBase{
         void (*onEmergensyStoped)() = nullptr; // callback после аварийной остановки
         
     private:
-        MyCanOpen* canOpen;  
+        MyCanOpen* canOpen;
+        void sendMove();
 };
 
 template <typename... Axes>

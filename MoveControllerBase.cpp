@@ -46,7 +46,7 @@ void MoveControllerBase::prepareMoveWithoutSync()
     }
 }
 
-void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe otehr corner cases
+void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe other corner cases
 {
     leadAxis = axisList[0];
 

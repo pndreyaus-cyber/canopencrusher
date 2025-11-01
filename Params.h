@@ -7,6 +7,16 @@ enum struct ParamsStatus
 	INVALID_PARAMS,
 };
 
+enum struct CanResult
+{
+	SUCCESS = 0,
+	INVALID_LENGTH,
+	NULL_DATA_POINTER,
+	SEND_FAILED,
+	NOT_RECEIVED,
+	RECEIVED
+};
+
 struct MoveParams
 {
 	ParamsStatus status;

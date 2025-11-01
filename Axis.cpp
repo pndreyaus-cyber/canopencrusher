@@ -7,7 +7,6 @@
 namespace StepDirController{
 Axis::Axis() : nodeId(0)
 {
-
 }
 
 Axis::Axis(const uint8_t nodeId) : nodeId(nodeId), canOpenCharacteristics()
@@ -116,75 +115,57 @@ double Axis::getUnitsPerRevolution() const
 }
 
 double Axis::stepsToUnits(int32_t steps) const // Перевести шаги в градусы
-{   
-    static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution");
-    /*
+{
     if(stepsPerRevolution == 0 || unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
         Serial2.println("Axis::stepsToUnits -- division by zero"); 
         return 0;
     }
-    */
     return steps / (double)stepsPerRevolution * unitsPerRevolution;
 }
 
 int32_t Axis::unitsToSteps(double units) const // Перевести градусы в шаги
 {
-    static_assert(unitsPerRevolution == 0, "Not defined: unitsPerRevolution");
-    /*
     if(stepsPerRevolution == 0 || unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
         Serial2.println("Axis::unitsToSteps -- division by zero");
         return 0;
     }
-    */
     return units / unitsPerRevolution * stepsPerRevolution;
 }
 
 uint32_t Axis::speedUnitsToRevolutionsPerMinute(double speedUnits) const // Перевести градусы/сек в об/мин
 {
-    static_assert(unitsPerRevolution == 0, "Not defined: unitsPerRevolution");
-    /*    
     if(unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
         Serial2.println("Axis::speedUnitsToRevolutionsPerMinute -- division by zero");
         return 0;
     }
-    */
-    return speedUnits * RobotConstants::Math::SECONDS_IN_MINUTE / unitsPerRevolution;
+    return speedUnits * SECONDS_IN_MINUTE / unitsPerRevolution;
 }
 
 double Axis::revolutionsPerMinuteToSpeedUnits(uint32_t rpm) const // Перевести из об/мин в градусы/сек
 {
-    static_assert(unitsPerRevolution == 0, "Not defined: unitsPerRevolution");
-    /*
     if(unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
         Serial2.println("Axis::revolutionsPerMinuteToSpeedUnits -- division by zero");
         return 0;
     }
-    */
-    return (double)rpm / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution;
+    return (double)rpm / SECONDS_IN_MINUTE * unitsPerRevolution;
 }
 
 uint32_t Axis::accelerationUnitsTorpmPerSecond(double accelearionUnits) const // Перевести градусы/сек^2 в об/(мин*сек)
 {
-    static_assert(unitsPerRevolution == 0, "Not defined: unitsPerRevolution");
-    /*
     if(unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
         Serial2.println("Axis::accelerationUnitsTorpmPerSecond -- division by zero");
         return 0;
     }
-    */
-    return accelearionUnits * RobotConstants::Math::SECONDS_IN_MINUTE / unitsPerRevolution;
+    return accelearionUnits * SECONDS_IN_MINUTE / unitsPerRevolution;
 }
 
 double Axis::rpmPerSecondToAccelerationUnits(double rpmPerSecond) const  // Перевести об/(мин*сек) в градусы/сек^2
 {
-    static_assert(unitsPerRevolution == 0, "Not defined: unitsPerRevolution");
-    /*
     if(unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
         Serial2.println("Axis::rpmPerSecondToAccelerationUnits -- division by zero");
         return 0;
-    } 
-    */  
-    return (double)rpmPerSecond / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution; // TODO: потенциальная потеря точности расчетов из-за SECONDS_IN_MINUTE, лучше объявить как константу float/double
+    }   
+    return (double)rpmPerSecond / SECONDS_IN_MINUTE * unitsPerRevolution; // TODO: потенциальная потеря точности расчетов из-за SECONDS_IN_MINUTE, лучше объявить как константу float/double
 }
 
 double Axis::getMaxLimitUnits() const
