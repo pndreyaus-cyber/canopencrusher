@@ -14,25 +14,23 @@
         Project File: YZ_MOTOR.eds
         File Version: 1
 
-        Created:      7/14/2025 8:01:00 PM
+        Created:      2/28/2021 9:38:00 PM
         Created By:   CANFestival
-        Modified:     7/14/2025 8:01:00 PM
+        Modified:     2/28/2021 9:38:00 PM
         Modified By:  CANFestival
 
     Device Info:
         Vendor Name:  CANFestival
         Vendor ID:    0x00000331
-        Product Name: my_motor
+        Product Name: 
         Product ID:   0x00000001
 
         Description:  
 *******************************************************************************/
+#include "CO/CO_ODinterface.h"
 
 #ifndef OD_H
 #define OD_H
-
-#include <stdint.h>
-
 /*******************************************************************************
     Counters of OD objects
 *******************************************************************************/
@@ -42,14 +40,23 @@
 #define OD_CNT_SYNC_PROD 1
 #define OD_CNT_HB_CONS 1
 #define OD_CNT_HB_PROD 1
-#define OD_CNT_SDO_SRV 2
-#define OD_CNT_SDO_CLI 1
+#define OD_CNT_SDO_SRV 1
 #define OD_CNT_RPDO 4
 #define OD_CNT_TPDO 4
+
 
 /*******************************************************************************
     Sizes of OD arrays
 *******************************************************************************/
+#define OD_CNT_ARR_1016 1
+#define OD_CNT_ARR_1600 3
+#define OD_CNT_ARR_1601 2
+#define OD_CNT_ARR_1602 3
+#define OD_CNT_ARR_1603 1
+#define OD_CNT_ARR_1A00 2
+#define OD_CNT_ARR_1A01 2
+#define OD_CNT_ARR_1A02 2
+#define OD_CNT_ARR_1A03 2
 
 
 /*******************************************************************************
@@ -60,10 +67,8 @@ typedef struct {
     uint8_t x1001_errorRegister;
     uint32_t x1005_SYNC_COB_ID;
     uint32_t x1006_communicationCyclePeriod;
-    struct {
-        uint8_t numberOfEntries;
-        uint32_t consumerHeartbeatTime;
-    } x1016_consumerHeartbeatTime;
+    uint8_t x1016_consumerHeartbeatTime_sub0;
+    uint32_t x1016_consumerHeartbeatTime[OD_CNT_ARR_1016];
     uint16_t x1017_producerHeartbeatTime;
     struct {
         uint8_t numberOfEntries;
@@ -78,19 +83,7 @@ typedef struct {
         uint32_t COB_ID_ServerToClientTransmitSDO;
     } x1200_serverSDO_Parameter;
     struct {
-        uint8_t numberOfEntries;
-        uint32_t COB_ID_ClientToServerReceiveSDO;
-        uint32_t COB_ID_ServerToClientTransmitSDO;
-        uint8_t nodeIDOfTheSDO_Client;
-    } x1201_additionalServerSDO1Parameter;
-    struct {
-        uint8_t numberOfEntries;
-        uint32_t COB_ID_ClientToServerTransmitSDO;
-        uint32_t COB_ID_ServerToClientReceiveSDO;
-        uint8_t nodeIDOfTheSDO_Server;
-    } x1280_clientSDO1Parameter;
-    struct {
-        uint8_t numberOfEntries;
+        uint8_t highestSubIndexSupported;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
         uint16_t inhibitTime;
@@ -98,7 +91,7 @@ typedef struct {
         uint8_t SYNCStartValue;
     } x1400_receivePDO1Parameter;
     struct {
-        uint8_t numberOfEntries;
+        uint8_t highestSubIndexSupported;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
         uint16_t inhibitTime;
@@ -106,7 +99,7 @@ typedef struct {
         uint8_t SYNCStartValue;
     } x1401_receivePDO2Parameter;
     struct {
-        uint8_t numberOfEntries;
+        uint8_t highestSubIndexSupported;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
         uint16_t inhibitTime;
@@ -114,36 +107,23 @@ typedef struct {
         uint8_t SYNCStartValue;
     } x1402_receivePDO3Parameter;
     struct {
-        uint8_t numberOfEntries;
+        uint8_t highestSubIndexSupported;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
         uint16_t inhibitTime;
         uint16_t eventTimer;
         uint8_t SYNCStartValue;
     } x1403_receivePDO4Parameter;
+    uint8_t x1600_receivePDO1Mapping_sub0;
+    uint32_t x1600_receivePDO1Mapping[OD_CNT_ARR_1600];
+    uint8_t x1601_receivePDO2Mapping_sub0;
+    uint32_t x1601_receivePDO2Mapping[OD_CNT_ARR_1601];
+    uint8_t x1602_receivePDO3Mapping_sub0;
+    uint32_t x1602_receivePDO3Mapping[OD_CNT_ARR_1602];
+    uint8_t x1603_receivePDO4Mapping_sub0;
+    uint32_t x1603_receivePDO4Mapping[OD_CNT_ARR_1603];
     struct {
-        uint8_t numberOfEntries;
-        uint32_t PDO1MappingForAnApplicationObject1;
-        uint32_t PDO1MappingForAnApplicationObject2;
-        uint32_t PDO1MappingForAnApplicationObject3;
-    } x1600_receivePDO1Mapping;
-    struct {
-        uint8_t numberOfEntries;
-        uint32_t PDO2MappingForAnApplicationObject1;
-        uint32_t PDO2MappingForAnApplicationObject2;
-    } x1601_receivePDO2Mapping;
-    struct {
-        uint8_t numberOfEntries;
-        uint32_t PDO3MappingForAnApplicationObject1;
-        uint32_t PDO3MappingForAnApplicationObject2;
-        uint32_t PDO3MappingForAnApplicationObject3;
-    } x1602_receivePDO3Mapping;
-    struct {
-        uint8_t numberOfEntries;
-        uint32_t PDO4MappingForAnApplicationObject1;
-    } x1603_receivePDO4Mapping;
-    struct {
-        uint8_t numberOfEntries;
+        uint8_t highestSubIndexSupported;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
         uint16_t inhibitTime;
@@ -151,7 +131,7 @@ typedef struct {
         uint8_t SYNCStartValue;
     } x1800_transmitPDO1Parameter;
     struct {
-        uint8_t numberOfEntries;
+        uint8_t highestSubIndexSupported;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
         uint16_t inhibitTime;
@@ -159,7 +139,7 @@ typedef struct {
         uint8_t SYNCStartValue;
     } x1801_transmitPDO2Parameter;
     struct {
-        uint8_t numberOfEntries;
+        uint8_t highestSubIndexSupported;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
         uint16_t inhibitTime;
@@ -167,33 +147,21 @@ typedef struct {
         uint8_t SYNCStartValue;
     } x1802_transmitPDO3Parameter;
     struct {
-        uint8_t numberOfEntries;
+        uint8_t highestSubIndexSupported;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
         uint16_t inhibitTime;
         uint16_t eventTimer;
         uint8_t SYNCStartValue;
     } x1803_transmitPDO4Parameter;
-    struct {
-        uint8_t numberOfEntries;
-        uint32_t PDO1MappingForaProcessDataVariable1;
-        uint32_t PDO1MappingForaProcessDataVariable2;
-    } x1A00_transmitPDO1Mapping;
-    struct {
-        uint8_t numberOfEntries;
-        uint32_t PDO2MappingForaProcessDataVariable1;
-        uint32_t PDO2MappingForaProcessDataVariable2;
-    } x1A01_transmitPDO2Mapping;
-    struct {
-        uint8_t numberOfEntries;
-        uint32_t PDO3MappingForaProcessDataVariable1;
-        uint32_t PDO3MappingForaProcessDataVariable2;
-    } x1A02_transmitPDO3Mapping;
-    struct {
-        uint8_t numberOfEntries;
-        uint32_t PDO4MappingForaProcessDataVariable1;
-        uint32_t PDO4MappingForaProcessDataVariable2;
-    } x1A03_transmitPDO4Mapping;
+    uint8_t x1A00_transmitPDO1Mapping_sub0;
+    uint32_t x1A00_transmitPDO1Mapping[OD_CNT_ARR_1A00];
+    uint8_t x1A01_transmitPDO2Mapping_sub0;
+    uint32_t x1A01_transmitPDO2Mapping[OD_CNT_ARR_1A01];
+    uint8_t x1A02_transmitPDO3Mapping_sub0;
+    uint32_t x1A02_transmitPDO3Mapping[OD_CNT_ARR_1A02];
+    uint8_t x1A03_transmitPDO4Mapping_sub0;
+    uint32_t x1A03_transmitPDO4Mapping[OD_CNT_ARR_1A03];
     uint8_t x2600_modbusEnable;
     uint8_t x2601_driverEnable;
     uint8_t x2604_weakMagneticAngle;
@@ -235,76 +203,34 @@ typedef struct {
     int32_t x60FF_targetVelocity;
 } OD_RAM_t;
 
-#ifndef OD_ATTR_RAM
-#define OD_ATTR_RAM
-#endif
-//extern OD_ATTR_RAM OD_RAM_t OD_RAM;
-
-#ifndef OD_ATTR_OD
-#define OD_ATTR_OD
-#endif
-// extern OD_ATTR_OD OD_t *OD;
-
-typedef uint32_t OD_size_t; /**< Variable of type OD_size_t contains data length in bytes of OD variable */
-typedef uint8_t OD_attr_t; 
-
-typedef enum {
-    ODA_SDO_R = 0x01U,  /**< SDO server may read from the variable */
-    ODA_SDO_W = 0x02U,  /**< SDO server may write to the variable */
-    ODA_SDO_RW = 0x03U, /**< SDO server may read from or write to the variable */
-    ODA_TPDO = 0x04U,   /**< Variable is mappable into TPDO (can be read) */
-    ODA_RPDO = 0x08U,   /**< Variable is mappable into RPDO (can be written) */
-    ODA_TRPDO = 0x0CU,  /**< Variable is mappable into TPDO or RPDO */
-    ODA_TSRDO = 0x10U,  /**< Variable is mappable into transmitting SRDO */
-    ODA_RSRDO = 0x20U,  /**< Variable is mappable into receiving SRDO */
-    ODA_TRSRDO = 0x30U, /**< Variable is mappable into tx or rx SRDO */
-    ODA_MB = 0x40U,     /**< Variable is multi-byte ((u)int16_t to (u)int64_t) */
-    ODA_STR = 0x80U     /**< Shorter value, than specified variable size, may be written to the variable. SDO write will
-                           fill remaining memory with zeroes. Attribute is used for VISIBLE_STRING and UNICODE_STRING. */
-} OD_attributes_t;
-
-typedef struct {
-    void* dataOrig;       /**< Pointer to data */
-    OD_attr_t attribute;  /**< Attribute bitfield, see @ref OD_attributes_t */
-    OD_size_t dataLength; /**< Data length in bytes */
-} OD_obj_var_t;
-
-typedef struct {
-    void* dataOrig;       /**< Pointer to data */
-    uint8_t subIndex;     /**< Sub index of element. */
-    OD_attr_t attribute;  /**< Attribute bitfield, see @ref OD_attributes_t */
-    OD_size_t dataLength; /**< Data length in bytes */
-} OD_obj_record_t;
-
 void init_od_ram(OD_RAM_t *obj);
 
+/*
 typedef struct {
     OD_obj_var_t o_1000_deviceType;
     OD_obj_var_t o_1001_errorRegister;
     OD_obj_var_t o_1005_SYNC_COB_ID;
     OD_obj_var_t o_1006_communicationCyclePeriod;
-    OD_obj_record_t o_1016_consumerHeartbeatTime[2];
+    OD_obj_array_t o_1016_consumerHeartbeatTime;
     OD_obj_var_t o_1017_producerHeartbeatTime;
     OD_obj_record_t o_1018_identity[5];
     OD_obj_record_t o_1200_serverSDO_Parameter[3];
-    OD_obj_record_t o_1201_additionalServerSDO1Parameter[4];
-    OD_obj_record_t o_1280_clientSDO1Parameter[4];
     OD_obj_record_t o_1400_receivePDO1Parameter[6];
     OD_obj_record_t o_1401_receivePDO2Parameter[6];
     OD_obj_record_t o_1402_receivePDO3Parameter[6];
     OD_obj_record_t o_1403_receivePDO4Parameter[6];
-    OD_obj_record_t o_1600_receivePDO1Mapping[4];
-    OD_obj_record_t o_1601_receivePDO2Mapping[3];
-    OD_obj_record_t o_1602_receivePDO3Mapping[4];
-    OD_obj_record_t o_1603_receivePDO4Mapping[2];
+    OD_obj_array_t o_1600_receivePDO1Mapping;
+    OD_obj_array_t o_1601_receivePDO2Mapping;
+    OD_obj_array_t o_1602_receivePDO3Mapping;
+    OD_obj_array_t o_1603_receivePDO4Mapping;
     OD_obj_record_t o_1800_transmitPDO1Parameter[6];
     OD_obj_record_t o_1801_transmitPDO2Parameter[6];
     OD_obj_record_t o_1802_transmitPDO3Parameter[6];
     OD_obj_record_t o_1803_transmitPDO4Parameter[6];
-    OD_obj_record_t o_1A00_transmitPDO1Mapping[3];
-    OD_obj_record_t o_1A01_transmitPDO2Mapping[3];
-    OD_obj_record_t o_1A02_transmitPDO3Mapping[3];
-    OD_obj_record_t o_1A03_transmitPDO4Mapping[3];
+    OD_obj_array_t o_1A00_transmitPDO1Mapping;
+    OD_obj_array_t o_1A01_transmitPDO2Mapping;
+    OD_obj_array_t o_1A02_transmitPDO3Mapping;
+    OD_obj_array_t o_1A03_transmitPDO4Mapping;
     OD_obj_var_t o_2600_modbusEnable;
     OD_obj_var_t o_2601_driverEnable;
     OD_obj_var_t o_2604_weakMagneticAngle;
@@ -336,5 +262,63 @@ typedef struct {
 } ODObjs_t;
 
 void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs);
+*/
+#ifndef OD_ATTR_RAM
+#define OD_ATTR_RAM
+#endif
+// extern OD_ATTR_RAM OD_RAM_t OD_RAM;
+
+#ifndef OD_ATTR_OD
+#define OD_ATTR_OD
+#endif
+// extern OD_ATTR_OD OD_t *OD;
+
+/*******************************************************************************
+    OD config structure
+*******************************************************************************/
+#ifdef CO_MULTIPLE_OD
+#define OD_INIT_CONFIG(config) {\
+    (config).CNT_NMT = OD_CNT_NMT;\
+    (config).ENTRY_H1017 = OD_ENTRY_H1017;\
+    (config).CNT_HB_CONS = OD_CNT_HB_CONS;\
+    (config).CNT_ARR_1016 = OD_CNT_ARR_1016;\
+    (config).ENTRY_H1016 = OD_ENTRY_H1016;\
+    (config).CNT_EM = OD_CNT_EM;\
+    (config).ENTRY_H1001 = OD_ENTRY_H1001;\
+    (config).ENTRY_H1014 = NULL;\
+    (config).ENTRY_H1015 = NULL;\
+    (config).CNT_ARR_1003 = 0;\
+    (config).ENTRY_H1003 = NULL;\
+    (config).CNT_SDO_SRV = OD_CNT_SDO_SRV;\
+    (config).ENTRY_H1200 = OD_ENTRY_H1200;\
+    (config).CNT_SDO_CLI = 0;\
+    (config).ENTRY_H1280 = NULL;\
+    (config).CNT_TIME = 0;\
+    (config).ENTRY_H1012 = NULL;\
+    (config).CNT_SYNC = OD_CNT_SYNC;\
+    (config).ENTRY_H1005 = OD_ENTRY_H1005;\
+    (config).ENTRY_H1006 = OD_ENTRY_H1006;\
+    (config).ENTRY_H1007 = NULL;\
+    (config).ENTRY_H1019 = NULL;\
+    (config).CNT_RPDO = OD_CNT_RPDO;\
+    (config).ENTRY_H1400 = OD_ENTRY_H1400;\
+    (config).ENTRY_H1600 = OD_ENTRY_H1600;\
+    (config).CNT_TPDO = OD_CNT_TPDO;\
+    (config).ENTRY_H1800 = OD_ENTRY_H1800;\
+    (config).ENTRY_H1A00 = OD_ENTRY_H1A00;\
+    (config).CNT_LEDS = 0;\
+    (config).CNT_GFC = 0;\
+    (config).ENTRY_H1300 = NULL;\
+    (config).CNT_SRDO = 0;\
+    (config).ENTRY_H1301 = NULL;\
+    (config).ENTRY_H1381 = NULL;\
+    (config).ENTRY_H13FE = NULL;\
+    (config).ENTRY_H13FF = NULL;\
+    (config).CNT_LSS_SLV = 0;\
+    (config).CNT_LSS_MST = 0;\
+    (config).CNT_GTWA = 0;\
+    (config).CNT_TRACE = 0;\
+}
+#endif
 
 #endif /* OD_H */

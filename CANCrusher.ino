@@ -1,9 +1,13 @@
 #include "STM32_CAN.h"
+#include "CO/CANopen.h" 
+#include "OD.h"
+#include "CO_driver_target.h"
 #include "CanOpenController.h"
 #include "MyCanDriver.h"
 #include "Stm32CanDriver.h"
 #include "MyCanOpen.h"
 #include "Params.h"
+#include <string.h>
 
 #define STEPS_PER_REVOLUTION 32768
 #define UNITS_PER_REVOLUTION 7.2
@@ -18,12 +22,23 @@ const String COMMAND_SET_CURRENT_POSITION_IN_UNITS = "SCU";
 const double MAX_SPEED = 360;
 const double MAX_ACCELERATION = 7864.20;
 
+// ======== For CANOpenNode ========
+// CANopenNode CAN module and buffer objects
+CO_CANmodule_t canModule;
+CO_CANrx_t canRxArray[8]; // CAN receive buffer array
+CO_CANtx_t canTxArray[8]; // CAN transmit buffer array
+// Instantiate STM32_CAN object for CAN bus (CAN1 peripheral, ALT pins)
+STM32_CAN Can(CAN1, ALT);
+unsigned long lastSDO = 0;
+static CAN_message_t CAN_TX_msg, CAN_RX_msg;
+
+//======== For Motors ========
 //HardwareSerial Serial2(PA3, PA2);
 
 //STM32_CAN Can( CAN1, ALT );
 //static CAN_message_t CAN_TX_msg;
-Stm32CanDriver can(1000000);
-MyCanOpen canOpen(&can);
+//Stm32CanDriver can(1000000);
+MyCanOpen canOpen(&canModule);
 MoveController moveController(&canOpen);
 
 const int axesNum = 6;
@@ -110,6 +125,64 @@ PositionParams stringToPositionParams(String command) {
     return params;
 }
 
+SDOParams stringToSDOParams(String command) {
+    SDOParams params;
+
+    int nodeIdIndex = command.indexOf("NID");
+    int dataLenIndex = command.indexOf("LEN");
+    int indexIndex = command.indexOf("INDEX");
+    int subindexIndex = command.indexOf("SUB");
+    int dataIndex = command.indexOf("DATA");
+
+    if ((nodeIdIndex == -1) || (dataLenIndex == -1) || (indexIndex == -1) || (subindexIndex == -1) 
+        || (dataIndex == -1)) {
+        params.status = ParamsStatus::INCORRECT_COMMAND;
+        return params;
+    }
+
+    params.nodeId = command.substring(nodeIdIndex + 3, dataLenIndex).toInt();
+    params.dataLen = command.substring(dataLenIndex + 3, indexIndex).toInt();
+    params.index = command.substring(indexIndex + 5, subindexIndex).toInt();
+    params.subindex = command.substring(subindexIndex + 3, dataIndex).toInt();
+    
+    // Parse the 64-bit data
+    String dataStr = command.substring(dataIndex + 4);
+    const char *s = dataStr.c_str();
+    char *t;
+    params.data = strtoul(s, &t, 0);
+    if(s == t) {
+        Serial2.println("strtoul failed!");
+        params.status = ParamsStatus::INVALID_PARAMS;
+        return params;
+    }
+    Serial2.print("params.data: ");
+    Serial2.println(params.data);
+
+    if ((params.nodeId <= 0) || (params.nodeId > 6) || (params.dataLen <= 0) || (params.dataLen > 4)) {
+        Serial2.println("Node id or dataLen are invalid");
+        params.status = ParamsStatus::INVALID_PARAMS;
+        return params;
+    }
+
+    // Convert 64-bit data to 4-byte array (little-endian)
+    Serial2.println();
+    params.dataArray[0] = (uint8_t)(params.data & 0xFF);
+    params.dataArray[1] = (uint8_t)((params.data >> 8) & 0xFF);
+    params.dataArray[2] = (uint8_t)((params.data >> 16) & 0xFF);
+    params.dataArray[3] = (uint8_t)((params.data >> 24) & 0xFF);
+    Serial2.print("data in Hex: ");
+    Serial2.println(params.data, HEX);
+    for(int i = 0; i < 4; ++i){
+        Serial2.print(params.dataArray[i]);
+        Serial2.print(' ');
+    }
+    Serial2.println("");
+
+    params.status = ParamsStatus::OK;
+    Serial2.println("Returning correct params");
+    return params;
+}
+
 
 void handleMove(MoveParams params, bool isAbsoluteMove) {
     if (params.status != ParamsStatus::OK) {
@@ -145,6 +218,28 @@ void handleSetCurrentPositionInUnits(PositionParams params) {
     addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(axes[params.nodeId].getCurrentPositionInSteps()));
 }
 
+void handleSendSimpleSDO(SDOParams params) {
+    if (params.status != ParamsStatus::OK) {
+        if (params.status == ParamsStatus::INVALID_PARAMS) {
+            addDataToOutQueue("INVALID SDO PARAMS");
+        } else if (params.status == ParamsStatus::INCORRECT_COMMAND) {
+            addDataToOutQueue("INCORRECT SDO COMMAND");
+        }
+        return;
+    }
+    
+    // Use the dataArray instead of the old malloc'd pointer
+    Serial2.println("Entering canOpen.sendSDO");
+    bool success = canOpen.sendSDO(params.nodeId, params.dataLen, params.index, params.subindex, params.dataArray);
+    Serial2.println("Exited canOpen.sendSDO");
+
+    if (success) {
+        addDataToOutQueue("SDO SENT SUCCESSFULLY");
+    } else {
+        addDataToOutQueue("SDO SEND FAILED");
+    }
+}
+
 
 void setup() {
     Serial2.begin(115200); 
@@ -158,6 +253,16 @@ void setup() {
         axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
         axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
     }
+    Serial2.print("Stopped Here?\n");
+
+    // Initialize CANopenNode CAN driver (1000kbs)
+    if(CO_CANmodule_init(&canModule, &Can, canRxArray, 8, canTxArray, 8, 1000000) != CO_ERROR_NO){ // 1000 = 1000kbps (adjust as needed)
+        Serial2.println("CO_CANmodule_init: something wrong");
+    }
+
+    Serial2.println("Or here?");
+
+    Serial2.println("CanOpenNode SDO client ready");
 }
 
 void loop() {
@@ -167,6 +272,14 @@ void loop() {
 
     sendData();
     //moveController.tick();
+
+        // Process received messages
+    CO_CANmodule_process(&canModule); // Handles incoming CAN messages and updates state
+
+    // Process messages ready for sending
+    CO_CANprocessTx(&canModule); // Sends any CAN messages queued in transmit buffers
+
+    //delay(1000);
 }
 
 bool receiveCommand() {
@@ -205,6 +318,9 @@ void handleCommand() {
     } else if (function == "SCU") {
         handleSetCurrentPositionInUnits(stringToPositionParams(inData));
         addDataToOutQueue("SCU COMMAND COMPLETED");
+    } else if (function == "SDO") {
+        handleSendSimpleSDO(stringToSDOParams(inData));
+        addDataToOutQueue("SDO COMMAND COMPLETED");
     } else {
         addDataToOutQueue("INVALID COMMAND");
     }

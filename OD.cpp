@@ -10,29 +10,23 @@
 *******************************************************************************/
 
 #define OD_DEFINITION
-// #include "CO_ODinterface.h"
 #include "OD.h"
 
-/*
 #if CO_VERSION_MAJOR < 4
-#warning This Object dictionary is compatible with CANopenNode V4.0 and above!
+#error This Object dictionary is compatible with CANopenNode V4.0 and above!
 #endif
-*/
 
 /*******************************************************************************
     OD data initialization of all groups
 *******************************************************************************/
-
 void init_od_ram(OD_RAM_t *obj) {
     *obj = (OD_RAM_t){
         .x1000_deviceType = 0x00020192,
         .x1001_errorRegister = 0x00,
         .x1005_SYNC_COB_ID = 0x00000080,
         .x1006_communicationCyclePeriod = 0x000007D0,
-        .x1016_consumerHeartbeatTime = {
-            .numberOfEntries = 0x01,
-            .consumerHeartbeatTime = 0x000007D0
-        },
+        .x1016_consumerHeartbeatTime_sub0 = 0x01,
+        .x1016_consumerHeartbeatTime = {0x000007D0},
         .x1017_producerHeartbeatTime = 0x03E8,
         .x1018_identity = {
             .numberOfEntries = 0x04,
@@ -46,20 +40,8 @@ void init_od_ram(OD_RAM_t *obj) {
             .COB_ID_ClientToServerReceiveSDO = 0x00000601,
             .COB_ID_ServerToClientTransmitSDO = 0x00000581
         },
-        .x1201_additionalServerSDO1Parameter = {
-            .numberOfEntries = 0x03,
-            .COB_ID_ClientToServerReceiveSDO = 0x00000000,
-            .COB_ID_ServerToClientTransmitSDO = 0x00000000,
-            .nodeIDOfTheSDO_Client = 0x00
-        },
-        .x1280_clientSDO1Parameter = {
-            .numberOfEntries = 0x03,
-            .COB_ID_ClientToServerTransmitSDO = 0x00000000,
-            .COB_ID_ServerToClientReceiveSDO = 0x00000000,
-            .nodeIDOfTheSDO_Server = 0x00
-        },
         .x1400_receivePDO1Parameter = {
-            .numberOfEntries = 0x06,
+            .highestSubIndexSupported = 0x06,
             .COB_IDUsedByPDO = 0x00000201,
             .transmissionType = 0xFF,
             .inhibitTime = 0x0001,
@@ -67,7 +49,7 @@ void init_od_ram(OD_RAM_t *obj) {
             .SYNCStartValue = 0x00
         },
         .x1401_receivePDO2Parameter = {
-            .numberOfEntries = 0x06,
+            .highestSubIndexSupported = 0x06,
             .COB_IDUsedByPDO = 0x00000301,
             .transmissionType = 0xFF,
             .inhibitTime = 0x0001,
@@ -75,7 +57,7 @@ void init_od_ram(OD_RAM_t *obj) {
             .SYNCStartValue = 0x00
         },
         .x1402_receivePDO3Parameter = {
-            .numberOfEntries = 0x06,
+            .highestSubIndexSupported = 0x06,
             .COB_IDUsedByPDO = 0x00000401,
             .transmissionType = 0xFF,
             .inhibitTime = 0x0001,
@@ -83,36 +65,23 @@ void init_od_ram(OD_RAM_t *obj) {
             .SYNCStartValue = 0x00
         },
         .x1403_receivePDO4Parameter = {
-            .numberOfEntries = 0x06,
+            .highestSubIndexSupported = 0x06,
             .COB_IDUsedByPDO = 0x00000501,
             .transmissionType = 0x01,
             .inhibitTime = 0x0001,
             .eventTimer = 0x0000,
             .SYNCStartValue = 0x00
         },
-        .x1600_receivePDO1Mapping = {
-            .numberOfEntries = 0x03,
-            .PDO1MappingForAnApplicationObject1 = 0x60400010,
-            .PDO1MappingForAnApplicationObject2 = 0x60600008,
-            .PDO1MappingForAnApplicationObject3 = 0x607A0020
-        },
-        .x1601_receivePDO2Mapping = {
-            .numberOfEntries = 0x02,
-            .PDO2MappingForAnApplicationObject1 = 0x607A0020,
-            .PDO2MappingForAnApplicationObject2 = 0x60810020
-        },
-        .x1602_receivePDO3Mapping = {
-            .numberOfEntries = 0x03,
-            .PDO3MappingForAnApplicationObject1 = 0x60400010,
-            .PDO3MappingForAnApplicationObject2 = 0x60600008,
-            .PDO3MappingForAnApplicationObject3 = 0x60FF0020
-        },
-        .x1603_receivePDO4Mapping = {
-            .numberOfEntries = 0x01,
-            .PDO4MappingForAnApplicationObject1 = 0x607A0020
-        },
+        .x1600_receivePDO1Mapping_sub0 = 0x03,
+        .x1600_receivePDO1Mapping = {0x60400010, 0x60600008, 0x607A0020},
+        .x1601_receivePDO2Mapping_sub0 = 0x02,
+        .x1601_receivePDO2Mapping = {0x607A0020, 0x60810020},
+        .x1602_receivePDO3Mapping_sub0 = 0x03,
+        .x1602_receivePDO3Mapping = {0x60400010, 0x60600008, 0x60FF0020},
+        .x1603_receivePDO4Mapping_sub0 = 0x01,
+        .x1603_receivePDO4Mapping = {0x607A0020},
         .x1800_transmitPDO1Parameter = {
-            .numberOfEntries = 0x06,
+            .highestSubIndexSupported = 0x06,
             .COB_IDUsedByPDO = 0x00000181,
             .transmissionType = 0xFF,
             .inhibitTime = 0x0001,
@@ -120,7 +89,7 @@ void init_od_ram(OD_RAM_t *obj) {
             .SYNCStartValue = 0x00
         },
         .x1801_transmitPDO2Parameter = {
-            .numberOfEntries = 0x06,
+            .highestSubIndexSupported = 0x06,
             .COB_IDUsedByPDO = 0x00000281,
             .transmissionType = 0xFF,
             .inhibitTime = 0x0001,
@@ -128,7 +97,7 @@ void init_od_ram(OD_RAM_t *obj) {
             .SYNCStartValue = 0x00
         },
         .x1802_transmitPDO3Parameter = {
-            .numberOfEntries = 0x06,
+            .highestSubIndexSupported = 0x06,
             .COB_IDUsedByPDO = 0x00000381,
             .transmissionType = 0xFF,
             .inhibitTime = 0x0001,
@@ -136,33 +105,21 @@ void init_od_ram(OD_RAM_t *obj) {
             .SYNCStartValue = 0x00
         },
         .x1803_transmitPDO4Parameter = {
-            .numberOfEntries = 0x06,
+            .highestSubIndexSupported = 0x06,
             .COB_IDUsedByPDO = 0x00000481,
             .transmissionType = 0xFF,
             .inhibitTime = 0x0001,
             .eventTimer = 0x0000,
             .SYNCStartValue = 0x00
         },
-        .x1A00_transmitPDO1Mapping = {
-            .numberOfEntries = 0x02,
-            .PDO1MappingForaProcessDataVariable1 = 0x60640020,
-            .PDO1MappingForaProcessDataVariable2 = 0x60410010
-        },
-        .x1A01_transmitPDO2Mapping = {
-            .numberOfEntries = 0x02,
-            .PDO2MappingForaProcessDataVariable1 = 0x60640020,
-            .PDO2MappingForaProcessDataVariable2 = 0x60410010
-        },
-        .x1A02_transmitPDO3Mapping = {
-            .numberOfEntries = 0x02,
-            .PDO3MappingForaProcessDataVariable1 = 0x606C0020,
-            .PDO3MappingForaProcessDataVariable2 = 0x60410010
-        },
-        .x1A03_transmitPDO4Mapping = {
-            .numberOfEntries = 0x02,
-            .PDO4MappingForaProcessDataVariable1 = 0x60640020,
-            .PDO4MappingForaProcessDataVariable2 = 0x60410010
-        },
+        .x1A00_transmitPDO1Mapping_sub0 = 0x02,
+        .x1A00_transmitPDO1Mapping = {0x60640020, 0x60410010},
+        .x1A01_transmitPDO2Mapping_sub0 = 0x02,
+        .x1A01_transmitPDO2Mapping = {0x60640020, 0x60410010},
+        .x1A02_transmitPDO3Mapping_sub0 = 0x02,
+        .x1A02_transmitPDO3Mapping = {0x606C0020, 0x60410010},
+        .x1A03_transmitPDO4Mapping_sub0 = 0x02,
+        .x1A03_transmitPDO4Mapping = {0x60640020, 0x60410010},
         .x2600_modbusEnable = 0x00,
         .x2601_driverEnable = 0x00,
         .x2604_weakMagneticAngle = 0x00,
@@ -203,12 +160,14 @@ void init_od_ram(OD_RAM_t *obj) {
         },
         .x60FF_targetVelocity = 0
     };
-}
+};
+
+
 
 /*******************************************************************************
     All OD objects (constant definitions)
 *******************************************************************************/
-
+/*
 void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
     *odobjs = (ODObjs_t){
         .o_1000_deviceType = {
@@ -232,18 +191,12 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
             .dataLength = 4
         },
         .o_1016_consumerHeartbeatTime = {
-            {
-                .dataOrig = &obj->x1016_consumerHeartbeatTime.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1016_consumerHeartbeatTime.consumerHeartbeatTime,
-                .subIndex = 1,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            }
+            .dataOrig0 = &obj->x1016_consumerHeartbeatTime_sub0,
+            .dataOrig = &obj->x1016_consumerHeartbeatTime[0],
+            .attribute0 = ODA_SDO_R,
+            .attribute = ODA_SDO_RW | ODA_MB,
+            .dataElementLength = 4,
+            .dataElementSizeof = sizeof(uint32_t)
         },
         .o_1017_producerHeartbeatTime = {
             .dataOrig = &obj->x1017_producerHeartbeatTime,
@@ -302,61 +255,9 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
                 .dataLength = 4
             }
         },
-        .o_1201_additionalServerSDO1Parameter = {
-            {
-                .dataOrig = &obj->x1201_additionalServerSDO1Parameter.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1201_additionalServerSDO1Parameter.COB_ID_ClientToServerReceiveSDO,
-                .subIndex = 1,
-                .attribute = ODA_SDO_R | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1201_additionalServerSDO1Parameter.COB_ID_ServerToClientTransmitSDO,
-                .subIndex = 2,
-                .attribute = ODA_SDO_R | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1201_additionalServerSDO1Parameter.nodeIDOfTheSDO_Client,
-                .subIndex = 3,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            }
-        },
-        .o_1280_clientSDO1Parameter = {
-            {
-                .dataOrig = &obj->x1280_clientSDO1Parameter.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1280_clientSDO1Parameter.COB_ID_ClientToServerTransmitSDO,
-                .subIndex = 1,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1280_clientSDO1Parameter.COB_ID_ServerToClientReceiveSDO,
-                .subIndex = 2,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1280_clientSDO1Parameter.nodeIDOfTheSDO_Server,
-                .subIndex = 3,
-                .attribute = ODA_SDO_RW,
-                .dataLength = 1
-            }
-        },
         .o_1400_receivePDO1Parameter = {
             {
-                .dataOrig = &obj->x1400_receivePDO1Parameter.numberOfEntries,
+                .dataOrig = &obj->x1400_receivePDO1Parameter.highestSubIndexSupported,
                 .subIndex = 0,
                 .attribute = ODA_SDO_R,
                 .dataLength = 1
@@ -394,7 +295,7 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
         },
         .o_1401_receivePDO2Parameter = {
             {
-                .dataOrig = &obj->x1401_receivePDO2Parameter.numberOfEntries,
+                .dataOrig = &obj->x1401_receivePDO2Parameter.highestSubIndexSupported,
                 .subIndex = 0,
                 .attribute = ODA_SDO_R,
                 .dataLength = 1
@@ -432,7 +333,7 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
         },
         .o_1402_receivePDO3Parameter = {
             {
-                .dataOrig = &obj->x1402_receivePDO3Parameter.numberOfEntries,
+                .dataOrig = &obj->x1402_receivePDO3Parameter.highestSubIndexSupported,
                 .subIndex = 0,
                 .attribute = ODA_SDO_R,
                 .dataLength = 1
@@ -470,7 +371,7 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
         },
         .o_1403_receivePDO4Parameter = {
             {
-                .dataOrig = &obj->x1403_receivePDO4Parameter.numberOfEntries,
+                .dataOrig = &obj->x1403_receivePDO4Parameter.highestSubIndexSupported,
                 .subIndex = 0,
                 .attribute = ODA_SDO_R,
                 .dataLength = 1
@@ -507,94 +408,40 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
             }
         },
         .o_1600_receivePDO1Mapping = {
-            {
-                .dataOrig = &obj->x1600_receivePDO1Mapping.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1600_receivePDO1Mapping.PDO1MappingForAnApplicationObject1,
-                .subIndex = 1,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1600_receivePDO1Mapping.PDO1MappingForAnApplicationObject2,
-                .subIndex = 2,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1600_receivePDO1Mapping.PDO1MappingForAnApplicationObject3,
-                .subIndex = 3,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            }
+            .dataOrig0 = &obj->x1600_receivePDO1Mapping_sub0,
+            .dataOrig = &obj->x1600_receivePDO1Mapping[0],
+            .attribute0 = ODA_SDO_RW,
+            .attribute = ODA_SDO_RW | ODA_MB,
+            .dataElementLength = 4,
+            .dataElementSizeof = sizeof(uint32_t)
         },
         .o_1601_receivePDO2Mapping = {
-            {
-                .dataOrig = &obj->x1601_receivePDO2Mapping.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1601_receivePDO2Mapping.PDO2MappingForAnApplicationObject1,
-                .subIndex = 1,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1601_receivePDO2Mapping.PDO2MappingForAnApplicationObject2,
-                .subIndex = 2,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            }
+            .dataOrig0 = &obj->x1601_receivePDO2Mapping_sub0,
+            .dataOrig = &obj->x1601_receivePDO2Mapping[0],
+            .attribute0 = ODA_SDO_RW,
+            .attribute = ODA_SDO_RW | ODA_MB,
+            .dataElementLength = 4,
+            .dataElementSizeof = sizeof(uint32_t)
         },
         .o_1602_receivePDO3Mapping = {
-            {
-                .dataOrig = &obj->x1602_receivePDO3Mapping.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1602_receivePDO3Mapping.PDO3MappingForAnApplicationObject1,
-                .subIndex = 1,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1602_receivePDO3Mapping.PDO3MappingForAnApplicationObject2,
-                .subIndex = 2,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1602_receivePDO3Mapping.PDO3MappingForAnApplicationObject3,
-                .subIndex = 3,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            }
+            .dataOrig0 = &obj->x1602_receivePDO3Mapping_sub0,
+            .dataOrig = &obj->x1602_receivePDO3Mapping[0],
+            .attribute0 = ODA_SDO_RW,
+            .attribute = ODA_SDO_RW | ODA_MB,
+            .dataElementLength = 4,
+            .dataElementSizeof = sizeof(uint32_t)
         },
         .o_1603_receivePDO4Mapping = {
-            {
-                .dataOrig = &obj->x1603_receivePDO4Mapping.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1603_receivePDO4Mapping.PDO4MappingForAnApplicationObject1,
-                .subIndex = 1,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            }
+            .dataOrig0 = &obj->x1603_receivePDO4Mapping_sub0,
+            .dataOrig = &obj->x1603_receivePDO4Mapping[0],
+            .attribute0 = ODA_SDO_RW,
+            .attribute = ODA_SDO_RW | ODA_MB,
+            .dataElementLength = 4,
+            .dataElementSizeof = sizeof(uint32_t)
         },
         .o_1800_transmitPDO1Parameter = {
             {
-                .dataOrig = &obj->x1800_transmitPDO1Parameter.numberOfEntries,
+                .dataOrig = &obj->x1800_transmitPDO1Parameter.highestSubIndexSupported,
                 .subIndex = 0,
                 .attribute = ODA_SDO_R,
                 .dataLength = 1
@@ -632,7 +479,7 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
         },
         .o_1801_transmitPDO2Parameter = {
             {
-                .dataOrig = &obj->x1801_transmitPDO2Parameter.numberOfEntries,
+                .dataOrig = &obj->x1801_transmitPDO2Parameter.highestSubIndexSupported,
                 .subIndex = 0,
                 .attribute = ODA_SDO_R,
                 .dataLength = 1
@@ -670,7 +517,7 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
         },
         .o_1802_transmitPDO3Parameter = {
             {
-                .dataOrig = &obj->x1802_transmitPDO3Parameter.numberOfEntries,
+                .dataOrig = &obj->x1802_transmitPDO3Parameter.highestSubIndexSupported,
                 .subIndex = 0,
                 .attribute = ODA_SDO_R,
                 .dataLength = 1
@@ -708,7 +555,7 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
         },
         .o_1803_transmitPDO4Parameter = {
             {
-                .dataOrig = &obj->x1803_transmitPDO4Parameter.numberOfEntries,
+                .dataOrig = &obj->x1803_transmitPDO4Parameter.highestSubIndexSupported,
                 .subIndex = 0,
                 .attribute = ODA_SDO_R,
                 .dataLength = 1
@@ -745,84 +592,36 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
             }
         },
         .o_1A00_transmitPDO1Mapping = {
-            {
-                .dataOrig = &obj->x1A00_transmitPDO1Mapping.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1A00_transmitPDO1Mapping.PDO1MappingForaProcessDataVariable1,
-                .subIndex = 1,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1A00_transmitPDO1Mapping.PDO1MappingForaProcessDataVariable2,
-                .subIndex = 2,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            }
+            .dataOrig0 = &obj->x1A00_transmitPDO1Mapping_sub0,
+            .dataOrig = &obj->x1A00_transmitPDO1Mapping[0],
+            .attribute0 = ODA_SDO_RW,
+            .attribute = ODA_SDO_RW | ODA_MB,
+            .dataElementLength = 4,
+            .dataElementSizeof = sizeof(uint32_t)
         },
         .o_1A01_transmitPDO2Mapping = {
-            {
-                .dataOrig = &obj->x1A01_transmitPDO2Mapping.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1A01_transmitPDO2Mapping.PDO2MappingForaProcessDataVariable1,
-                .subIndex = 1,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1A01_transmitPDO2Mapping.PDO2MappingForaProcessDataVariable2,
-                .subIndex = 2,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            }
+            .dataOrig0 = &obj->x1A01_transmitPDO2Mapping_sub0,
+            .dataOrig = &obj->x1A01_transmitPDO2Mapping[0],
+            .attribute0 = ODA_SDO_RW,
+            .attribute = ODA_SDO_RW | ODA_MB,
+            .dataElementLength = 4,
+            .dataElementSizeof = sizeof(uint32_t)
         },
         .o_1A02_transmitPDO3Mapping = {
-            {
-                .dataOrig = &obj->x1A02_transmitPDO3Mapping.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1A02_transmitPDO3Mapping.PDO3MappingForaProcessDataVariable1,
-                .subIndex = 1,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1A02_transmitPDO3Mapping.PDO3MappingForaProcessDataVariable2,
-                .subIndex = 2,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            }
+            .dataOrig0 = &obj->x1A02_transmitPDO3Mapping_sub0,
+            .dataOrig = &obj->x1A02_transmitPDO3Mapping[0],
+            .attribute0 = ODA_SDO_RW,
+            .attribute = ODA_SDO_RW | ODA_MB,
+            .dataElementLength = 4,
+            .dataElementSizeof = sizeof(uint32_t)
         },
         .o_1A03_transmitPDO4Mapping = {
-            {
-                .dataOrig = &obj->x1A03_transmitPDO4Mapping.numberOfEntries,
-                .subIndex = 0,
-                .attribute = ODA_SDO_R,
-                .dataLength = 1
-            },
-            {
-                .dataOrig = &obj->x1A03_transmitPDO4Mapping.PDO4MappingForaProcessDataVariable1,
-                .subIndex = 1,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            },
-            {
-                .dataOrig = &obj->x1A03_transmitPDO4Mapping.PDO4MappingForaProcessDataVariable2,
-                .subIndex = 2,
-                .attribute = ODA_SDO_RW | ODA_MB,
-                .dataLength = 4
-            }
+            .dataOrig0 = &obj->x1A03_transmitPDO4Mapping_sub0,
+            .dataOrig = &obj->x1A03_transmitPDO4Mapping[0],
+            .attribute0 = ODA_SDO_RW,
+            .attribute = ODA_SDO_RW | ODA_MB,
+            .dataElementLength = 4,
+            .dataElementSizeof = sizeof(uint32_t)
         },
         .o_2600_modbusEnable = {
             .dataOrig = &obj->x2600_modbusEnable,
@@ -847,12 +646,12 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
         .o_260A_electronicGearMolecules = {
             .dataOrig = &obj->x260A_electronicGearMolecules,
             .attribute = ODA_SDO_RW | ODA_TRPDO,
-            .dataLength = 2
+            .dataLength = 1
         },
         .o_260B_electronicGearDenominator = {
             .dataOrig = &obj->x260B_electronicGearDenominator,
             .attribute = ODA_SDO_RW | ODA_TRPDO,
-            .dataLength = 2
+            .dataLength = 1
         },
         .o_260C_incrementalPosition = {
             .dataOrig = &obj->x260C_incrementalPosition,
@@ -1013,5 +812,74 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
             .dataLength = 4
         }
     };
-}
+};
+*/
 
+/*******************************************************************************
+    Object dictionary
+*******************************************************************************/
+/*
+static OD_ATTR_OD OD_entry_t ODList[] = {
+    {0x1000, 0x01, ODT_VAR, &ODObjs.o_1000_deviceType, NULL},
+    {0x1001, 0x01, ODT_VAR, &ODObjs.o_1001_errorRegister, NULL},
+    {0x1005, 0x01, ODT_VAR, &ODObjs.o_1005_SYNC_COB_ID, NULL},
+    {0x1006, 0x01, ODT_VAR, &ODObjs.o_1006_communicationCyclePeriod, NULL},
+    {0x1016, 0x02, ODT_ARR, &ODObjs.o_1016_consumerHeartbeatTime, NULL},
+    {0x1017, 0x01, ODT_VAR, &ODObjs.o_1017_producerHeartbeatTime, NULL},
+    {0x1018, 0x05, ODT_REC, &ODObjs.o_1018_identity, NULL},
+    {0x1200, 0x03, ODT_REC, &ODObjs.o_1200_serverSDO_Parameter, NULL},
+    {0x1400, 0x06, ODT_REC, &ODObjs.o_1400_receivePDO1Parameter, NULL},
+    {0x1401, 0x06, ODT_REC, &ODObjs.o_1401_receivePDO2Parameter, NULL},
+    {0x1402, 0x06, ODT_REC, &ODObjs.o_1402_receivePDO3Parameter, NULL},
+    {0x1403, 0x06, ODT_REC, &ODObjs.o_1403_receivePDO4Parameter, NULL},
+    {0x1600, 0x04, ODT_ARR, &ODObjs.o_1600_receivePDO1Mapping, NULL},
+    {0x1601, 0x03, ODT_ARR, &ODObjs.o_1601_receivePDO2Mapping, NULL},
+    {0x1602, 0x04, ODT_ARR, &ODObjs.o_1602_receivePDO3Mapping, NULL},
+    {0x1603, 0x02, ODT_ARR, &ODObjs.o_1603_receivePDO4Mapping, NULL},
+    {0x1800, 0x06, ODT_REC, &ODObjs.o_1800_transmitPDO1Parameter, NULL},
+    {0x1801, 0x06, ODT_REC, &ODObjs.o_1801_transmitPDO2Parameter, NULL},
+    {0x1802, 0x06, ODT_REC, &ODObjs.o_1802_transmitPDO3Parameter, NULL},
+    {0x1803, 0x06, ODT_REC, &ODObjs.o_1803_transmitPDO4Parameter, NULL},
+    {0x1A00, 0x03, ODT_ARR, &ODObjs.o_1A00_transmitPDO1Mapping, NULL},
+    {0x1A01, 0x03, ODT_ARR, &ODObjs.o_1A01_transmitPDO2Mapping, NULL},
+    {0x1A02, 0x03, ODT_ARR, &ODObjs.o_1A02_transmitPDO3Mapping, NULL},
+    {0x1A03, 0x03, ODT_ARR, &ODObjs.o_1A03_transmitPDO4Mapping, NULL},
+    {0x2600, 0x01, ODT_VAR, &ODObjs.o_2600_modbusEnable, NULL},
+    {0x2601, 0x01, ODT_VAR, &ODObjs.o_2601_driverEnable, NULL},
+    {0x2604, 0x01, ODT_VAR, &ODObjs.o_2604_weakMagneticAngle, NULL},
+    {0x2609, 0x01, ODT_VAR, &ODObjs.o_2609_DIR, NULL},
+    {0x260A, 0x01, ODT_VAR, &ODObjs.o_260A_electronicGearMolecules, NULL},
+    {0x260B, 0x01, ODT_VAR, &ODObjs.o_260B_electronicGearDenominator, NULL},
+    {0x260C, 0x01, ODT_VAR, &ODObjs.o_260C_incrementalPosition, NULL},
+    {0x260E, 0x01, ODT_VAR, &ODObjs.o_260E_ERROCode, NULL},
+    {0x2612, 0x01, ODT_VAR, &ODObjs.o_2612_systemTemperature, NULL},
+    {0x2613, 0x01, ODT_VAR, &ODObjs.o_2613_PWM, NULL},
+    {0x2614, 0x01, ODT_VAR, &ODObjs.o_2614_parameterSaveFlag, NULL},
+    {0x2615, 0x01, ODT_VAR, &ODObjs.o_2615_deviceAddress, NULL},
+    {0x2618, 0x01, ODT_VAR, &ODObjs.o_2618_staticMaxAllowOutput, NULL},
+    {0x2619, 0x01, ODT_VAR, &ODObjs.o_2619_specialFunction, NULL},
+    {0x261C, 0x01, ODT_VAR, &ODObjs.o_261C_CAN_CommunicationControlWord, NULL},
+    {0x261D, 0x01, ODT_VAR, &ODObjs.o_261D_maximumAllowableCurrent, NULL},
+    {0x6040, 0x01, ODT_VAR, &ODObjs.o_6040_controlword, NULL},
+    {0x6041, 0x01, ODT_VAR, &ODObjs.o_6041_statusword, NULL},
+    {0x6060, 0x01, ODT_VAR, &ODObjs.o_6060_modesOfOperation, NULL},
+    {0x6064, 0x01, ODT_VAR, &ODObjs.o_6064_positionActualValue, NULL},
+    {0x606C, 0x01, ODT_VAR, &ODObjs.o_606C_velocityActualValue, NULL},
+    {0x6078, 0x01, ODT_VAR, &ODObjs.o_6078_currentActualValue, NULL},
+    {0x607A, 0x01, ODT_VAR, &ODObjs.o_607A_targetPosition, NULL},
+    {0x6081, 0x01, ODT_VAR, &ODObjs.o_6081_profileVelocity, NULL},
+    {0x6083, 0x01, ODT_VAR, &ODObjs.o_6083_profileAcceleration, NULL},
+    {0x60F9, 0x03, ODT_REC, &ODObjs.o_60F9_velocityControlParameterSet, NULL},
+    {0x60FB, 0x06, ODT_REC, &ODObjs.o_60FB_positionControlParameterSet, NULL},
+    {0x60FF, 0x01, ODT_VAR, &ODObjs.o_60FF_targetVelocity, NULL},
+    {0x0000, 0x00, 0, NULL, NULL}
+};
+*/
+/*
+static OD_t _OD = {
+    (sizeof(ODList) / sizeof(ODList[0])) - 1,
+    &ODList[0]
+};
+
+OD_t *OD = &_OD;
+*/

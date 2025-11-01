@@ -33,4 +33,14 @@ struct PositionParams
 	uint8_t nodeId; 
 };
 
+struct SDOParams{
+	ParamsStatus status;
+	uint8_t nodeId; // 7 bits!
+	uint8_t dataLen;
+	uint16_t index;
+	uint8_t subindex;
+	uint32_t data;
+	uint8_t dataArray[4]; // 4-byte array converted from data
+};
+
 #endif
