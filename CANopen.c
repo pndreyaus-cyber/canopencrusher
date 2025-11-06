@@ -375,7 +375,9 @@ CO_new(CO_config_t* config, uint32_t* heapMemoryUsed) {
         ON_MULTI_OD(uint8_t TX_CNT_NMT_MST = 0);
         ON_MULTI_OD(uint8_t TX_CNT_HB_PROD = 0);
         if (CO_GET_CNT(NMT) == 1U) {
-            CO_alloc_break_on_fail(co->NMT, CO_GET_CNT(NMT), sizeof(*co->NMT));
+            #if (CO_NO_NMT == 0)
+                CO_alloc_break_on_fail(co->NMT, CO_GET_CNT(NMT), sizeof(*co->NMT));
+            #endif
             ON_MULTI_OD(RX_CNT_NMT_SLV = 1);
 #if ((CO_CONFIG_NMT)&CO_CONFIG_NMT_MASTER) != 0
             ON_MULTI_OD(TX_CNT_NMT_MST = 1);
@@ -753,7 +755,9 @@ CO_delete(CO_t* co) {
 #endif
 
     /* NMT_Heartbeat */
-    CO_free(co->NMT);
+    #if (CO_NO_NMT == 0)
+        CO_free(co->NMT);
+    #endif
 
     /* CANopen object */
     CO_free(co);
@@ -976,7 +980,9 @@ CO_CANopenInit(CO_t* co, CO_NMT_t* NMT, CO_EM_t* em, OD_t* od, OD_entry_t* OD_st
 
     /* alternatives */
     if (CO_GET_CNT(NMT) == 0U) {
-        co->NMT = NMT;
+        #if (CO_NO_NMT == 0)
+            co->NMT = NMT;
+        #endif
     }
     if (em == NULL) {
         em = co->em;
@@ -1037,12 +1043,14 @@ CO_CANopenInit(CO_t* co, CO_NMT_t* NMT, CO_EM_t* em, OD_t* od, OD_entry_t* OD_st
 
     /* NMT_Heartbeat */
     if (CO_GET_CNT(NMT) == 1U) {
+        #if (CO_NO_NMT == 0)
         err = CO_NMT_init(co->NMT, OD_GET(H1017, OD_H1017_PRODUCER_HB_TIME), em, nodeId, NMTcontrol, firstHBTime_ms,
                           co->CANmodule, CO_GET_CO(RX_IDX_NMT_SLV), CO_CAN_ID_NMT_SERVICE,
 #if ((CO_CONFIG_NMT)&CO_CONFIG_NMT_MASTER) != 0
                           co->CANmodule, CO_GET_CO(TX_IDX_NMT_MST), CO_CAN_ID_NMT_SERVICE,
 #endif
                           co->CANmodule, CO_GET_CO(TX_IDX_HB_PROD), CO_CAN_ID_HEARTBEAT + nodeId, errInfo);
+        #endif
         if (err != CO_ERROR_NO) {
             return err;
         }
@@ -1311,9 +1319,10 @@ CO_NMT_reset_cmd_t
 CO_process(CO_t* co, bool_t enableGateway, uint32_t timeDifference_us, uint32_t* timerNext_us) {
     (void)enableGateway; /* may be unused */
     CO_NMT_reset_cmd_t reset = CO_RESET_NOT;
+    #if (CO_NO_NMT == 0)
     CO_NMT_internalState_t NMTstate = CO_NMT_getInternalState(co->NMT);
     bool_t NMTisPreOrOperational = ((NMTstate == CO_NMT_PRE_OPERATIONAL) || (NMTstate == CO_NMT_OPERATIONAL));
-
+    #endif
     /* CAN module */
     CO_CANmodule_process(co->CANmodule);
 
@@ -1365,7 +1374,9 @@ CO_process(CO_t* co, bool_t enableGateway, uint32_t timeDifference_us, uint32_t*
 
     /* NMT_Heartbeat */
     if (CO_GET_CNT(NMT) == 1U) {
+        #if (CO_NO_NMT == 0)
         reset = CO_NMT_process(co->NMT, &NMTstate, timeDifference_us, timerNext_us);
+        #endif
     }
     NMTisPreOrOperational = ((NMTstate == CO_NMT_PRE_OPERATIONAL) || (NMTstate == CO_NMT_OPERATIONAL));
 

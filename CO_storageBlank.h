@@ -21,7 +21,7 @@
 #define CO_STORAGE_BLANK_H
 
 // TODO: Restore include path to "storage/CO_storage.h" when using a proper build system
-#include "CO/CO_storage.h"
+#include "CO_storage.h"
 
 #if ((CO_CONFIG_STORAGE)&CO_CONFIG_STORAGE_ENABLE) || defined CO_DOXYGEN
 

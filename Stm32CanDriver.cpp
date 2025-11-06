@@ -1,5 +1,5 @@
 #include "Stm32CanDriver.h"
-#include "Arduino.h"
+#include <Arduino.h>
 #include "Params.h"
 
 Stm32CanDriver::~Stm32CanDriver()

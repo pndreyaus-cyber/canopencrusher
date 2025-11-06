@@ -27,7 +27,7 @@
 
         Description:  
 *******************************************************************************/
-#include "CO/CO_ODinterface.h"
+#include "CO_ODinterface.h"
 
 #ifndef OD_H
 #define OD_H

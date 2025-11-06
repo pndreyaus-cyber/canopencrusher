@@ -6,8 +6,8 @@
 #include "OD.h"
 #include "MyCanDriver.h"
 #include "objdict_objectdefines.h"
-#include "CO/CO_driver.h"
-#include "Arduino.h"
+#include "CO_driver.h"
+#include <Arduino.h>
 
 // Callback types for received SDO and PDO messages
 //typedef void (*SdoReceiveCallback)(uint8_t nodeId, uint16_t index, uint8_t subindex, const uint8_t* data, uint8_t len);

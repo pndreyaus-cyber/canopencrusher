@@ -1,5 +1,5 @@
 #include "STM32_CAN.h"
-#include "CO/CANopen.h" 
+#include "CANopen.h" 
 #include "OD.h"
 #include "CO_driver_target.h"
 #include "CanOpenController.h"
@@ -8,6 +8,7 @@
 #include "MyCanOpen.h"
 #include "Params.h"
 #include <string.h>
+#include "MyCAN.h"
 
 #define STEPS_PER_REVOLUTION 32768
 #define UNITS_PER_REVOLUTION 7.2
@@ -33,7 +34,7 @@ unsigned long lastSDO = 0;
 static CAN_message_t CAN_TX_msg, CAN_RX_msg;
 
 //======== For Motors ========
-//HardwareSerial Serial2(PA3, PA2);
+HardwareSerial Serial2(PA3, PA2);
 
 //STM32_CAN Can( CAN1, ALT );
 //static CAN_message_t CAN_TX_msg;
@@ -255,6 +256,7 @@ void setup() {
     }
     Serial2.print("Stopped Here?\n");
 
+    MyCAN_setInstance(&Can);
     // Initialize CANopenNode CAN driver (1000kbs)
     if(CO_CANmodule_init(&canModule, &Can, canRxArray, 8, canTxArray, 8, 1000000) != CO_ERROR_NO){ // 1000 = 1000kbps (adjust as needed)
         Serial2.println("CO_CANmodule_init: something wrong");

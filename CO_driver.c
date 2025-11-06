@@ -1,21 +1,21 @@
 // TODO: Restore include path to "301/CO_driver.h" when using a proper build system
-#include "CO/CO_driver.h"
-#include "Arduino.h"
+#include "CO_driver.h"
+#include <Arduino.h>
 #include "STM32_CAN.h"
+
+#include "MyCAN.h"
 
 // Assume you have a global CAN object, e.g.:
 // extern STM32_CAN CAN;
 
 // Set CAN to configuration mode
 void CO_CANsetConfigurationMode(void* CANptr) {
-    STM32_CAN* can = (STM32_CAN*)CANptr;
-    can->setMode(STM32_CAN::NORMAL);
+    MyCAN_setConfigurationMode(CANptr);
 }
 
 // Set CAN to normal mode
 void CO_CANsetNormalMode(void* CANptr) {
-    STM32_CAN* can = (STM32_CAN*)CANptr;
-    can->setMode(STM32_CAN::NORMAL);
+    MyCAN_setNormalMode(CANptr);
 }
 
 // Initialize CAN module

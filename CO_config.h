@@ -18,6 +18,10 @@
  * See the License for the specific language governing permissions and limitations under the License.
  */
 
+// Andrey added these defines!!!
+#define CO_NO_NMT 0
+// End of Andrey's defines
+
 #ifndef CO_CONFIG_FLAGS_H
 #define CO_CONFIG_FLAGS_H
 

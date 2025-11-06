@@ -24,15 +24,15 @@
 
 #include "CO_driver.h"
 #include "CO_ODinterface.h"
-//#include "301/CO_NMT_Heartbeat.h"
+#include "CO_NMT_Heartbeat.h"
 // #include "301/CO_HBconsumer.h"      // Only if you use heartbeat consumer
 // #include "301/CO_Node_Guarding.h"   // Only if you use node guarding
-// #include "301/CO_Emergency.h"       // Only if you use emergency
-// #include "301/CO_SDOserver.h"       // Only if you want SDO server
-// #include "301/CO_SDOclient.h"
-// #include "301/CO_SYNC.h"            // Only if you use SYNC
-// #include "301/CO_PDO.h"             // Only if you use PDO
-// #include "301/CO_TIME.h"            // Only if you use TIME
+#include "CO_Emergency.h"       // Only if you use emergency
+#include "CO_SDOserver.h"       // Only if you want SDO server
+#include "CO_SDOclient.h"
+#include "CO_SYNC.h"            // Only if you use SYNC
+#include "CO_PDO.h"             // Only if you use PDO
+// #include "CO_TIME.h"            // Only if you use TIME
 // #include "303/CO_LEDs.h"
 // #include "304/CO_GFC.h"
 // #include "304/CO_SRDO.h"
@@ -250,7 +250,7 @@ typedef struct {
     uint16_t CNT_ALL_TX_MSGS; /**< Number of all CAN transmit message objects. */
 #endif
     // TODO: Uncomment line below
-    // CO_NMT_t* NMT; /**< NMT and heartbeat object, initialised by @ref CO_NMT_init() */
+    CO_NMT_t* NMT; /**< NMT and heartbeat object, initialised by @ref CO_NMT_init() */
 #if defined CO_MULTIPLE_OD || defined CO_DOXYGEN
     uint16_t RX_IDX_NMT_SLV; /**< Start index in CANrx. */
     uint16_t TX_IDX_NMT_MST; /**< Start index in CANtx. */
@@ -279,7 +279,7 @@ typedef struct {
 #endif
 #endif
     // TODO: Uncomment line below
-    //CO_EM_t* em; /**< Emergency object, initialised by @ref CO_EM_init() */
+    CO_EM_t* em; /**< Emergency object, initialised by @ref CO_EM_init() */
 #if defined CO_MULTIPLE_OD || defined CO_DOXYGEN
     uint16_t RX_IDX_EM_CONS; /**< Start index in CANrx. */
     uint16_t TX_IDX_EM_PROD; /**< Start index in CANtx. */
@@ -288,7 +288,7 @@ typedef struct {
     CO_EM_fifo_t* em_fifo; /**< FIFO for emergency object, initialised by @ref CO_EM_init() */
 #endif
     // TODO: Uncomment line below
-    //CO_SDOserver_t* SDOserver; /**< SDO server objects, initialised by @ref CO_SDOserver_init() */
+    CO_SDOserver_t* SDOserver; /**< SDO server objects, initialised by @ref CO_SDOserver_init() */
 #if defined CO_MULTIPLE_OD || defined CO_DOXYGEN
     uint16_t RX_IDX_SDO_SRV; /**< Start index in CANrx. */
     uint16_t TX_IDX_SDO_SRV; /**< Start index in CANtx. */
