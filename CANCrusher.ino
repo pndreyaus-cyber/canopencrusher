@@ -10,6 +10,8 @@
 #include <string.h>
 #include "MyCAN.h"
 
+#define CO_MULTIPLE_OD
+
 #define STEPS_PER_REVOLUTION 32768
 #define UNITS_PER_REVOLUTION 7.2
 

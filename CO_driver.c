@@ -1,7 +1,7 @@
 // TODO: Restore include path to "301/CO_driver.h" when using a proper build system
 #include "CO_driver.h"
 #include <Arduino.h>
-#include "STM32_CAN.h"
+//#include "STM32_CAN.h"
 
 #include "MyCAN.h"
 
@@ -14,8 +14,8 @@ void CO_CANsetConfigurationMode(void* CANptr) {
 }
 
 // Set CAN to normal mode
-void CO_CANsetNormalMode(void* CANptr) {
-    MyCAN_setNormalMode(CANptr);
+void CO_CANsetNormalMode(CO_CANmodule_t* CANmodule) {
+    MyCAN_setNormalMode(CANmodule->CANptr);
 }
 
 // Initialize CAN module
@@ -29,7 +29,7 @@ CO_ReturnError_t CO_CANmodule_init(CO_CANmodule_t* CANmodule, void* CANptr, CO_C
         return CO_ERROR_ILLEGAL_ARGUMENT;
     }
 
-    Serial2.println("Line 32");
+    //Serial2.println("Line 32");
     /* Configure object variables */
     CANmodule->CANptr = CANptr;
     CANmodule->rxArray = rxArray;
@@ -44,7 +44,7 @@ CO_ReturnError_t CO_CANmodule_init(CO_CANmodule_t* CANmodule, void* CANptr, CO_C
     CANmodule->CANtxCount = 0U;
     CANmodule->errOld = 0U;
     
-    Serial2.println("Line42");
+    //Serial2.println("Line42");
     for (i = 0U; i < rxSize; i++) {
         rxArray[i].ident = 0U;
         rxArray[i].mask = 0xFFFFU;
@@ -55,14 +55,18 @@ CO_ReturnError_t CO_CANmodule_init(CO_CANmodule_t* CANmodule, void* CANptr, CO_C
     for (i = 0U; i < txSize; i++) {
         txArray[i].bufferFull = false;
     }
-    Serial2.println("Line55");
+    //Serial2.println("Line55");
     /* Configure CAN module */
+    /*
     STM32_CAN* can = (STM32_CAN*)CANptr;
     //can->setAutoRetransmission(true);
     can->begin();
     can->setBaudRate(1000000);
-    Serial2.println("Line60");
+    */
+    MyCAN_configureAndBeginCan(1000000);
+    //Serial2.println("Line60");
 
+    /*
     CAN_message_t CAN_TX_msg;
     CAN_TX_msg.id = (0x601);
     CAN_TX_msg.len = 6;
@@ -75,13 +79,15 @@ CO_ReturnError_t CO_CANmodule_init(CO_CANmodule_t* CANmodule, void* CANptr, CO_C
     CAN_TX_msg.buf[6] =  0x00;
     CAN_TX_msg.buf[7] =  0x00;
 
-    Serial2.println("Line73");
+    //Serial2.println("Line73");
 
     bool t = can->write(CAN_TX_msg);
-    Serial2.print("Initialized Status: ");
-    Serial2.println(t);
+    //Serial2.print("Initialized Status: ");
+    //Serial2.println(t);
+    */
 
-    Serial2.println("CAN module initialized!!!");
+
+    //Serial2.println("CAN module initialized!!!");
     return CO_ERROR_NO;
 
     /* Configure CAN module hardware filters */
@@ -97,13 +103,12 @@ CO_ReturnError_t CO_CANmodule_init(CO_CANmodule_t* CANmodule, void* CANptr, CO_C
     }
 
     /* configure CAN interrupt registers */
-    Serial2.println("Line100");
+    //Serial2.println("Line100");
 }
 
 void CO_CANmodule_disable(CO_CANmodule_t* CANmodule) {
     if (CANmodule != NULL) {
-        STM32_CAN* can = (STM32_CAN*)CANmodule->CANptr;
-        can->end();
+        MyCAN_CANmodule_disable();
     }
 }
 
@@ -234,11 +239,11 @@ CO_ReturnError_t CO_CANsend(CO_CANmodule_t *CANmodule, CO_CANtx_t *buffer) {
 */
 
 void CO_CANprocessTx(CO_CANmodule_t* CANmodule) {
-    // Serial2.print("Enter CO_CANprocessTx: ");
-    // Serial2.println(CANmodule->CANtxCount);
+    // //Serial2.print("Enter CO_CANprocessTx: ");
+    // //Serial2.println(CANmodule->CANtxCount);
     if (CANmodule->CANtxCount > 0) {
-        // Serial2.print("CANmodule->txSize = ");
-        // Serial2.println(CANmodule->txSize);
+        // //Serial2.print("CANmodule->txSize = ");
+        // //Serial2.println(CANmodule->txSize);
         for (uint16_t i = 0; i < CANmodule->txSize; i++) {
             CO_CANtx_t* buffer = &CANmodule->txArray[i];
             if (buffer->bufferFull) {
@@ -247,26 +252,13 @@ void CO_CANprocessTx(CO_CANmodule_t* CANmodule) {
                 uint8_t dlc = (buffer->ident >> 11) & 0x0FU;
                 bool rtr = (buffer->ident & 0x8000U) != 0;
 
-                CAN_message_t tx_msg;
-                tx_msg.id = can_id;
-                tx_msg.len = dlc;
-                tx_msg.flags.remote = rtr ? 1 : 0;
-                tx_msg.flags.extended = 0; // Standard frame
-
-                for (uint8_t j = 0; j < tx_msg.len; j++) {
-                    tx_msg.buf[j] = buffer->data[j];
-                }
-
-                STM32_CAN* can = (STM32_CAN*)CANmodule->CANptr;
-                // Serial2.println("SERIOUSLY SENDING!!!");
-                if (can->write(tx_msg)) {
+                if (MyCAN_write(can_id, buffer->data, dlc)) {
                     buffer->bufferFull = false;
                     CANmodule->CANtxCount--;
                     CANmodule->bufferInhibitFlag = buffer->syncFlag;
-                    // Serial2.println("Sent SDO!");
-                    break; // Only send one message per call
-                }else{
-                    // Serial2.println("Error while sending");
+                    break;
+                } else {
+                    //Serial2.println("Error while sending");
                 }
             }
         }
@@ -277,7 +269,7 @@ void CO_CANprocessTx(CO_CANmodule_t* CANmodule) {
 CO_ReturnError_t CO_CANsend(CO_CANmodule_t* CANmodule, CO_CANtx_t* buffer) {
     CO_ReturnError_t err = CO_ERROR_NO;
 
-    // Serial2.println("CO_CANsend");
+    // //Serial2.println("CO_CANsend");
 
     // Verify overflow
     if (buffer->bufferFull) {
@@ -292,29 +284,14 @@ CO_ReturnError_t CO_CANsend(CO_CANmodule_t* CANmodule, CO_CANtx_t* buffer) {
 
     // If CAN TX buffer is free, send immediately
     if (CANmodule->CANtxCount == 0) {
-        //Serial2.println("Sending immediately");
+        ////Serial2.println("Sending immediately");
         CANmodule->bufferInhibitFlag = buffer->syncFlag;
-
-        // Unpack CANopenNode's ident field
-        uint16_t can_id = buffer->ident;
-        uint8_t dlc = buffer->DLC;
-
-        CAN_message_t tx_msg;
-        tx_msg.id = buffer->ident;
-        tx_msg.len = buffer->DLC;
-        tx_msg.flags.extended = 0; // Standard frame
-
-        for (uint8_t i = 0; i < tx_msg.len; i++) {
-            tx_msg.buf[i] = buffer->data[i];
-        }
-
-        STM32_CAN* can = (STM32_CAN*)CANmodule->CANptr;
-        if (!can->write(tx_msg)) {
+        if (!MyCAN_write(buffer->ident, buffer->data, buffer->DLC)) {
             err = CO_ERROR_TX_OVERFLOW;
-            Serial2.println("Error while sending");
+            //Serial2.println("Error while sending");
         } else {
             CANmodule->firstCANtxMessage = false;
-            Serial2.println("CO_driver.cpp Sent SDO!");
+            //Serial2.println("CO_driver.cpp Sent SDO!");
         }
     } else { // if no buffer is free, message will be sent by interrupt
         buffer->bufferFull = true;
@@ -330,42 +307,44 @@ CO_ReturnError_t CO_CANsend(CO_CANmodule_t* CANmodule, CO_CANtx_t* buffer) {
 
 // Receive CAN message (to be called in your main loop or interrupt)
 void CO_CANmodule_process(CO_CANmodule_t *CANmodule) {
-    //Serial2.println("CO_CANmodule_process");
-    STM32_CAN* can = (STM32_CAN*)CANmodule->CANptr;
-    CAN_message_t rx_msg;
+    ////Serial2.println("CO_CANmodule_process");
+    //STM32_CAN* can = (STM32_CAN*)CANmodule->CANptr;
+    My_CAN_message_t rx_msg;
 
-    if(can->read(rx_msg)) {
-        Serial2.print("Channel:");
-        Serial2.print(rx_msg.bus);
+    if(MyCAN_read(&rx_msg)) {
+        ////Serial2.print("Channel:");
+        ////Serial2.print(rx_msg.bus);
         if (rx_msg.flags.extended == false) {
-        Serial2.print(" Standard ID:");
+        ////Serial2.print(" Standard ID:");
         }
         else {
-        Serial2.print(" Extended ID:");
+        ////Serial2.print(" Extended ID:");
         }
-        Serial2.print(rx_msg.id, HEX);
+        ////Serial2.print(rx_msg.id, HEX);
 
-        Serial2.print(" DLC: ");
-        Serial2.print(rx_msg.len);
+        //Serial2.print(" DLC: ");
+        //Serial2.print(rx_msg.len);
         if (rx_msg.flags.remote == false) {
-        Serial2.print(" buf: ");
+        //Serial2.print(" buf: ");
+        /*
         for(int i=0; i<rx_msg.len; i++) {
-            Serial2.print("0x"); 
-            Serial2.print(rx_msg.buf[i], HEX); 
-            if (i != (rx_msg.len-1))  Serial2.print(" ");
+            //Serial2.print("0x"); 
+            //Serial2.print(rx_msg.buf[i], HEX); 
+            if (i != (rx_msg.len-1))  //Serial2.print(" ");
         }
-        Serial2.println();
+            */
+        //Serial2.println();
         } else {
-        Serial2.println(" Data: REMOTE REQUEST FRAME");
+        //Serial2.println(" Data: REMOTE REQUEST FRAME");
         }
     }
 
 /*
     // Poll for received CAN messages
     while (can->read(rx_msg)) {
-        Serial2.print("New incoming message!: ");
+        //Serial2.print("New incoming message!: ");
         Serial.print(rx_msg.id, HEX);
-        Serial2.println((rx_msg.id & 0x07FFU) | (0x0800U));
+        //Serial2.println((rx_msg.id & 0x07FFU) | (0x0800U));
         for (uint16_t i = 0; i < CANmodule->rxSize; i++) {
             CO_CANrx_t *rxArray = &CANmodule->rxArray[i];
             if (((rx_msg.id ^ rxArray->ident) & rxArray->mask) == 0) {
