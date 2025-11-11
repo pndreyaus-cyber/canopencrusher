@@ -9,6 +9,8 @@
 #include "Params.h"
 #include <string.h>
 #include "MyCAN.h"
+#include "OD_instances.h"
+#include "CANopen.h"
 
 #define CO_MULTIPLE_OD
 
@@ -24,6 +26,8 @@ const String COMMAND_SET_CURRENT_POSITION_IN_UNITS = "SCU";
 
 const double MAX_SPEED = 360;
 const double MAX_ACCELERATION = 7864.20;
+
+CO_t CO_Motors[MAX_MOTORS];
 
 // ======== For CANOpenNode ========
 // CANopenNode CAN module and buffer objects
@@ -259,10 +263,19 @@ void setup() {
     Serial2.print("Stopped Here?\n");
 
     MyCAN_setInstance(&Can);
+    for(int i = 0; i < 6; ++i){
+        init_OD_RAM_t(&OD_RAM_instances[i]);
+        init_ODObjs_t(&ODObjs_instances[i], &OD_RAM_instances[i]);
+        init_ODList(&(OD_ENTRY_instances[i]), &(ODObjs_instances[i]));
+        init_OD(&OD_instances[i], &(OD_ENTRY_instances[i]));
+        CO_CANopenInit(&CO_Motors[i], nullptr, nullptr, &OD_instances[i], nullptr, 0, 0, 0, 0, false, i + 1, nullptr);
+        //CO_Motors[i].CANmodule = sharedCAN;
+    }
     // Initialize CANopenNode CAN driver (1000kbs)
     if(CO_CANmodule_init(&canModule, &Can, canRxArray, 8, canTxArray, 8, 1000000) != CO_ERROR_NO){ // 1000 = 1000kbps (adjust as needed)
         Serial2.println("CO_CANmodule_init: something wrong");
     }
+    
 
     Serial2.println("Or here?");
 

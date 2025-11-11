@@ -912,3 +912,7 @@ static OD_ATTR_OD OD_entry_t ODList[] = {
     {0x0000, 0x00, 0, NULL, NULL}
 };
 */
+void init_OD(OD_t* od_instance, OD_entry_t *od_list_instance) {
+    od_instance->size = (sizeof(od_list_instance) / sizeof(od_list_instance[0])) - 1;
+    od_instance->list = &od_list_instance[0];
+}

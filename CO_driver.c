@@ -10,6 +10,7 @@
 
 // Set CAN to configuration mode
 void CO_CANsetConfigurationMode(void* CANptr) {
+    
     MyCAN_setConfigurationMode(CANptr);
 }
 

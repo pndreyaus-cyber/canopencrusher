@@ -58,7 +58,7 @@ class Axis{
 
     protected:
         const uint8_t nodeId;
-        OD_RAM_t canOpenCharacteristics;
+        //OD_RAM_t canOpenCharacteristics;
 
         uint32_t stepsPerRevolution = 0; // количество шагов на оборот
         double unitsPerRevolution = 0; // количество единиц измерения на оборот
