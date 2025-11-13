@@ -18,7 +18,7 @@ const String COMMAND_SET_CURRENT_POSITION_IN_UNITS = "SCU";
 const double MAX_SPEED = 360;
 const double MAX_ACCELERATION = 7864.20;
 
-//HardwareSerial Serial2(PA3, PA2);
+HardwareSerial Serial2(PA3, PA2);
 
 //STM32_CAN Can( CAN1, ALT );
 //static CAN_message_t CAN_TX_msg;

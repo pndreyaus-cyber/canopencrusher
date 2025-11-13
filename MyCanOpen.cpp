@@ -1,5 +1,6 @@
 #include "MyCanOpen.h"
 #include <cstring> // for memcpy
+#include <Arduino.h>
 
 
 
@@ -104,6 +105,7 @@ bool MyCanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositi
 
 bool MyCanOpen::sendSYNC()
 {
+    Serial2.println("SYNC sent");
     return Can->send(0x80, 0, 0);
 }
 
