@@ -14,7 +14,7 @@ public:
     ~Stm32CanDriver();    
     bool send(uint32_t id, const uint8_t* data, uint8_t len) override;
 
-    bool receive(uint32_t &id, uint8_t* data, uint8_t &len) override;
+    bool receive(ReceivedMessage& msg) override;
 };
 
 

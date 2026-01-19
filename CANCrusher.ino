@@ -147,6 +147,9 @@ void handleSetCurrentPositionInUnits(PositionParams params) {
 
 
 void setup() {
+    pinMode(PC13, OUTPUT);
+    digitalWrite(PC13, HIGH);
+    delay(5000);
     Serial2.begin(115200); 
     while (!Serial2) {}
     Serial2.println("Connected!");
@@ -158,6 +161,7 @@ void setup() {
         axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
         axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
     }
+    
 }
 
 void loop() {
@@ -166,7 +170,7 @@ void loop() {
     }
 
     sendData();
-    //moveController.tick();
+    moveController.tick();
 }
 
 bool receiveCommand() {

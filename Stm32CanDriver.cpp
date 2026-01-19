@@ -6,11 +6,14 @@ Stm32CanDriver::~Stm32CanDriver()
 {
 }
 
-Stm32CanDriver::Stm32CanDriver(uint32_t baudRate) : Can( CAN1, ALT ) 
+Stm32CanDriver::Stm32CanDriver(uint32_t baudRate) : Can( CAN1, DEF ) 
 {
     Can.setAutoRetransmission(true);
     Can.begin();
     Can.setBaudRate(baudRate);
+    
+    digitalWrite(PC13, LOW);
+    //delay(5000);
 }
 
 bool Stm32CanDriver::send(uint32_t id, const uint8_t *data, uint8_t len)
@@ -60,13 +63,13 @@ bool Stm32CanDriver::send(uint32_t id, const uint8_t *data, uint8_t len)
     }
 }
 
-bool Stm32CanDriver::receive(uint32_t &id, uint8_t *data, uint8_t &len)
+bool Stm32CanDriver::receive(ReceivedMessage& msg)
 {
     if(Can.read(CAN_RX_msg)) {
-        id = CAN_RX_msg.id;
-        len = CAN_RX_msg.len;
-        for(int i = 0; i < CAN_RX_msg.len; ++i){
-            data[i] = CAN_RX_msg.buf[i];
+        msg.id = CAN_RX_msg.id;
+        msg.len = CAN_RX_msg.len;
+        for(int i = 0; i < msg.len; ++i){
+            msg.data[i] = CAN_RX_msg.buf[i];
         }
         return true;
     }

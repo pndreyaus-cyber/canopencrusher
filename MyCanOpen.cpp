@@ -1,6 +1,8 @@
 #include "MyCanOpen.h"
+#include "Params.h"
 #include <cstring> // for memcpy
 #include <Arduino.h>
+
 
 
 
@@ -114,5 +116,26 @@ void MyCanOpen::writeReversedToBuf(const void* data, size_t size, uint8_t* bufSt
     
     for (size_t i = 0; i < size; ++i) {
         bufStart[i] = src_bytes[size - 1 - i];  // Reverse copy
+    }
+}
+
+void MyCanOpen::processPositionRead(ReceivedMessage& msg){
+    
+}
+
+void MyCanOpen::tick() {
+    ReceivedMessage msg;
+    if (Can->receive(msg)) {
+        Serial2.print("New message: ");
+        Serial2.print("ID: ");
+        Serial2.print(msg.id, HEX);
+        Serial2.print("Len: ");
+        Serial2.print(msg.len, DEC);
+        Serial2.print(" Data: ");
+        for(int i = 0; i < msg.len; ++i){
+            Serial2.print(msg.data[i]);
+            Serial2.print(' ');
+        }
+        Serial2.println();
     }
 }

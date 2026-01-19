@@ -33,4 +33,11 @@ struct PositionParams
 	uint8_t nodeId; 
 };
 
+struct ReceivedMessage
+{
+	uint32_t id;
+	uint8_t data[8]; // Maximum data length is 8 bytes
+	uint8_t len;
+};
+
 #endif

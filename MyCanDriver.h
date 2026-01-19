@@ -1,6 +1,7 @@
 #ifndef MYCANDRIVER_H
 #define MYCANDRIVER_H
 #include <cstdint>
+#include "Params.h"
 
 class MyCanDriver {
 public:
@@ -11,7 +12,7 @@ public:
 
     // Try to receive a CAN message (blocking or non-blocking depends on implementation)
     // Returns true if a message was received, false otherwise; sets id, data, length
-    virtual bool receive(uint32_t &id, uint8_t* data, uint8_t &len) = 0;
+    virtual bool receive(ReceivedMessage& msg) = 0;
 
 };
 

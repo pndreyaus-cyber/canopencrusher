@@ -34,6 +34,12 @@ void MoveControllerBase::setOnEmergensyStoped(void (*callback)())
     onEmergensyStoped = callback;
 }
 
+void MoveControllerBase::tick()
+{
+    //Serial2.println("MoveControllerBase tick()");
+    canOpen->tick();
+    //Serial2.println("MoveControllerBase tick() end");
+}
 
 void MoveControllerBase::prepareMoveWithoutSync()
 {

@@ -32,7 +32,8 @@ public:
 
     void writeReversedToBuf(const void* data, size_t size, uint8_t* bufStart);
 
-    void read(); // TODO: implement using CANopenNode
+    void processPositionRead(ReceivedMessage& msg);
+    void tick(); // TODO: implement using CANopenNode
 
 };
 

@@ -32,7 +32,7 @@ class MoveControllerBase : public ControllerBase{
         // полученные значения через колбэки сохранять в Axis
 
         //TODO: метод tick должен рассылать запросы по двигателям о их состоянии (напряжение, температура, т.д. - все что есть по протоколу)
-
+        void tick();
 
     protected:
         void prepareMove();
