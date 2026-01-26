@@ -1,8 +1,6 @@
 #include "STM32_CAN.h"
 #include "CanOpenController.h"
-#include "MyCanDriver.h"
-#include "Stm32CanDriver.h"
-#include "MyCanOpen.h"
+#include "CanOpen.h"
 #include "Params.h"
 
 #define STEPS_PER_REVOLUTION 32768
@@ -20,8 +18,7 @@ const double MAX_ACCELERATION = 7864.20;
 
 HardwareSerial Serial2(PA3, PA2);
 
-Stm32CanDriver can;
-MyCanOpen canOpen;
+CanOpen canOpen;
 MoveController moveController;
 
 const int axesNum = 6;
@@ -153,14 +150,13 @@ void setup() {
     while(!Serial2){}
     Serial2.println("Serial connected!");
 
-    if (!can.start(1000000)) {
+    if (!canOpen.startCan(1000000)) {
         Serial2.println("Failed to initialize CAN bus");
         while (1);
     } else {
         Serial2.println("CAN bus initialized successfully");
     }
-
-    canOpen.start(&can);
+    
     moveController.start(&canOpen);
 
 
