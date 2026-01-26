@@ -7,6 +7,7 @@
 #include "OD.h"
 #include "MyCanDriver.h"
 #include "objdict_objectdefines.h"
+#include "STM32_CAN.h"
 
 // Callback types for received SDO and PDO messages
 //typedef void (*SdoReceiveCallback)(uint8_t nodeId, uint16_t index, uint8_t subindex, const uint8_t* data, uint8_t len);
@@ -14,13 +15,20 @@
 
 class MyCanOpen {
 private:
-    MyCanDriver* Can = nullptr;
-    ODObjs_t* ODObjs = nullptr;
-public:
-    MyCanOpen() = default;
-    //MyCanOpen(MyCanDriver* Can /*, void* canSendArg*/);
+    STM32_CAN Can;
+    CAN_message_t CAN_TX_msg;
+    CAN_message_t CAN_RX_msg;
+    bool can_initialized = false;
+    bool loopbackTest();
+    uint32_t canBaudRate;
 
-    void start(MyCanDriver* Can /*, void* canSendArg*/);
+    ODObjs_t* ODObjs = nullptr;
+
+    bool send(uint32_t id, const uint8_t* data, uint8_t len);
+    bool receive(uint32_t &id, uint8_t* data, uint8_t &len);
+public:
+    MyCanOpen() : Can(PA11, PA12) {};
+    bool startCan(uint32_t baudRate);
 
     bool send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value/*, */);
     bool send_x60FF_targetVelocity(uint8_t nodeId, int32_t value/*, ODObjs_t * odobjs*/);
