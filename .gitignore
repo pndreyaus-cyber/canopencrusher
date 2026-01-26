@@ -1,12 +1,4 @@
 .vscode/
 .pio/
 dist/
-<<<<<<< HEAD
 build/
-=======
-build/
-.vscode/
-
-*.tmp
-*.temp" >> .gitignore
->>>>>>> 9989b30 (Add .vscode to .gitignore)
