@@ -5,12 +5,14 @@
 
 
 namespace StepDirController{
-Axis::Axis() : nodeId(0)
+constexpr uint8_t kInvalidNodeId = 0xFF;
+
+Axis::Axis() : nodeId(kInvalidNodeId)
 {
 }
 
-Axis::Axis(const uint8_t nodeId) : nodeId(nodeId), canOpenCharacteristics()
-{
+void Axis::setMotorId(uint8_t nodeId) {
+    this->nodeId = nodeId;
     init_od_ram(&canOpenCharacteristics);
 }
 

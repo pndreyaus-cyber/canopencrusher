@@ -2,15 +2,102 @@
 #include "Arduino.h"
 #include "Params.h"
 
+// Stm32CanDriver::Stm32CanDriver() 
+// {
+//     Serial2.println("Stm32CanDriver Constructor called");
+// }
+
 Stm32CanDriver::~Stm32CanDriver()
 {
+    Serial2.println("Stm32CanDriver Destructor called");
 }
 
-Stm32CanDriver::Stm32CanDriver(uint32_t baudRate) : Can( CAN1, ALT ) 
+bool Stm32CanDriver::start(uint32_t baudRate)
 {
-    Can.setAutoRetransmission(true);
+    if(!initialized){
+        this->baudRate = baudRate;
+        Can.setAutoRetransmission(true);
+
+        // Loopback test
+        if(!loopbackTest()){
+            Serial2.println("CAN loopback test failed during start");
+            return false;
+        }
+        Can.end();
+
+        // Start CAN in normal mode
+        Can.enableLoopBack(false);
+        Can.begin();
+        Can.setBaudRate(baudRate);
+        initialized = true;
+        Serial2.println("CAN initialized with baud rate: " + String(baudRate));
+        return true;
+    }
+    return false; // already initialized
+}
+
+bool Stm32CanDriver::loopbackTest(){
+    Can.enableLoopBack(true);
     Can.begin();
     Can.setBaudRate(baudRate);
+
+    CAN_message_t testMsg;
+    testMsg.id = 0x123;
+    testMsg.flags.extended = 0;
+    testMsg.len = 8;
+    testMsg.buf[0] = 0xAA;
+    testMsg.buf[1] = 0xBB;
+    testMsg.buf[2] = 0xCC;
+    testMsg.buf[3] = 0xDD;
+    testMsg.buf[4] = 0xEE;
+    testMsg.buf[5] = 0xFF;
+    testMsg.buf[6] = 0x11;
+    testMsg.buf[7] = 0x22;
+
+    bool queued = Can.write(testMsg);
+    if (!queued) {
+        Serial2.println("Failed to queue test message for transmission");
+        return false;
+    } else {
+        Serial2.println("Test message queued for transmission");
+    }
+
+    delay(100); // Wait for message to loop back
+
+    CAN_message_t receivedMsg;
+    bool got = false;
+    if (Can.read(receivedMsg)) {
+        got = true;
+    } else {
+        Serial2.println("Failed to receive loopback message");
+        return false;
+    }
+
+    Serial2.println("Received loopback message with ID: " + String(receivedMsg.id, HEX));
+    for (int i = 0; i < receivedMsg.len; ++i) {
+        Serial2.print(receivedMsg.buf[i], HEX);
+        Serial2.print(" ");
+    }
+
+    if (got && receivedMsg.id == testMsg.id && receivedMsg.len == testMsg.len) {
+        bool dataMatch = true;
+        for (int i = 0; i < testMsg.len; ++i) {
+            if (receivedMsg.buf[i] != testMsg.buf[i]) {
+                dataMatch = false;
+                break;
+            }
+        }
+        if (dataMatch) {
+            Serial2.println("\nLoopback test successful");
+            return true;
+        } else {
+            Serial2.println("\nData mismatch in loopback test");
+            return false;
+        }
+    } else {
+        Serial2.println("\nLoopback test failed: ID or length mismatch");
+        return false;
+    }
 }
 
 bool Stm32CanDriver::send(uint32_t id, const uint8_t *data, uint8_t len)

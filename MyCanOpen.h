@@ -1,4 +1,5 @@
 #ifndef MYCANOPEN_H
+
 #define MYCANOPEN_H
 
 #include <stdint.h>
@@ -13,10 +14,13 @@
 
 class MyCanOpen {
 private:
-    MyCanDriver* Can;
-    ODObjs_t* ODObjs;
+    MyCanDriver* Can = nullptr;
+    ODObjs_t* ODObjs = nullptr;
 public:
-    MyCanOpen(MyCanDriver* Can /*, void* canSendArg*/);
+    MyCanOpen() = default;
+    //MyCanOpen(MyCanDriver* Can /*, void* canSendArg*/);
+
+    void start(MyCanDriver* Can /*, void* canSendArg*/);
 
     bool send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value/*, */);
     bool send_x60FF_targetVelocity(uint8_t nodeId, int32_t value/*, ODObjs_t * odobjs*/);

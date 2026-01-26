@@ -3,8 +3,13 @@
 
 
 
-MyCanOpen::MyCanOpen(MyCanDriver* Can) : Can(Can)
+// MyCanOpen::MyCanOpen(MyCanDriver* Can) : Can(Can)
+// {
+// }
+
+void MyCanOpen::start(MyCanDriver* Can /*, void* canSendArg*/)
 {
+    this->Can = Can;
 }
 
 bool MyCanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value)

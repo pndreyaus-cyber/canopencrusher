@@ -9,7 +9,11 @@
 namespace StepDirController{ 
 class MoveControllerBase : public ControllerBase{
     public:
-        MoveControllerBase(MyCanOpen *canOpen);
+        //MoveControllerBase(MyCanOpen *canOpen);
+        bool start(MyCanOpen* canOpen){
+            this->canOpen = canOpen;
+            return true;
+        }
         
         void setRegularSpeedUnits(double speed) override; // настройка крейсерской скорости в единицах измерения в секунду (градусы в секунду)
         void setAccelerationUnits(double acceleration) override; // настройка ускорения в единицах измерения в секунду^2 (градусы в секунду^2)
