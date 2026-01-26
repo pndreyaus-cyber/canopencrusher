@@ -3,7 +3,7 @@
 #include "Arduino.h"
 
 namespace StepDirController{
-// MoveControllerBase::MoveControllerBase(MyCanOpen *canOpen) : canOpen(canOpen) {}
+// MoveControllerBase::MoveControllerBase(CanOpen *canOpen) : canOpen(canOpen) {}
 
 
 

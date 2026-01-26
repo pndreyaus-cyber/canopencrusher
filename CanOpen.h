@@ -1,11 +1,10 @@
-#ifndef MYCANOPEN_H
+#ifndef CAN_OPEN_H
 
-#define MYCANOPEN_H
+#define CAN_OPEN_H
 
 #include <stdint.h>
 #include <stddef.h>
 #include "OD.h"
-#include "MyCanDriver.h"
 #include "objdict_objectdefines.h"
 #include "STM32_CAN.h"
 
@@ -13,7 +12,7 @@
 //typedef void (*SdoReceiveCallback)(uint8_t nodeId, uint16_t index, uint8_t subindex, const uint8_t* data, uint8_t len);
 //typedef void (*PdoReceiveCallback)(uint16_t cobId, const uint8_t* data, uint8_t len);
 
-class MyCanOpen {
+class CanOpen {
 private:
     STM32_CAN Can;
     CAN_message_t CAN_TX_msg;
@@ -27,7 +26,7 @@ private:
     bool send(uint32_t id, const uint8_t* data, uint8_t len);
     bool receive(uint32_t &id, uint8_t* data, uint8_t &len);
 public:
-    MyCanOpen() : Can(PA11, PA12) {};
+    CanOpen() : Can(PA11, PA12) {};
     bool startCan(uint32_t baudRate);
 
     bool send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value/*, */);

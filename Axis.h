@@ -1,5 +1,6 @@
 #pragma once
 #ifndef AXIS_H
+
 #define AXIS_H
 
 #include <cstdint>

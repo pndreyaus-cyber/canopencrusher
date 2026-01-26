@@ -1,13 +1,7 @@
-#include "MyCanOpen.h"
+#include "CanOpen.h"
 #include <cstring> // for memcpy
 
-
-
-// MyCanOpen::MyCanOpen(MyCanDriver* Can) : Can(Can)
-// {
-// }
-
-bool MyCanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value)
+bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value)
 {
     return sendSDO(
         nodeId,
@@ -18,7 +12,7 @@ bool MyCanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value
     );
 }
 
-bool MyCanOpen::send_x60FF_targetVelocity(uint8_t nodeId, int32_t value)
+bool CanOpen::send_x60FF_targetVelocity(uint8_t nodeId, int32_t value)
 {
     return sendSDO(
         nodeId,
@@ -29,7 +23,7 @@ bool MyCanOpen::send_x60FF_targetVelocity(uint8_t nodeId, int32_t value)
     );
 }
 
-bool MyCanOpen::send_x6083_profileAcceleration(uint8_t nodeId, uint32_t value)
+bool CanOpen::send_x6083_profileAcceleration(uint8_t nodeId, uint32_t value)
 {
     return sendSDO(
         nodeId,
@@ -40,7 +34,7 @@ bool MyCanOpen::send_x6083_profileAcceleration(uint8_t nodeId, uint32_t value)
     );
 }
 
-bool MyCanOpen::send_x6081_profileVelocity(uint8_t nodeId, uint32_t value)
+bool CanOpen::send_x6081_profileVelocity(uint8_t nodeId, uint32_t value)
 {
     return sendSDO(
         nodeId,
@@ -51,7 +45,7 @@ bool MyCanOpen::send_x6081_profileVelocity(uint8_t nodeId, uint32_t value)
     );
 }
 
-bool MyCanOpen::send_x6040_controlword(uint8_t nodeId, uint16_t value)
+bool CanOpen::send_x6040_controlword(uint8_t nodeId, uint16_t value)
 {
     return sendSDO(
         nodeId,
@@ -62,7 +56,7 @@ bool MyCanOpen::send_x6040_controlword(uint8_t nodeId, uint16_t value)
     );
 }
 
-bool MyCanOpen::send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value)
+bool CanOpen::send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value)
 {
     return sendSDO(
         nodeId,
@@ -73,7 +67,7 @@ bool MyCanOpen::send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value)
     );    
 }
 
-bool MyCanOpen::sendSDO(uint8_t nodeId, uint8_t dataLen, uint16_t index, uint8_t subindex, void *data)
+bool CanOpen::sendSDO(uint8_t nodeId, uint8_t dataLen, uint16_t index, uint8_t subindex, void *data)
 {
     uint8_t msgBuf[8] = {0};
     
@@ -95,19 +89,19 @@ bool MyCanOpen::sendSDO(uint8_t nodeId, uint8_t dataLen, uint16_t index, uint8_t
     return send(0x600 + nodeId, msgBuf, dataLen + 4);
 }
 
-bool MyCanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute)
+bool CanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute)
 {
     uint8_t msgBuf[4] = {0};
     memcpy(msgBuf, &targetPositionAbsolute, 4);
     return send(0x500 + nodeId, msgBuf, 4);
 }
 
-bool MyCanOpen::sendSYNC()
+bool CanOpen::sendSYNC()
 {
     return send(0x80, 0, 0);
 }
 
-void MyCanOpen::writeReversedToBuf(const void* data, size_t size, uint8_t* bufStart) {
+void CanOpen::writeReversedToBuf(const void* data, size_t size, uint8_t* bufStart) {
     const uint8_t* src_bytes = static_cast<const uint8_t*>(data);
     
     for (size_t i = 0; i < size; ++i) {
@@ -116,7 +110,7 @@ void MyCanOpen::writeReversedToBuf(const void* data, size_t size, uint8_t* bufSt
 }
 
 
-bool MyCanOpen::startCan(uint32_t baudRate)
+bool CanOpen::startCan(uint32_t baudRate)
 {
     if(!can_initialized){
         this->canBaudRate = baudRate;
@@ -140,7 +134,7 @@ bool MyCanOpen::startCan(uint32_t baudRate)
     return false; // already initialized
 }
 
-bool MyCanOpen::loopbackTest(){
+bool CanOpen::loopbackTest(){
     Can.enableLoopBack(true);
     Can.begin();
     Can.setBaudRate(canBaudRate);
@@ -205,7 +199,7 @@ bool MyCanOpen::loopbackTest(){
 }
 
 
-bool MyCanOpen::send(uint32_t id, const uint8_t *data, uint8_t len)
+bool CanOpen::send(uint32_t id, const uint8_t *data, uint8_t len)
 {
     // Check for null data pointer
     if(data == nullptr) {
@@ -239,7 +233,7 @@ bool MyCanOpen::send(uint32_t id, const uint8_t *data, uint8_t len)
     }
 }
 
-bool MyCanOpen::receive(uint32_t &id, uint8_t *data, uint8_t &len)
+bool CanOpen::receive(uint32_t &id, uint8_t *data, uint8_t &len)
 {
     if(Can.read(CAN_RX_msg)) {
         id = CAN_RX_msg.id;

@@ -1,8 +1,6 @@
 #include "STM32_CAN.h"
 #include "CanOpenController.h"
-#include "MyCanDriver.h"
-#include "Stm32CanDriver.h"
-#include "MyCanOpen.h"
+#include "CanOpen.h"
 #include "Params.h"
 
 #define STEPS_PER_REVOLUTION 32768
@@ -20,7 +18,7 @@ const double MAX_ACCELERATION = 7864.20;
 
 HardwareSerial Serial2(PA3, PA2);
 
-MyCanOpen canOpen;
+CanOpen canOpen;
 MoveController moveController;
 
 const int axesNum = 6;

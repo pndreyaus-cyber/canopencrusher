@@ -54,7 +54,7 @@ SCS нужна для программной установки текущего
 
 ## Файлы связи CANopen
 
-### MyCanOpen.h / MyCanOpen.cpp
+### CanOpen.h / CanOpen.cpp
 **Реализация протокола CANopen**
 - Реализует обмен сообщениями CANopen SDO (Service Data Object) и PDO (Process Data Object)
 - Отправляет специфические команды управления двигателем:
@@ -127,7 +127,7 @@ SCS нужна для программной установки текущего
     └─ MoveControllerBase (координированное движение)
 
 Уровень связи
-    ├─ MyCanOpen (протокол CANopen)
+    ├─ CanOpen (протокол CANopen)
     ├─ MyCanDriver (абстрактный интерфейс)
     └─ Stm32CanDriver (реализация для STM32)
 

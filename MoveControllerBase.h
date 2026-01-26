@@ -2,15 +2,15 @@
 #define MOVECONTROLLERBASE_H
 
 #include "ControllerBase.h"
-#include "MyCanOpen.h"
+#include "CanOpen.h"
 #include "Params.h"
 #include <string>
 
 namespace StepDirController{ 
 class MoveControllerBase : public ControllerBase{
     public:
-        //MoveControllerBase(MyCanOpen *canOpen);
-        bool start(MyCanOpen* canOpen){
+        //MoveControllerBase(CanOpen *canOpen);
+        bool start(CanOpen* canOpen){
             this->canOpen = canOpen;
             return true;
         }
@@ -30,9 +30,9 @@ class MoveControllerBase : public ControllerBase{
         void moveAsync(Axis& axis, Axes&... axes);
 
         // TODO: добавить метод, например, void tick(), вызывать его из loop в ino-файле
-        // метод tick() должен вызывать метод чтения (который нужно написать) у MyCanOpen (который будет разбирать ответы от двигателей в соответствии с протоколом)
-        //  MyCanOpen будет дергать метод receive у MyCanDriver
-        // MyCanOpen может возвращать значения через колбэки
+        // метод tick() должен вызывать метод чтения (который нужно написать) у CanOpen (который будет разбирать ответы от двигателей в соответствии с протоколом)
+        //  CanOpen будет дергать метод receive у MyCanDriver
+        // CanOpen может возвращать значения через колбэки
         // полученные значения через колбэки сохранять в Axis
 
         //TODO: метод tick должен рассылать запросы по двигателям о их состоянии (напряжение, температура, т.д. - все что есть по протоколу)
@@ -48,7 +48,7 @@ class MoveControllerBase : public ControllerBase{
         void (*onEmergensyStoped)() = nullptr; // callback после аварийной остановки
         
     private:
-        MyCanOpen* canOpen;
+        CanOpen* canOpen;
         void sendMove();
 };
 

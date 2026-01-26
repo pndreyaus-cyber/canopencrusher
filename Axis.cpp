@@ -1,8 +1,7 @@
-#include "Axis.h"
 #include <math.h>
 #include <iostream>
 #include "Arduino.h"
-
+#include "Axis.h"
 
 namespace StepDirController{
 constexpr uint8_t kInvalidNodeId = 0xFF;
