@@ -5,7 +5,9 @@
 
 
 namespace StepDirController{
-Axis::Axis() : nodeId(-1)
+constexpr uint8_t kInvalidNodeId = 0xFF;
+
+Axis::Axis() : nodeId(kInvalidNodeId)
 {
 }
 
