@@ -20,14 +20,12 @@ const double MAX_ACCELERATION = 7864.20;
 
 HardwareSerial Serial2(PA3, PA2);
 
-//STM32_CAN Can( CAN1, ALT );
-//static CAN_message_t CAN_TX_msg;
-Stm32CanDriver can(1000000);
-MyCanOpen canOpen(&can);
-MoveController moveController(&canOpen);
+Stm32CanDriver can;
+MyCanOpen canOpen;
+MoveController moveController;
 
 const int axesNum = 6;
-Axis axes[6] = {Axis(1), Axis(2), Axis(3), Axis(4), Axis(5), Axis(6)};
+Axis axes[6]; 
 
 uint8_t buf[8];
 
@@ -116,130 +114,148 @@ PositionParams stringToPositionParams(String command)
 
 
 void handleMove(MoveParams params, bool isAbsoluteMove){
-  if(params.status != ParamsStatus::OK){
-		if(params.status == ParamsStatus::INVALID_PARAMS)
-    	addDataToOutQueue("INVALID PARAMS");
-		else if(params.status == ParamsStatus::INCORRECT_COMMAND)
-			addDataToOutQueue("INCORRECT COMMAND");
-		return;
-  }
-	
-  for(int i = 0; i < axesNum; ++i){
+    if(params.status != ParamsStatus::OK){
+        if(params.status == ParamsStatus::INVALID_PARAMS)
+            addDataToOutQueue("INVALID PARAMS");
+        else if(params.status == ParamsStatus::INCORRECT_COMMAND)
+            addDataToOutQueue("INCORRECT COMMAND");
+        return;
+    }
+    
+    for(int i = 0; i < axesNum; ++i){
 
-    if(isAbsoluteMove) axes[i].setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
-    else axes[i].setTargetPositionRelativeInUnits(params.movementUnits[i]);
-  }
+        if(isAbsoluteMove) axes[i].setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
+        else axes[i].setTargetPositionRelativeInUnits(params.movementUnits[i]);
+    }
 
-  moveController.setRegularSpeedUnits(params.speed);
-  moveController.setAccelerationUnits(params.acceleration);
+    moveController.setRegularSpeedUnits(params.speed);
+    moveController.setAccelerationUnits(params.acceleration);
 
-  moveController.moveAsync(axes[0], axes[1], axes[2], axes[3], axes[5]); // TODO: не забыть про ось 4
+    moveController.moveAsync(axes[0], axes[1], axes[2], axes[3], axes[5]); // TODO: не забыть про ось 4
 }
 
 void handleSetCurrentPositionInSteps(PositionParams params){
-  axes[params.nodeId].setCurrentPositionInSteps(params.currentPosition);
-  addDataToOutQueue("(S)New current position for " + String(params.nodeId) + ": " + String(axes[params.nodeId].getCurrentPositionInSteps()));
+    axes[params.nodeId].setCurrentPositionInSteps(params.currentPosition);
+    addDataToOutQueue("(S)New current position for " + String(params.nodeId) + ": " + String(axes[params.nodeId].getCurrentPositionInSteps()));
 }
 
 void handleSetCurrentPositionInUnits(PositionParams params){
-  axes[params.nodeId].setCurrentPositionInUnits(params.currentPosition);
-  addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(axes[params.nodeId].getCurrentPositionInSteps()));
+    axes[params.nodeId].setCurrentPositionInUnits(params.currentPosition);
+    addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(axes[params.nodeId].getCurrentPositionInSteps()));
 }
 
 
 void setup() {
-  Serial2.begin(115200); 
-  while(!Serial2){}
-  Serial2.println("Connected!");
+    Serial2.setRx(PA3);
+    Serial2.setTx(PA2);
 
-  inData.reserve(128);
-	outData.reserve(128);
+    Serial2.begin(115200); 
+    while(!Serial2){}
+    Serial2.println("Serial connected!");
+
+    if (!can.start(1000000)) {
+        Serial2.println("Failed to initialize CAN bus");
+        while (1);
+    } else {
+        Serial2.println("CAN bus initialized successfully");
+    }
+
+    canOpen.start(&can);
+    moveController.start(&canOpen);
 
 
-  for(int i = 0; i < axesNum; ++i){
-    axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
-    axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
-  }
+    for (int i = 0; i < axesNum; ++i) {
+        axes[i].setMotorId(i + 1);
+    }
+
+    inData.reserve(128);
+    outData.reserve(128);
+
+
+    for(int i = 0; i < axesNum; ++i){
+        axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
+        axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
+    }
 
 }
 
 void loop() {
-  if (receiveCommand())
-		handleCommand();
+    if (receiveCommand())
+        handleCommand();
 
-	sendData();
+    sendData();
 }
 
 bool receiveCommand()
 {
-	char received = 0x00;
-	if(Serial2.available()){
-		received = Serial2.read();
-		inData += received;
-	}
-	return received == '\n';
+    char received = 0x00;
+    if(Serial2.available()){
+        received = Serial2.read();
+        inData += received;
+    }
+    return received == '\n';
 }
 
 void handleCommand()
 {
-	inData.replace(" ","");
-	inData.replace("\n", "");
-	inData.replace("\r", "");
+    inData.replace(" ","");
+    inData.replace("\n", "");
+    inData.replace("\r", "");
 
-	if (inData.length() < 3)
-	{
-		inData = "";
-		addDataToOutQueue("INVALID COMMAND: TOO SHORT");
-		return;
-	}
+    if (inData.length() < 3)
+    {
+        inData = "";
+        addDataToOutQueue("INVALID COMMAND: TOO SHORT");
+        return;
+    }
 
-	String function = inData.substring(0, 3);
+    String function = inData.substring(0, 3);
 
-	if (function == COMMAND_MOVE_ABSOLUTE)
-	{
-    handleMove(stringToMoveParams(inData), true);
-    addDataToOutQueue("MAJ COMMAND COMPLETED");
-	}
+    if (function == COMMAND_MOVE_ABSOLUTE)
+    {
+        handleMove(stringToMoveParams(inData), true);
+        addDataToOutQueue("MAJ COMMAND COMPLETED");
+    }
 
-	else if (function == COMMAND_MOVE_RELATIVE)
-	{
-    handleMove(stringToMoveParams(inData), false);
-    addDataToOutQueue("MRJ COMMAND COMPLETED");
-	}
-	else if (function.equals(COMMAND_ECHO))
-    addDataToOutQueue(inData.substring(4));  
-  else if(function == "SCS")
-  {
-    handleSetCurrentPositionInSteps(stringToPositionParams(inData));
-		addDataToOutQueue("SCS COMMAND COMPLETED");
-  }
-  else if(function == "SCU")
-  {
-    handleSetCurrentPositionInUnits(stringToPositionParams(inData));
-		addDataToOutQueue("SCU COMMAND COMPLETED");
-  }
-  else
-    addDataToOutQueue("INVALID COMMAND");
+    else if (function == COMMAND_MOVE_RELATIVE)
+    {
+        handleMove(stringToMoveParams(inData), false);
+        addDataToOutQueue("MRJ COMMAND COMPLETED");
+    }
+    else if (function.equals(COMMAND_ECHO))
+        addDataToOutQueue(inData.substring(4));  
+    else if(function == "SCS")
+    {
+        handleSetCurrentPositionInSteps(stringToPositionParams(inData));
+        addDataToOutQueue("SCS COMMAND COMPLETED");
+    }
+    else if(function == "SCU")
+    {
+        handleSetCurrentPositionInUnits(stringToPositionParams(inData));
+        addDataToOutQueue("SCU COMMAND COMPLETED");
+    }
+    else
+        addDataToOutQueue("INVALID COMMAND");
 
-	inData = "";
+    inData = "";
 }
 
 void addDataToOutQueue(String data) // добавление сообщений в очередь на отправку на компьютер
 {
-	noInterrupts();
-	outData.push_back(data);
-	interrupts();
+    noInterrupts();
+    outData.push_back(data);
+    interrupts();
 }
 
 void sendData() // отправка сообщений на компьютер
 {
-	if (outData.size() == 0)
-		return;
+    if (outData.size() == 0)
+        return;
 
-	noInterrupts();
-	String data = outData.front();
-	outData.erase(outData.begin());
-	interrupts();
+    noInterrupts();
+    String data = outData.front();
+    outData.erase(outData.begin());
+    interrupts();
 
-	Serial2.println(data);
+    Serial2.println(data);
 }

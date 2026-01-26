@@ -9,11 +9,17 @@ private:
     STM32_CAN Can;
     CAN_message_t CAN_TX_msg;
     CAN_message_t CAN_RX_msg;
+    bool initialized = false;
+    bool loopbackTest();
+    uint32_t baudRate;
 public:
-    Stm32CanDriver(uint32_t baudRate);
+    Stm32CanDriver() : Can(PA11, PA12) {};
+    //Stm32CanDriver(uint32_t baudRate);
     ~Stm32CanDriver();    
-    bool send(uint32_t id, const uint8_t* data, uint8_t len) override;
 
+    bool start(uint32_t baudRate);
+
+    bool send(uint32_t id, const uint8_t* data, uint8_t len) override;
     bool receive(uint32_t &id, uint8_t* data, uint8_t &len) override;
 };
 

@@ -13,8 +13,8 @@ namespace StepDirController{
 class Axis{
     public:
         Axis();
-        Axis(const uint8_t nodeId);
-    
+        //Axis(const uint8_t nodeId);
+        void setMotorId(uint8_t nodeId);
 
         Axis &setStepsPerRevolution(uint32_t steps); // +
         Axis &setUnitsPerRevolution(double units); // +
@@ -57,7 +57,7 @@ class Axis{
         int32_t getCurrentPositionInSteps() const;
 
     protected:
-        const uint8_t nodeId;
+        uint8_t nodeId;
         OD_RAM_t canOpenCharacteristics;
 
         uint32_t stepsPerRevolution = 0; // количество шагов на оборот

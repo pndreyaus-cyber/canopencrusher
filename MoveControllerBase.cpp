@@ -3,10 +3,9 @@
 #include "Arduino.h"
 
 namespace StepDirController{
-MoveControllerBase::MoveControllerBase(MyCanOpen *canOpen) : canOpen(canOpen)
-{
+// MoveControllerBase::MoveControllerBase(MyCanOpen *canOpen) : canOpen(canOpen) {}
 
-}
+
 
 void MoveControllerBase::setRegularSpeedUnits(double speed)
 {
