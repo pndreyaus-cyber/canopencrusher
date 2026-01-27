@@ -21,3 +21,17 @@
 * Move Axis array somewhere (probably in MoveController), so that I do not explicitely have an array. Maybe use std::array
 * Set constants to the same format
 * Check is I can switch Serial2 to Serial 
+
+# 27.01
+## Results
+* Cleaned folders in "Robot"
+* Moved Axis management to MoveController
+* Created a PR for axis management. Started solving problems, which Copilot gave me
+* SYNC message is now sent
+* The program does send some commands. But they require checking
+
+## What to do tomorrow (draft)
+* Finish solving problems for PR
+* Merge PR to main
+* Create a branch for feature/zeroInitializeEncoders. Implement this feature. Check it. Call it every time, the program is reset
+* Start reading data from CAN

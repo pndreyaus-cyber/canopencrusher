@@ -19,6 +19,11 @@ void MoveControllerBase::setAccelerationUnits(double acceleration)
 
 void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe other corner cases
 {
+    if (axesCnt == 0) { 
+        Serial2.println("No axes configured"); 
+        return; 
+    }
+    
     Serial2.println("MoveControllerBase.cpp prepareMove called");
     int maxMovementAxisIndex = 0;
     for (int i = 1; i < axesCnt; ++i) {
@@ -28,7 +33,7 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
     }   
 
     Axis *leadAxis = &axes[maxMovementAxisIndex];
-    double maxPath = std::fabs(leadAxis->movementUnits);
+    double maxPath = std::fabs(leadAxis->getMovementUnits());
 
     if(accelerationUnits == 0){ // Right now we do not support zero acceleration. But in the future we can add special handling for this case.
         Serial2.println("MoveControllerBase.cpp accelerationUnits division by zero");
@@ -36,22 +41,24 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
     }
     double tAcceleration = regularSpeedUnits / accelerationUnits; // в секундах
     if(regularSpeedUnits == 0){ // Zero speed means no movement at all. It is strange to call move with zero speed
-        Serial2.println("MoveControllerBase.cpp accelerationUnits division by zero");
+        Serial2.println("MoveControllerBase.cpp regularSpeedUnits division by zero");
         return;
     }
     double tCruising = (maxPath - regularSpeedUnits * regularSpeedUnits / accelerationUnits) / regularSpeedUnits;
     double res = 0;
+
+    if(maxPath == 0){
+        Serial2.println("MoveControllerBase.cpp maxPath division by zero. Motors do not need to move.");
+        return;
+    }
+
+    if(tAcceleration == 0 || (tAcceleration + tCruising == 0)){
+        Serial2.println("MoveControllerBase.cpp tAcceleration or tAcceleration + tCruising division by zero");
+        return;
+    }
     for (Axis& axis : axes) {
-        if(maxPath == 0){
-            Serial2.println("MoveControllerBase.cpp maxPath division by zero. Motors do not need to move.");
-            return;
-        }
 
         double axisMovementUnits = std::fabs(axis.movementUnits);
-        if(tAcceleration == 0 || (tAcceleration + tCruising == 0)){
-            Serial2.println("MoveControllerBase.cpp tAcceleration or tAcceleration + tCruising division by zero");
-            return;
-        }
 
         axis.acceleration = (axisMovementUnits) / (tAcceleration * (tAcceleration + tCruising));
         axis.regularSpeed = axis.acceleration * tAcceleration;
@@ -96,6 +103,9 @@ double MoveControllerBase::getAccelerationUnits() const
 }
 
 bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
+    if (axesCnt == 0) { 
+        return false;
+    }   
     this->canOpen = canOpen;
     this->axesCnt = axesCnt;
     initializeAxes();
@@ -114,8 +124,8 @@ void MoveControllerBase::initializeAxes(){
     }
 }
 
-void MoveControllerBase::moveAbsolute() {
-    Serial2.println("MoveControllerBase.cpp MoveAbsolute called");
+void MoveControllerBase::executeMove() {
+    Serial2.println("MoveControllerBase.cpp executeMove called");
 
     prepareMove();
     sendMove();

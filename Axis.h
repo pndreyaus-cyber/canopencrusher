@@ -17,11 +17,11 @@ class Axis{
     public:
         Axis() : nodeId(kInvalidNodeId) {}
         Axis(uint8_t nodeId) : nodeId(nodeId) {
+            init_od_ram(&canOpenCharacteristics);
             currentPosition = 0;
+            movementUnits = 0.0;
             canOpenCharacteristics.x6064_positionActualValue = 0;
         }
-        //Axis(const uint8_t nodeId);
-        //void setMotorId(uint8_t nodeId);
 
         Axis &setStepsPerRevolution(uint32_t steps); // +
         Axis &setUnitsPerRevolution(double units); // +

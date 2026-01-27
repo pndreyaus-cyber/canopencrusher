@@ -5,15 +5,6 @@
 
 namespace StepDirController{
 
-// Axis::Axis() : nodeId(kInvalidNodeId)
-// {
-// }
-
-// void Axis::setMotorId(uint8_t nodeId) {
-//     this->nodeId = nodeId;
-//     init_od_ram(&canOpenCharacteristics);
-// }
-
 Axis &Axis::setStepsPerRevolution(uint32_t steps)
 {
     stepsPerRevolution = steps;

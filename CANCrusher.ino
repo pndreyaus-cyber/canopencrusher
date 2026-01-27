@@ -122,8 +122,7 @@ void handleMove(MoveParams params, bool isAbsoluteMove){
     moveController.setRegularSpeedUnits(params.speed);
     moveController.setAccelerationUnits(params.acceleration);
 
-    moveController.moveAbsolute();
-    //moveController.moveAsync(axes[0], axes[1], axes[2], axes[3], axes[5]); // TODO: не забыть про ось 4
+    moveController.executeMove();
 }
 
 void handleSetCurrentPositionInSteps(PositionParams params){
@@ -132,8 +131,8 @@ void handleSetCurrentPositionInSteps(PositionParams params){
 }
 
 void handleSetCurrentPositionInUnits(PositionParams params){
-    moveController.getAxis(params.nodeId).setCurrentPositionInUnits(params.currentPosition);
-    addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
+    moveController.getAxis(params.nodeId - 1).setCurrentPositionInUnits(params.currentPosition);
+    addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId - 1).getCurrentPositionInSteps()));
 }
 
 
@@ -153,10 +152,6 @@ void setup() {
     }
     
     moveController.start(&canOpen, 6);
-
-    // for (int i = 0; i < axesNum; ++i) {
-    //     axes[i].setMotorId(i + 1);
-    // }
 
     inData.reserve(128);
     outData.reserve(128);
