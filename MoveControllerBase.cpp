@@ -22,32 +22,35 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
     Serial2.println("MoveControllerBase.cpp prepareMove called");
     int maxMovementAxisIndex = 0;
     for (int i = 1; i < axesCnt; ++i) {
-        if (axes[i].getMovementUnits() > axes[maxMovementAxisIndex].getMovementUnits()) {
+        if (std::fabs(axes[i].getMovementUnits()) > std::fabs(axes[maxMovementAxisIndex].getMovementUnits())) {
             maxMovementAxisIndex = i;
         }
     }   
 
     Axis *leadAxis = &axes[maxMovementAxisIndex];
-    double maxPath = fabs(leadAxis->movementUnits);
+    double maxPath = std::fabs(leadAxis->movementUnits);
 
-    if(accelerationUnits == 0){
+    if(accelerationUnits == 0){ // Right now we do not support zero acceleration. But in the future we can add special handling for this case.
         Serial2.println("MoveControllerBase.cpp accelerationUnits division by zero");
+        return;
     }
     double tAcceleration = regularSpeedUnits / accelerationUnits; // в секундах
-    if(regularSpeedUnits == 0){
+    if(regularSpeedUnits == 0){ // Zero speed means no movement at all. It is strange to call move with zero speed
         Serial2.println("MoveControllerBase.cpp accelerationUnits division by zero");
+        return;
     }
     double tCruising = (maxPath - regularSpeedUnits * regularSpeedUnits / accelerationUnits) / regularSpeedUnits;
     double res = 0;
     for (Axis& axis : axes) {
         if(maxPath == 0){
-            Serial2.println("MoveControllerBase.cpp maxPath division by zero");
+            Serial2.println("MoveControllerBase.cpp maxPath division by zero. Motors do not need to move.");
+            return;
         }
 
-        double syncCoefficient = fabs(axis.movementUnits) / maxPath;
-        double axisMovementUnits = fabs(axis.movementUnits);
+        double axisMovementUnits = std::fabs(axis.movementUnits);
         if(tAcceleration == 0 || (tAcceleration + tCruising == 0)){
             Serial2.println("MoveControllerBase.cpp tAcceleration or tAcceleration + tCruising division by zero");
+            return;
         }
 
         axis.acceleration = (axisMovementUnits) / (tAcceleration * (tAcceleration + tCruising));
@@ -75,7 +78,7 @@ void MoveControllerBase::sendMove()
         canOpen->sendPDO4_x607A_SyncMovement(axis.nodeId, axis.getTargetPositionAbsolute());
         delay(5);
         
-        axis.canOpenCharacteristics.x6064_positionActualValue = axis.canOpenCharacteristics.x607A_targetPosition; // Imitiation, that the motor reached the target position
+        axis.canOpenCharacteristics.x6064_positionActualValue = axis.canOpenCharacteristics.x607A_targetPosition; // Imitation, that the motor reached the target position
     }
     
     delay(5);
@@ -103,7 +106,9 @@ void MoveControllerBase::initializeAxes(){
     axes.resize(axesCnt);
 
     for (uint8_t i = 0; i < axesCnt; ++i){
-        axes[i] = Axis(i);
+        axes[i] = Axis(i + 1); // Node IDs start from 1
+        init_od_ram(&axes[i].canOpenCharacteristics);
+
         axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
         axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
     }

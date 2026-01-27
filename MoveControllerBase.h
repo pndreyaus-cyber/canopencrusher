@@ -15,7 +15,7 @@ class MoveControllerBase {
         bool start(CanOpen* canOpen, uint8_t axesCnt);
 
         uint8_t getAxesCount() const { return axesCnt; }
-        Axis& getAxis(uint8_t index) { return axes[index]; }
+        Axis& getAxis(uint8_t index) { return axes.at(index); }
         
         void setRegularSpeedUnits(double speed); // настройка крейсерской скорости в единицах измерения в секунду (градусы в секунду)
         void setAccelerationUnits(double acceleration); // настройка ускорения в единицах измерения в секунду^2 (градусы в секунду^2)
@@ -41,7 +41,6 @@ class MoveControllerBase {
         std::vector<Axis> axes;
 
         uint8_t axesCnt = 0;
-        uint8_t axisCurrent;
 
         double regularSpeedUnits = 1.0f; // скорость в единицах измерения в секунду
         double accelerationUnits = 1.0f; // ускорение в единицах измерения в секунду^2
