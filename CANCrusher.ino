@@ -3,9 +3,6 @@
 #include "CanOpen.h"
 #include "Params.h"
 
-#define STEPS_PER_REVOLUTION 32768
-#define UNITS_PER_REVOLUTION 7.2
-
 const String COMMAND_MOVE_ABSOLUTE = "MAJ";
 const String COMMAND_MOVE_RELATIVE = "MRJ";
 const String COMMAND_ECHO = "ECH";
@@ -20,9 +17,6 @@ HardwareSerial Serial2(PA3, PA2);
 
 CanOpen canOpen;
 MoveController moveController;
-
-const int axesNum = 6;
-Axis axes[6]; 
 
 uint8_t buf[8];
 
@@ -119,26 +113,27 @@ void handleMove(MoveParams params, bool isAbsoluteMove){
         return;
     }
     
-    for(int i = 0; i < axesNum; ++i){
+    for(int i = 0; i < moveController.getAxisNum(); ++i){
 
-        if(isAbsoluteMove) axes[i].setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
-        else axes[i].setTargetPositionRelativeInUnits(params.movementUnits[i]);
+        if(isAbsoluteMove) moveController.getAxis(i).setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
+        else moveController.getAxis(i).setTargetPositionRelativeInUnits(params.movementUnits[i]);
     }
 
     moveController.setRegularSpeedUnits(params.speed);
     moveController.setAccelerationUnits(params.acceleration);
 
-    moveController.moveAsync(axes[0], axes[1], axes[2], axes[3], axes[5]); // TODO: не забыть про ось 4
+    moveController.moveAbsolute();
+    //moveController.moveAsync(axes[0], axes[1], axes[2], axes[3], axes[5]); // TODO: не забыть про ось 4
 }
 
 void handleSetCurrentPositionInSteps(PositionParams params){
-    axes[params.nodeId].setCurrentPositionInSteps(params.currentPosition);
-    addDataToOutQueue("(S)New current position for " + String(params.nodeId) + ": " + String(axes[params.nodeId].getCurrentPositionInSteps()));
+    moveController.getAxis(params.nodeId).setCurrentPositionInSteps(params.currentPosition);
+    addDataToOutQueue("(S)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
 }
 
 void handleSetCurrentPositionInUnits(PositionParams params){
-    axes[params.nodeId].setCurrentPositionInUnits(params.currentPosition);
-    addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(axes[params.nodeId].getCurrentPositionInSteps()));
+    moveController.getAxis(params.nodeId).setCurrentPositionInUnits(params.currentPosition);
+    addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
 }
 
 
@@ -157,21 +152,14 @@ void setup() {
         Serial2.println("CAN bus initialized successfully");
     }
     
-    moveController.start(&canOpen);
+    moveController.start(&canOpen, 6);
 
-
-    for (int i = 0; i < axesNum; ++i) {
-        axes[i].setMotorId(i + 1);
-    }
+    // for (int i = 0; i < axesNum; ++i) {
+    //     axes[i].setMotorId(i + 1);
+    // }
 
     inData.reserve(128);
     outData.reserve(128);
-
-
-    for(int i = 0; i < axesNum; ++i){
-        axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
-        axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
-    }
 
 }
 

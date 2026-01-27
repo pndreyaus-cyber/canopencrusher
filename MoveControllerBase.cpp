@@ -5,6 +5,8 @@
 namespace StepDirController{
 // MoveControllerBase::MoveControllerBase(CanOpen *canOpen) : canOpen(canOpen) {}
 
+#define STEPS_PER_REVOLUTION 32768
+#define UNITS_PER_REVOLUTION 7.2
 
 
 void MoveControllerBase::setRegularSpeedUnits(double speed)
@@ -133,6 +135,38 @@ double MoveControllerBase::getRegularSpeedUnits() const
 double MoveControllerBase::getAccelerationUnits() const
 {
     return accelerationUnits;
+}
+
+bool MoveControllerBase::start(CanOpen* canOpen, uint8_t numAxes){
+    this->canOpen = canOpen;
+    this->numAxes = numAxes;
+    initializeAxes();
+    return true;
+}
+
+void MoveControllerBase::initializeAxes(){
+    axes.resize(numAxes);
+
+    for (uint8_t i = 0; i < numAxes; ++i){
+        axes[i] = Axis(i);
+    }
+    
+    for(int i = 0; i < numAxes; ++i){
+        axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
+        axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
+    }
+}
+
+void MoveControllerBase::moveAbsolute() {
+    if (isMoving())
+    return;
+
+    movingInProgress = true;
+    //attachAxes(axis, axes...);
+    prepareMove();
+    sendMove();
+    movingInProgress = false; // TODO: снимать флаг при получении ответа от двигателей о завершении движения
+
 }
 
 }

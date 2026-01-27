@@ -1,19 +1,22 @@
 #ifndef MOVECONTROLLERBASE_H
+
 #define MOVECONTROLLERBASE_H
 
 #include "ControllerBase.h"
 #include "CanOpen.h"
 #include "Params.h"
+#include "Axis.h"
 #include <string>
 
 namespace StepDirController{ 
 class MoveControllerBase : public ControllerBase{
     public:
         //MoveControllerBase(CanOpen *canOpen);
-        bool start(CanOpen* canOpen){
-            this->canOpen = canOpen;
-            return true;
-        }
+        bool start(CanOpen* canOpen, uint8_t numAxes);
+        void initializeAxes();
+
+        uint8_t getAxisNum() const { return numAxes; }
+        Axis& getAxis(uint8_t index) { return axes[index]; }
         
         void setRegularSpeedUnits(double speed) override; // настройка крейсерской скорости в единицах измерения в секунду (градусы в секунду)
         void setAccelerationUnits(double acceleration) override; // настройка ускорения в единицах измерения в секунду^2 (градусы в секунду^2)
@@ -28,6 +31,8 @@ class MoveControllerBase : public ControllerBase{
 
         template<typename... Axes>
         void moveAsync(Axis& axis, Axes&... axes);
+
+        void moveAbsolute();
 
         // TODO: добавить метод, например, void tick(), вызывать его из loop в ino-файле
         // метод tick() должен вызывать метод чтения (который нужно написать) у CanOpen (который сам взаимодействует с шиной CAN)
@@ -48,6 +53,8 @@ class MoveControllerBase : public ControllerBase{
         
     private:
         CanOpen* canOpen;
+        uint8_t numAxes = 0;
+        std::vector<Axis> axes;
         void sendMove();
 };
 

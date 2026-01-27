@@ -11,11 +11,14 @@
 
 
 namespace StepDirController{
+constexpr uint8_t kInvalidNodeId = 0xFF;
+
 class Axis{
     public:
-        Axis();
+        Axis() : nodeId(kInvalidNodeId) {}
+        Axis(uint8_t nodeId) : nodeId(nodeId) {}
         //Axis(const uint8_t nodeId);
-        void setMotorId(uint8_t nodeId);
+        //void setMotorId(uint8_t nodeId);
 
         Axis &setStepsPerRevolution(uint32_t steps); // +
         Axis &setUnitsPerRevolution(double units); // +
