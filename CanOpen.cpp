@@ -98,6 +98,7 @@ bool CanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPosition
 
 bool CanOpen::sendSYNC()
 {
+    Serial2.println("Sending SYNC");
     return send(0x80, 0, 0);
 }
 
@@ -202,12 +203,14 @@ bool CanOpen::loopbackTest(){
 bool CanOpen::send(uint32_t id, const uint8_t *data, uint8_t len)
 {
     // Check for null data pointer
-    if(data == nullptr) {
+    if(data == nullptr && len > 0) {
+        Serial2.println("Error: Null data pointer in CAN send");
         return false;
     }
     
     // Check for invalid length (CAN frame can have max 8 bytes of data)
-    if(len == 0 || len > 8) {
+    if(len > 8) {
+        Serial2.println("Error: Invalid data length in CAN send");
         return false;
     }
     

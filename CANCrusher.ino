@@ -113,7 +113,7 @@ void handleMove(MoveParams params, bool isAbsoluteMove){
         return;
     }
     
-    for(int i = 0; i < moveController.getAxisNum(); ++i){
+    for(int i = 0; i < moveController.getAxesCount(); ++i){
 
         if(isAbsoluteMove) moveController.getAxis(i).setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
         else moveController.getAxis(i).setTargetPositionRelativeInUnits(params.movementUnits[i]);

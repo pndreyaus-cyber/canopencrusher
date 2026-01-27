@@ -16,7 +16,10 @@ constexpr uint8_t kInvalidNodeId = 0xFF;
 class Axis{
     public:
         Axis() : nodeId(kInvalidNodeId) {}
-        Axis(uint8_t nodeId) : nodeId(nodeId) {}
+        Axis(uint8_t nodeId) : nodeId(nodeId) {
+            currentPosition = 0;
+            canOpenCharacteristics.x6064_positionActualValue = 0;
+        }
         //Axis(const uint8_t nodeId);
         //void setMotorId(uint8_t nodeId);
 

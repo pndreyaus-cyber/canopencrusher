@@ -3,16 +3,13 @@
 #include "Arduino.h"
 
 namespace StepDirController{
-// MoveControllerBase::MoveControllerBase(CanOpen *canOpen) : canOpen(canOpen) {}
-
 #define STEPS_PER_REVOLUTION 32768
 #define UNITS_PER_REVOLUTION 7.2
 
 
 void MoveControllerBase::setRegularSpeedUnits(double speed)
 {
-    speed = std::fabs(speed); // Edited for C++
-    regularSpeedUnits = speed;
+    regularSpeedUnits = std::fabs(speed); // Edited for C++
 }
 
 void MoveControllerBase::setAccelerationUnits(double acceleration)
@@ -20,55 +17,19 @@ void MoveControllerBase::setAccelerationUnits(double acceleration)
     accelerationUnits = std::fabs(acceleration);  // Edited for C++
 }
 
-void MoveControllerBase::setOnMoveStarted(void (*callback)())
-{
-    onMoveStarted = callback;
-}
-
-void MoveControllerBase::setOnMoveFinished(void (*callback)())
-{
-    onMoveFinished = callback;
-}
-
-void MoveControllerBase::setOnEmergensyStoped(void (*callback)())
-{
-    onEmergensyStoped = callback;
-}
-
-
-void MoveControllerBase::prepareMoveWithoutSync()
-{
-    Axis** axes = axisList;
-    while(*(axes) != nullptr)
-    {
-        (*axes)->canOpenCharacteristics.x6081_profileVelocity = (*axes)->speedUnitsToRevolutionsPerMinute(regularSpeedUnits);
-        (*axes)->canOpenCharacteristics.x6083_profileAcceleration = (*axes)->accelerationUnitsTorpmPerSecond(accelerationUnits);
-        (*axes++);
-    }
-}
-
 void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe other corner cases
 {
-    leadAxis = axisList[0];
+    Serial2.println("MoveControllerBase.cpp prepareMove called");
+    int maxMovementAxisIndex = 0;
+    for (int i = 1; i < axesCnt; ++i) {
+        if (axes[i].getMovementUnits() > axes[maxMovementAxisIndex].getMovementUnits()) {
+            maxMovementAxisIndex = i;
+        }
+    }   
 
-    if (leadAxis == nullptr)
-        return ;
-
-    stepsDoneAll = 0;
-    stepsAll = 0;
-
-    Axis** axes = axisList;
-    while (*(axes) != nullptr)
-    {
-        if (std::fabs(leadAxis->movementUnits) < std::fabs((*axes)->movementUnits)) // Edited for C++
-            leadAxis = (*axes);
-
-        (*axes++);
-    }
-    
-
+    Axis *leadAxis = &axes[maxMovementAxisIndex];
     double maxPath = fabs(leadAxis->movementUnits);
-    axes = axisList;
+
     if(accelerationUnits == 0){
         Serial2.println("MoveControllerBase.cpp accelerationUnits division by zero");
     }
@@ -78,51 +39,45 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
     }
     double tCruising = (maxPath - regularSpeedUnits * regularSpeedUnits / accelerationUnits) / regularSpeedUnits;
     double res = 0;
-    while (*(axes) != nullptr)
-    {
+    for (Axis& axis : axes) {
         if(maxPath == 0){
             Serial2.println("MoveControllerBase.cpp maxPath division by zero");
-       }
-        double syncCoefficient = fabs((*axes)->movementUnits) / maxPath;
-        double axisMovementUnits = fabs((*axes)->movementUnits);
+        }
+
+        double syncCoefficient = fabs(axis.movementUnits) / maxPath;
+        double axisMovementUnits = fabs(axis.movementUnits);
         if(tAcceleration == 0 || (tAcceleration + tCruising == 0)){
             Serial2.println("MoveControllerBase.cpp tAcceleration or tAcceleration + tCruising division by zero");
         }
-        (*axes)->acceleration = (axisMovementUnits) / (tAcceleration * (tAcceleration + tCruising));
-        (*axes)->regularSpeed = (*axes)->acceleration * tAcceleration;
-        (*axes)->canOpenCharacteristics.x6083_profileAcceleration = (*axes)->accelerationUnitsTorpmPerSecond((*axes)->acceleration);
-        (*axes)->canOpenCharacteristics.x6081_profileVelocity = (*axes)->speedUnitsToRevolutionsPerMinute((*axes)->regularSpeed);
 
-        (*axes++);
+        axis.acceleration = (axisMovementUnits) / (tAcceleration * (tAcceleration + tCruising));
+        axis.regularSpeed = axis.acceleration * tAcceleration;
+        axis.canOpenCharacteristics.x6083_profileAcceleration = axis.accelerationUnitsTorpmPerSecond(axis.acceleration);
+        axis.canOpenCharacteristics.x6081_profileVelocity = axis.speedUnitsToRevolutionsPerMinute(axis.regularSpeed);
+
     }
-
-    axes = axisList;
 }
 
 void MoveControllerBase::sendMove()
 {
-    Axis** axes = axisList;
-    while (*(axes) != nullptr)
-    {
-        Axis* axis = *axes;
-        canOpen->send_x6081_profileVelocity(axis->nodeId, axis->canOpenCharacteristics.x6081_profileVelocity);
+    for (Axis& axis : axes) {
+        canOpen->send_x6081_profileVelocity(axis.nodeId, axis.canOpenCharacteristics.x6081_profileVelocity);
         delay(5);
-        canOpen->send_x6083_profileAcceleration(axis->nodeId, axis->canOpenCharacteristics.x6083_profileAcceleration);
+        canOpen->send_x6083_profileAcceleration(axis.nodeId, axis.canOpenCharacteristics.x6083_profileAcceleration);
         delay(5);
         
-        canOpen->send_x6040_controlword(axis->nodeId, 0x004F);
+        canOpen->send_x6040_controlword(axis.nodeId, 0x004F);
         delay(5);
         
-        canOpen->send_x6040_controlword(axis->nodeId, 0x005F);
+        canOpen->send_x6040_controlword(axis.nodeId, 0x005F);
         delay(5);
         
-        canOpen->sendPDO4_x607A_SyncMovement(axis->nodeId, axis->getTargetPositionAbsolute());
+        canOpen->sendPDO4_x607A_SyncMovement(axis.nodeId, axis.getTargetPositionAbsolute());
         delay(5);
         
-        (*axes)->canOpenCharacteristics.x6064_positionActualValue = (*axes)->canOpenCharacteristics.x607A_targetPosition;
-        
-        (*axes++);
+        axis.canOpenCharacteristics.x6064_positionActualValue = axis.canOpenCharacteristics.x607A_targetPosition; // Imitiation, that the motor reached the target position
     }
+    
     delay(5);
     canOpen->sendSYNC();
 }
@@ -137,35 +92,28 @@ double MoveControllerBase::getAccelerationUnits() const
     return accelerationUnits;
 }
 
-bool MoveControllerBase::start(CanOpen* canOpen, uint8_t numAxes){
+bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
     this->canOpen = canOpen;
-    this->numAxes = numAxes;
+    this->axesCnt = axesCnt;
     initializeAxes();
     return true;
 }
 
 void MoveControllerBase::initializeAxes(){
-    axes.resize(numAxes);
+    axes.resize(axesCnt);
 
-    for (uint8_t i = 0; i < numAxes; ++i){
+    for (uint8_t i = 0; i < axesCnt; ++i){
         axes[i] = Axis(i);
-    }
-    
-    for(int i = 0; i < numAxes; ++i){
         axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
         axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
     }
 }
 
 void MoveControllerBase::moveAbsolute() {
-    if (isMoving())
-    return;
+    Serial2.println("MoveControllerBase.cpp MoveAbsolute called");
 
-    movingInProgress = true;
-    //attachAxes(axis, axes...);
     prepareMove();
     sendMove();
-    movingInProgress = false; // TODO: снимать флаг при получении ответа от двигателей о завершении движения
 
 }
 
