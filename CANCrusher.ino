@@ -113,16 +113,16 @@ void handleMove(MoveParams params, bool isAbsoluteMove){
         return;
     }
     
-    for(int i = 0; i < moveController.getAxesCount(); ++i){
+    for(uint8_t nodeId = 1; nodeId <= moveController.getAxesCount(); ++nodeId){
 
-        if(isAbsoluteMove) moveController.getAxis(i).setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
-        else moveController.getAxis(i).setTargetPositionRelativeInUnits(params.movementUnits[i]);
+        if(isAbsoluteMove) moveController.getAxis(nodeId).setTargetPositionAbsoluteInUnits(params.movementUnits[nodeId - 1]);
+        else moveController.getAxis(nodeId).setTargetPositionRelativeInUnits(params.movementUnits[nodeId - 1]);
     }
 
     moveController.setRegularSpeedUnits(params.speed);
     moveController.setAccelerationUnits(params.acceleration);
 
-    moveController.executeMove();
+    moveController.move();
 }
 
 void handleSetCurrentPositionInSteps(PositionParams params){

@@ -6,22 +6,15 @@
 #include <cstdint>
 #include "OD.h"
 #include "objdict_objectdefines.h"
-
-#define SECONDS_IN_MINUTE 60 // for degrees: 10 full turns
-
+#include "RobotConstants.h"
 
 namespace StepDirController{
 constexpr uint8_t kInvalidNodeId = 0xFF;
 
 class Axis{
     public:
-        Axis() : nodeId(kInvalidNodeId) {}
-        Axis(uint8_t nodeId) : nodeId(nodeId) {
-            init_od_ram(&canOpenCharacteristics);
-            currentPosition = 0;
-            movementUnits = 0.0;
-            canOpenCharacteristics.x6064_positionActualValue = 0;
-        }
+        Axis();
+        Axis(uint8_t nodeId);
 
         Axis &setStepsPerRevolution(uint32_t steps); // +
         Axis &setUnitsPerRevolution(double units); // +

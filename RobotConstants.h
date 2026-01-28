@@ -9,9 +9,6 @@ namespace RobotConstants {
 
     // Physical and mathematical constants
     namespace Math {
-        constexpr double PI = 3.14159265358979323846;
-        constexpr double DEG_TO_RAD = PI / 180.0;
-        constexpr double RAD_TO_DEG = 180.0 / PI;
         constexpr double SECONDS_IN_MINUTE = 60.0;
     }
 
@@ -93,8 +90,8 @@ namespace RobotConstants {
 
     // Axis configuration
     namespace Axis {
-        constexpr uint32_t DEFAULT_STEPS_PER_REVOLUTION = 200;
-        constexpr double DEFAULT_UNITS_PER_REVOLUTION = 360.0;
+        constexpr uint32_t DEFAULT_STEPS_PER_REVOLUTION = 32768;
+        constexpr double DEFAULT_UNITS_PER_REVOLUTION = 7.2;
         constexpr double DEFAULT_MIN_LIMIT = -1000.0;
         constexpr double DEFAULT_MAX_LIMIT = 1000.0;
         constexpr bool DEFAULT_USE_LIMITS = false;

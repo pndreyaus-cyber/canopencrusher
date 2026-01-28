@@ -3,8 +3,6 @@
 #include "Arduino.h"
 
 namespace StepDirController{
-#define STEPS_PER_REVOLUTION 32768
-#define UNITS_PER_REVOLUTION 7.2
 
 
 void MoveControllerBase::setRegularSpeedUnits(double speed)
@@ -25,14 +23,15 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
     }
     
     Serial2.println("MoveControllerBase.cpp prepareMove called");
-    int maxMovementAxisIndex = 0;
-    for (int i = 1; i < axesCnt; ++i) {
-        if (std::fabs(axes[i].getMovementUnits()) > std::fabs(axes[maxMovementAxisIndex].getMovementUnits())) {
-            maxMovementAxisIndex = i;
+    int maxMovementAxisId = 1;;
+
+    for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId) {
+        if (std::fabs(axes.at(nodeId).getMovementUnits()) > std::fabs(axes.at(maxMovementAxisId).getMovementUnits())) {
+            maxMovementAxisId = nodeId;
         }
     }   
 
-    Axis *leadAxis = &axes[maxMovementAxisIndex];
+    Axis *leadAxis = &axes.at(maxMovementAxisId);
     double maxPath = std::fabs(leadAxis->getMovementUnits());
 
     if(accelerationUnits == 0){ // Right now we do not support zero acceleration. But in the future we can add special handling for this case.
@@ -56,9 +55,11 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
         Serial2.println("MoveControllerBase.cpp tAcceleration or tAcceleration + tCruising division by zero");
         return;
     }
-    for (Axis& axis : axes) {
 
-        double axisMovementUnits = std::fabs(axis.movementUnits);
+    for (auto it = axes.begin(); it != axes.end(); ++it) {
+        Axis& axis = it->second;
+
+        double axisMovementUnits = std::fabs(axis.getMovementUnits());
 
         axis.acceleration = (axisMovementUnits) / (tAcceleration * (tAcceleration + tCruising));
         axis.regularSpeed = axis.acceleration * tAcceleration;
@@ -70,7 +71,8 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
 
 void MoveControllerBase::sendMove()
 {
-    for (Axis& axis : axes) {
+    for (auto it = axes.begin(); it != axes.end(); ++it) {
+        Axis& axis = it->second;
         canOpen->send_x6081_profileVelocity(axis.nodeId, axis.canOpenCharacteristics.x6081_profileVelocity);
         delay(5);
         canOpen->send_x6083_profileAcceleration(axis.nodeId, axis.canOpenCharacteristics.x6083_profileAcceleration);
@@ -104,28 +106,26 @@ double MoveControllerBase::getAccelerationUnits() const
 
 bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
     if (axesCnt == 0) { 
+        Serial2.println("MoveControllerBase.cpp start -- axesCnt is zero");
         return false;
     }   
+    if (canOpen == nullptr) {
+        Serial2.println("MoveControllerBase.cpp start -- canOpen is nullptr");
+        return false;
+    }
+    
     this->canOpen = canOpen;
     this->axesCnt = axesCnt;
-    initializeAxes();
+
+    for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId){
+        axes[nodeId] = Axis(nodeId);
+    }
+
     return true;
 }
 
-void MoveControllerBase::initializeAxes(){
-    axes.resize(axesCnt);
-
-    for (uint8_t i = 0; i < axesCnt; ++i){
-        axes[i] = Axis(i + 1); // Node IDs start from 1
-        init_od_ram(&axes[i].canOpenCharacteristics);
-
-        axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
-        axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
-    }
-}
-
-void MoveControllerBase::executeMove() {
-    Serial2.println("MoveControllerBase.cpp executeMove called");
+void MoveControllerBase::move() {
+    Serial2.println("MoveControllerBase.cpp move called");
 
     prepareMove();
     sendMove();

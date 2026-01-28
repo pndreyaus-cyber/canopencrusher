@@ -2,8 +2,20 @@
 #include <iostream>
 #include "Arduino.h"
 #include "Axis.h"
+#include "RobotConstants.h"
 
 namespace StepDirController{
+
+Axis::Axis() : nodeId(kInvalidNodeId) {}
+
+Axis::Axis(uint8_t nodeId) : nodeId(nodeId) {
+    init_od_ram(&canOpenCharacteristics);
+    currentPosition = 0;
+    movementUnits = 0.0;
+    canOpenCharacteristics.x6064_positionActualValue = 0;
+    stepsPerRevolution = RobotConstants::Axis::DEFAULT_STEPS_PER_REVOLUTION;
+    unitsPerRevolution = RobotConstants::Axis::DEFAULT_UNITS_PER_REVOLUTION;
+}
 
 Axis &Axis::setStepsPerRevolution(uint32_t steps)
 {
@@ -129,7 +141,7 @@ uint32_t Axis::speedUnitsToRevolutionsPerMinute(double speedUnits) const // Пе
         Serial2.println("Axis::speedUnitsToRevolutionsPerMinute -- division by zero");
         return 0;
     }
-    return speedUnits * SECONDS_IN_MINUTE / unitsPerRevolution;
+    return speedUnits * RobotConstants::Math::SECONDS_IN_MINUTE / unitsPerRevolution;
 }
 
 double Axis::revolutionsPerMinuteToSpeedUnits(uint32_t rpm) const // Перевести из об/мин в градусы/сек
@@ -138,7 +150,7 @@ double Axis::revolutionsPerMinuteToSpeedUnits(uint32_t rpm) const // Перев�
         Serial2.println("Axis::revolutionsPerMinuteToSpeedUnits -- division by zero");
         return 0;
     }
-    return (double)rpm / SECONDS_IN_MINUTE * unitsPerRevolution;
+    return (double)rpm / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution;
 }
 
 uint32_t Axis::accelerationUnitsTorpmPerSecond(double accelearionUnits) const // Перевести градусы/сек^2 в об/(мин*сек)
@@ -147,7 +159,7 @@ uint32_t Axis::accelerationUnitsTorpmPerSecond(double accelearionUnits) const //
         Serial2.println("Axis::accelerationUnitsTorpmPerSecond -- division by zero");
         return 0;
     }
-    return accelearionUnits * SECONDS_IN_MINUTE / unitsPerRevolution;
+    return accelearionUnits * RobotConstants::Math::SECONDS_IN_MINUTE / unitsPerRevolution;
 }
 
 double Axis::rpmPerSecondToAccelerationUnits(double rpmPerSecond) const  // Перевести об/(мин*сек) в градусы/сек^2
@@ -156,7 +168,7 @@ double Axis::rpmPerSecondToAccelerationUnits(double rpmPerSecond) const  // Пе
         Serial2.println("Axis::rpmPerSecondToAccelerationUnits -- division by zero");
         return 0;
     }   
-    return (double)rpmPerSecond / SECONDS_IN_MINUTE * unitsPerRevolution; // TODO: потенциальная потеря точности расчетов из-за SECONDS_IN_MINUTE, лучше объявить как константу float/double
+    return (double)rpmPerSecond / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution; // TODO: потенциальная потеря точности расчетов из-за SECONDS_IN_MINUTE, лучше объявить как константу float/double
 }
 
 double Axis::getMaxLimitUnits() const
