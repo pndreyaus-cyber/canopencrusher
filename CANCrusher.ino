@@ -126,11 +126,19 @@ void handleMove(MoveParams params, bool isAbsoluteMove){
 }
 
 void handleSetCurrentPositionInSteps(PositionParams params){
+    if(params.nodeId < 1 || params.nodeId > moveController.getAxesCount()){
+        addDataToOutQueue("Invalid node ID: " + String(params.nodeId));
+        return;
+    }
     moveController.getAxis(params.nodeId).setCurrentPositionInSteps(params.currentPosition);
     addDataToOutQueue("(S)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
 }
 
 void handleSetCurrentPositionInUnits(PositionParams params){
+    if(params.nodeId < 1 || params.nodeId > moveController.getAxesCount()){
+        addDataToOutQueue("Invalid node ID: " + String(params.nodeId));
+        return;
+    }
     moveController.getAxis(params.nodeId).setCurrentPositionInUnits(params.currentPosition);
     addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
 }

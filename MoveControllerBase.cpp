@@ -19,14 +19,14 @@ void MoveControllerBase::setAccelerationUnits(double acceleration)
 
 void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe other corner cases
 {
-    if (axesCnt == 0) { 
+    if (axesCnt == 0 || axes.empty()) { 
         Serial2.println("No axes configured"); 
         return; 
     }
     
     Serial2.println("MoveControllerBase.cpp prepareMove called");
-    uint8_t maxMovementAxisNodeId = 1;
-    double maxMovement = 0;
+    uint8_t maxMovementAxisNodeId = axes.begin()->first;
+    double maxMovement = std::fabs(axes.begin()->second.getMovementUnits());
     for (const auto& pair : axes) {
         if (std::fabs(pair.second.getMovementUnits()) > maxMovement) {
             maxMovement = std::fabs(pair.second.getMovementUnits());
@@ -119,7 +119,7 @@ bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
 void MoveControllerBase::initializeAxes(){
     for (uint8_t i = 0; i < axesCnt; ++i){
         uint8_t nodeId = i + 1; // Node IDs start from 1
-        axes[nodeId] = Axis(nodeId);
+        axes.emplace(nodeId, Axis(nodeId));
         init_od_ram(&axes[nodeId].canOpenCharacteristics);
 
         axes[nodeId].setStepsPerRevolution(STEPS_PER_REVOLUTION);
