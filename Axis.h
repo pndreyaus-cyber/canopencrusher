@@ -9,7 +9,7 @@
 #include "RobotConstants.h"
 
 namespace StepDirController{
-constexpr uint8_t kInvalidNodeId = 0xFF;
+constexpr uint8_t kInvalidNodeId = 0xFF; //Sentinel value indicating an uninitialized or invalid axis node ID"
 
 class Axis{
     public:
@@ -57,6 +57,7 @@ class Axis{
         int32_t getCurrentPositionInSteps() const;
 
     protected:
+        bool initialized = false;
         uint8_t nodeId;
         OD_RAM_t canOpenCharacteristics;
 

@@ -91,7 +91,7 @@ namespace RobotConstants {
     // Axis configuration
     namespace Axis {
         constexpr uint32_t DEFAULT_STEPS_PER_REVOLUTION = 32768;
-        constexpr double DEFAULT_UNITS_PER_REVOLUTION = 7.2;
+        constexpr double DEFAULT_UNITS_PER_REVOLUTION = 7.2; // 
         constexpr double DEFAULT_MIN_LIMIT = -1000.0;
         constexpr double DEFAULT_MAX_LIMIT = 1000.0;
         constexpr bool DEFAULT_USE_LIMITS = false;

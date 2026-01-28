@@ -28,7 +28,7 @@ private:
 public:
     CanOpen() : Can(PA11, PA12) {};
     bool startCan(uint32_t baudRate);
-    
+
     bool send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value/*, */);
     bool send_x60FF_targetVelocity(uint8_t nodeId, int32_t value/*, ODObjs_t * odobjs*/);
     bool send_x6083_profileAcceleration(uint8_t nodeId, uint32_t value/*, ODObjs_t * odobjs*/);

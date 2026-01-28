@@ -21,26 +21,30 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
         Serial2.println("No axes configured"); 
         return; 
     }
-    
+#ifdef DEBUG
     Serial2.println("MoveControllerBase.cpp prepareMove called");
-    int maxMovementAxisId = axes.begin()->first;
-    double maxMovement = std::fabs(axes.at(maxMovementAxisId).getMovementUnits());
+#endif    
+    uint8_t maxMovementAxisId = 0;
+    bool firstAxis = true;
+    double maxMovement = 0;
 
     for (auto it = axes.begin(); it != axes.end(); ++it) {
         Axis& axis = it->second;
-        if (std::fabs(axis.getMovementUnits()) > maxMovement) {
-            maxMovement = std::fabs(axis.getMovementUnits());
+        double axisMovement = std::fabs(axis.getMovementUnits());
+        if (firstAxis || axisMovement > maxMovement) {
+            maxMovement = axisMovement;
             maxMovementAxisId = axis.nodeId;
+            firstAxis = false;
         }
     }
 
     if(accelerationUnits == 0){ // Right now we do not support zero acceleration. But in the future we can add special handling for this case.
-        Serial2.println("MoveControllerBase.cpp accelerationUnits division by zero");
+        Serial2.println("MoveControllerBase.cpp zero acceleration is not supported");
         return;
     }
     double tAcceleration = regularSpeedUnits / accelerationUnits; // в секундах
     if(regularSpeedUnits == 0){ // Zero speed means no movement at all. It is strange to call move with zero speed
-        Serial2.println("MoveControllerBase.cpp regularSpeedUnits division by zero");
+        Serial2.println("MoveControllerBase.cpp zero regularSpeedUnits is not supported (zero speed)");
         return;
     }
     double tCruising = (maxMovement - regularSpeedUnits * regularSpeedUnits / accelerationUnits) / regularSpeedUnits;
@@ -121,12 +125,19 @@ bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
         axes[nodeId] = Axis(nodeId);
     }
 
+    initialized = true;
     return true;
 }
 
 void MoveControllerBase::move() {
+#ifdef DEBUG
     Serial2.println("MoveControllerBase.cpp move called");
-
+#endif 
+   
+    if (!initialized) {
+        Serial2.println("MoveControllerBase.cpp move -- MoveControllerBase not initialized");
+        return;
+    }
     prepareMove();
     sendMove();
 

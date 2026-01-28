@@ -2,6 +2,9 @@
 #include "CanOpenController.h"
 #include "CanOpen.h"
 #include "Params.h"
+#include "RobotConstants.h"
+
+#define DEBUG
 
 const String COMMAND_MOVE_ABSOLUTE = "MAJ";
 const String COMMAND_MOVE_RELATIVE = "MRJ";
@@ -24,9 +27,9 @@ String inData;
 uint8_t bufIndex = 0;			 // хранилище данных с последовательного порта
 std::vector<String> outData; // очередь сообщений на отправку
 
-MoveParams stringToMoveParams(String command)
+MoveParams<RobotConstants::Robot::AXIS_COUNT> stringToMoveParams(String command)
 {
-	MoveParams params;
+	MoveParams<RobotConstants::Robot::AXIS_COUNT> params;
 
 	int JA_Index = command.indexOf("JA");
 	int JB_Index = command.indexOf("JB");
@@ -93,7 +96,7 @@ PositionParams stringToPositionParams(String command)
   params.currentPosition = command.substring(positionIndex + 3, idIndex).toFloat();
   params.nodeId = command.substring(idIndex + 2).toInt();
 
-	if ((params.nodeId <= 0.0F) || (params.nodeId > 6.0F))
+	if ((params.nodeId <= 0) || (params.nodeId > RobotConstants::Robot::AXIS_COUNT))
 	{
 		params.status = ParamsStatus::INVALID_PARAMS;
 		return params;
@@ -104,7 +107,7 @@ PositionParams stringToPositionParams(String command)
 }
 
 
-void handleMove(MoveParams params, bool isAbsoluteMove){
+void handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove){
     if(params.status != ParamsStatus::OK){
         if(params.status == ParamsStatus::INVALID_PARAMS)
             addDataToOutQueue("INVALID PARAMS");
@@ -126,7 +129,7 @@ void handleMove(MoveParams params, bool isAbsoluteMove){
 }
 
 void handleSetCurrentPositionInSteps(PositionParams params){
-    if(params.nodeId < 1 || params.nodeId > moveController.getAxesCount()){
+    if(params.nodeId < 1 || params.nodeId > RobotConstants::Robot::AXIS_COUNT){
         addDataToOutQueue("INVALID NODE ID: " + String(params.nodeId));
         return;
     }
@@ -160,7 +163,12 @@ void setup() {
         Serial2.println("CAN bus initialized successfully");
     }
     
-    moveController.start(&canOpen, 6);
+    if(!moveController.start(&canOpen, RobotConstants::Robot::AXIS_COUNT)) {
+        Serial2.println("Failed to initialize MoveController");
+        while (1);
+    } else {
+        Serial2.println("MoveController initialized successfully");
+    }
 
     inData.reserve(128);
     outData.reserve(128);

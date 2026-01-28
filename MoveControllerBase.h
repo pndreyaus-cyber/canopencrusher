@@ -38,13 +38,12 @@ class MoveControllerBase {
         
     private:
         CanOpen* canOpen;
-        // std::vector<Axis> axes;
         std::unordered_map<uint8_t, Axis> axes;
-
+        bool initialized = false;
         uint8_t axesCnt = 0;
 
-        double regularSpeedUnits = 1.0f; // скорость в единицах измерения в секунду
-        double accelerationUnits = 1.0f; // ускорение в единицах измерения в секунду^2
+        double regularSpeedUnits = 1.0f; // The speed of the maximum moving axis in percent of full speed (1.0 = 100%)
+        double accelerationUnits = 1.0f; // The acceleration of the maximum moving axis in percent of full acceleration (1.0 = 100%)
 
         void sendMove();
 };
