@@ -1,3 +1,5 @@
+#include <unordered_set>
+
 #include "STM32_CAN.h"
 #include "CanOpenController.h"
 #include "CanOpen.h"
@@ -20,12 +22,15 @@ String inData;
 uint8_t bufIndex = 0;			 // хранилище данных с последовательного порта
 std::vector<String> outData; // очередь сообщений на отправку
 
+// Forward declarations
 MoveParams<RobotConstants::Robot::AXIS_COUNT> stringToMoveParams(String command);
 PositionParams stringToPositionParams(String command);
-void handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove);
-void handleSetCurrentPositionInSteps(PositionParams params);
-void handleSetCurrentPositionInUnits(PositionParams params);
+ZEIParams stringToZEIParams(String command);
+bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove);
+bool handleSetCurrentPositionInSteps(PositionParams params);
+bool handleSetCurrentPositionInUnits(PositionParams params);
 bool handleZeroInitialize(ZEIParams params);
+
 
 void setup() {
     Serial2.setRx(PA3);
@@ -88,37 +93,57 @@ void handleCommand()
 
     if (function.equals(RobotConstants::COMMANDS::MOVE_ABSOLUTE))
     {
-        handleMove(stringToMoveParams(inData), true);
-        addDataToOutQueue("MAJ COMMAND COMPLETED");
+        if(handleMove(stringToMoveParams(inData), true)){
+            addDataToOutQueue("MAJ COMMAND COMPLETED");
+        }
+        else {
+            addDataToOutQueue("MAJ COMMAND FAILED");
+        }
     }
 
     else if (function.equals(RobotConstants::COMMANDS::MOVE_RELATIVE))
     {
-        handleMove(stringToMoveParams(inData), false);
-        addDataToOutQueue("MRJ COMMAND COMPLETED");
+        if(handleMove(stringToMoveParams(inData), false)){
+            addDataToOutQueue("MRJ COMMAND COMPLETED");
+        }
+        else {
+            addDataToOutQueue("MRJ COMMAND FAILED");
+        }
     }
     else if (function.equals(RobotConstants::COMMANDS::ECHO))
     {
-        addDataToOutQueue(inData);  
+        addDataToOutQueue(inData.substring(4));  
     }
     else if(function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_STEPS))
     {
-        handleSetCurrentPositionInSteps(stringToPositionParams(inData));
-        addDataToOutQueue("SCS COMMAND COMPLETED");
+        if(handleSetCurrentPositionInSteps(stringToPositionParams(inData))){
+            addDataToOutQueue("SCS COMMAND COMPLETED");
+        }
+        else {
+            addDataToOutQueue("SCS COMMAND FAILED");
+        }
     }
     else if(function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_UNITS))
     {
-        handleSetCurrentPositionInUnits(stringToPositionParams(inData));
-        addDataToOutQueue("SCU COMMAND COMPLETED");
+        if(handleSetCurrentPositionInUnits(stringToPositionParams(inData))){
+            addDataToOutQueue("SCU COMMAND COMPLETED");
+        }
+        else {
+            addDataToOutQueue("SCU COMMAND FAILED");
+        }
     }
     else if(function.equals(RobotConstants::COMMANDS::ZERO_INITIALIZE)) 
     {
-        handleZeroInitialize(stringToZEIParams(inData));
-        addDataToOutQueue("ZEI COMMAND COMPLETED");
+        if(handleZeroInitialize(stringToZEIParams(inData))){
+            addDataToOutQueue("ZEI COMMAND COMPLETED");
+        }
+        else {
+            addDataToOutQueue("ZEI COMMAND FAILED");
+        }
     }
-    else
+    else{
         addDataToOutQueue("INVALID COMMAND");
-
+    }
     inData = "";
 }
 
@@ -236,7 +261,7 @@ ZEIParams stringToZEIParams(String command)
     int idStartIndex = RobotConstants::COMMANDS::ZERO_INITIALIZE.length();
     
     while(idStartIndex != -1) {
-        if(inData.charAt(idStartIndex) != 'M') {
+        if(command.charAt(idStartIndex) != 'M') {
             addDataToOutQueue("INVALID PARAMETERS FOR ZEI. EXPECTED 'M' AT INDEX " + String(idStartIndex));
             params.status = ParamsStatus::INVALID_PARAMS;
             params.forAllNodes = false;
@@ -244,12 +269,21 @@ ZEIParams stringToZEIParams(String command)
             return params;
         }
         
-        int nextIdStartIndex = inData.indexOf('M', idStartIndex + 1);
-        String idStr = inData.substring(idStartIndex + 1, nextIdStartIndex == -1 ? inData.length() : nextIdStartIndex);
+        int nextIdStartIndex = command.indexOf('M', idStartIndex + 1);
+        String idStr = command.substring(idStartIndex + 1, nextIdStartIndex == -1 ? command.length() : nextIdStartIndex);
+        bool isValidInteger = true;
+        if (idStr.length() == 0) {
+            isValidInteger = false;
+        }else {
+            for (size_t i = 0; i < idStr.length(); ++i) {
+                if (!isDigit(idStr.charAt(i))) {
+                    isValidInteger = false;
+                    break;
+                }
+            }
+        }
 
-        // check if idStr is a valid number
-        if (idStr.length() == 0 || !idStr.equals(String(idStr.toInt()))) {
-            addDataToOutQueue("NODE ID IS NOT A VALID INTEGER: " + idStr);
+        if (!isValidInteger ) {
             params.status = ParamsStatus::INVALID_PARAMS;
             params.forAllNodes = false;
             params.nodeIds.clear();
@@ -264,7 +298,7 @@ ZEIParams stringToZEIParams(String command)
             params.nodeIds.clear();
             return params;
         }
-        params.nodeIds.push_back(nodeId);
+        params.nodeIds.insert(nodeId);
         idStartIndex = nextIdStartIndex;
     }
 
@@ -274,13 +308,13 @@ ZEIParams stringToZEIParams(String command)
 }
 
 
-void handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove){
+bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove){
     if(params.status != ParamsStatus::OK){
         if(params.status == ParamsStatus::INVALID_PARAMS)
             addDataToOutQueue("INVALID PARAMS");
         else if(params.status == ParamsStatus::INCORRECT_COMMAND)
             addDataToOutQueue("INCORRECT COMMAND");
-        return;
+        return false;
     }
     
     for(uint8_t nodeId = 1; nodeId <= moveController.getAxesCount(); ++nodeId){
@@ -293,29 +327,32 @@ void handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbs
     moveController.setAccelerationUnits(params.acceleration);
 
     moveController.move();
+    return true;
 }
 
-void handleSetCurrentPositionInSteps(PositionParams params){
+bool handleSetCurrentPositionInSteps(PositionParams params){
     if(params.nodeId < 1 || params.nodeId > RobotConstants::Robot::AXIS_COUNT){
         addDataToOutQueue("INVALID NODE ID: " + String(params.nodeId));
-        return;
+        return false;
     }
 
     moveController.getAxis(params.nodeId).setCurrentPositionInSteps(params.currentPosition);
     addDataToOutQueue("(S)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
+    return true;
 }
 
-void handleSetCurrentPositionInUnits(PositionParams params){
+bool handleSetCurrentPositionInUnits(PositionParams params){
     if(params.nodeId < 1 || params.nodeId > moveController.getAxesCount()){
         addDataToOutQueue("INVALID NODE ID: " + String(params.nodeId));
-        return;
+        return false;
     }
     moveController.getAxis(params.nodeId).setCurrentPositionInUnits(params.currentPosition);
     addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
+    return true;
 }
 
 bool handleZeroInitialize(ZEIParams params) {
-    std::vector<uint8_t> failedNodeIds;
+    std::unordered_set<uint8_t> failedNodeIds;
     if (params.status != ParamsStatus::OK) {
         addDataToOutQueue("INVALID PARAMS FOR ZEI");
         return false;
@@ -324,13 +361,13 @@ bool handleZeroInitialize(ZEIParams params) {
         addDataToOutQueue("ZEI FOR ALL NODES");
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXIS_COUNT; ++nodeId) {
             if (!canOpen.send_zeroInitialize(nodeId)) {
-                failedNodeIds.push_back(nodeId);
+                failedNodeIds.insert(nodeId);
             }
         }
     } else {
         for (uint8_t nodeId : params.nodeIds) {
             if(!canOpen.send_zeroInitialize(nodeId)) {
-                failedNodeIds.push_back(nodeId);
+                failedNodeIds.insert(nodeId);
             }
         }
     }

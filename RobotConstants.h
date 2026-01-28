@@ -12,7 +12,7 @@ namespace RobotConstants {
         constexpr double SECONDS_IN_MINUTE = 60.0;
     }
 
-    // 
+    // Command identifiers sent to the robot controller
     namespace COMMANDS {        
         const String MOVE_ABSOLUTE = "MAJ";
         const String MOVE_RELATIVE = "MRJ";

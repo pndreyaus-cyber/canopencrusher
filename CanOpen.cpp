@@ -19,13 +19,19 @@ bool CanOpen::send_zeroInitialize(uint8_t nodeId)
         return false;
     }
 
-    return sendSDO(
+    ok = sendSDO(
         nodeId,
         2,
         0x260A,
         0x00,
         data2
     );
+
+    if (!ok) {
+        Serial2.println("Failed to send second part of zero initialization");
+        return false;
+    }
+    return true;
 }
 
 bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value)
