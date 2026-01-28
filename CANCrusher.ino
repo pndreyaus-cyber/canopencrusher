@@ -2,9 +2,9 @@
 #include "CanOpenController.h"
 #include "CanOpen.h"
 #include "Params.h"
+#include "RobotConstants.h"
 
-#define STEPS_PER_REVOLUTION 32768
-#define UNITS_PER_REVOLUTION 7.2
+#define DEBUG
 
 const String COMMAND_MOVE_ABSOLUTE = "MAJ";
 const String COMMAND_MOVE_RELATIVE = "MRJ";
@@ -21,18 +21,15 @@ HardwareSerial Serial2(PA3, PA2);
 CanOpen canOpen;
 MoveController moveController;
 
-const int axesNum = 6;
-Axis axes[6]; 
-
 uint8_t buf[8];
 
 String inData;
 uint8_t bufIndex = 0;			 // хранилище данных с последовательного порта
 std::vector<String> outData; // очередь сообщений на отправку
 
-MoveParams stringToMoveParams(String command)
+MoveParams<RobotConstants::Robot::AXIS_COUNT> stringToMoveParams(String command)
 {
-	MoveParams params;
+	MoveParams<RobotConstants::Robot::AXIS_COUNT> params;
 
 	int JA_Index = command.indexOf("JA");
 	int JB_Index = command.indexOf("JB");
@@ -99,7 +96,7 @@ PositionParams stringToPositionParams(String command)
   params.currentPosition = command.substring(positionIndex + 3, idIndex).toFloat();
   params.nodeId = command.substring(idIndex + 2).toInt();
 
-	if ((params.nodeId <= 0.0F) || (params.nodeId > 6.0F))
+	if ((params.nodeId <= 0) || (params.nodeId > RobotConstants::Robot::AXIS_COUNT))
 	{
 		params.status = ParamsStatus::INVALID_PARAMS;
 		return params;
@@ -110,7 +107,7 @@ PositionParams stringToPositionParams(String command)
 }
 
 
-void handleMove(MoveParams params, bool isAbsoluteMove){
+void handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove){
     if(params.status != ParamsStatus::OK){
         if(params.status == ParamsStatus::INVALID_PARAMS)
             addDataToOutQueue("INVALID PARAMS");
@@ -119,26 +116,35 @@ void handleMove(MoveParams params, bool isAbsoluteMove){
         return;
     }
     
-    for(int i = 0; i < axesNum; ++i){
+    for(uint8_t nodeId = 1; nodeId <= moveController.getAxesCount(); ++nodeId){
 
-        if(isAbsoluteMove) axes[i].setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
-        else axes[i].setTargetPositionRelativeInUnits(params.movementUnits[i]);
+        if(isAbsoluteMove) moveController.getAxis(nodeId).setTargetPositionAbsoluteInUnits(params.movementUnits[nodeId - 1]);
+        else moveController.getAxis(nodeId).setTargetPositionRelativeInUnits(params.movementUnits[nodeId - 1]);
     }
 
     moveController.setRegularSpeedUnits(params.speed);
     moveController.setAccelerationUnits(params.acceleration);
 
-    moveController.moveAsync(axes[0], axes[1], axes[2], axes[3], axes[5]); // TODO: не забыть про ось 4
+    moveController.move();
 }
 
 void handleSetCurrentPositionInSteps(PositionParams params){
-    axes[params.nodeId].setCurrentPositionInSteps(params.currentPosition);
-    addDataToOutQueue("(S)New current position for " + String(params.nodeId) + ": " + String(axes[params.nodeId].getCurrentPositionInSteps()));
+    if(params.nodeId < 1 || params.nodeId > RobotConstants::Robot::AXIS_COUNT){
+        addDataToOutQueue("INVALID NODE ID: " + String(params.nodeId));
+        return;
+    }
+
+    moveController.getAxis(params.nodeId).setCurrentPositionInSteps(params.currentPosition);
+    addDataToOutQueue("(S)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
 }
 
 void handleSetCurrentPositionInUnits(PositionParams params){
-    axes[params.nodeId].setCurrentPositionInUnits(params.currentPosition);
-    addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(axes[params.nodeId].getCurrentPositionInSteps()));
+    if(params.nodeId < 1 || params.nodeId > moveController.getAxesCount()){
+        addDataToOutQueue("INVALID NODE ID: " + String(params.nodeId));
+        return;
+    }
+    moveController.getAxis(params.nodeId).setCurrentPositionInUnits(params.currentPosition);
+    addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
 }
 
 
@@ -157,21 +163,15 @@ void setup() {
         Serial2.println("CAN bus initialized successfully");
     }
     
-    moveController.start(&canOpen);
-
-
-    for (int i = 0; i < axesNum; ++i) {
-        axes[i].setMotorId(i + 1);
+    if(!moveController.start(&canOpen, RobotConstants::Robot::AXIS_COUNT)) {
+        Serial2.println("Failed to initialize MoveController");
+        while (1);
+    } else {
+        Serial2.println("MoveController initialized successfully");
     }
 
     inData.reserve(128);
     outData.reserve(128);
-
-
-    for(int i = 0; i < axesNum; ++i){
-        axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
-        axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
-    }
 
 }
 

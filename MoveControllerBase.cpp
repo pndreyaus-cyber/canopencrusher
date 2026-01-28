@@ -3,14 +3,11 @@
 #include "Arduino.h"
 
 namespace StepDirController{
-// MoveControllerBase::MoveControllerBase(CanOpen *canOpen) : canOpen(canOpen) {}
-
 
 
 void MoveControllerBase::setRegularSpeedUnits(double speed)
 {
-    speed = std::fabs(speed); // Edited for C++
-    regularSpeedUnits = speed;
+    regularSpeedUnits = std::fabs(speed); // Edited for C++
 }
 
 void MoveControllerBase::setAccelerationUnits(double acceleration)
@@ -18,109 +15,85 @@ void MoveControllerBase::setAccelerationUnits(double acceleration)
     accelerationUnits = std::fabs(acceleration);  // Edited for C++
 }
 
-void MoveControllerBase::setOnMoveStarted(void (*callback)())
-{
-    onMoveStarted = callback;
-}
-
-void MoveControllerBase::setOnMoveFinished(void (*callback)())
-{
-    onMoveFinished = callback;
-}
-
-void MoveControllerBase::setOnEmergensyStoped(void (*callback)())
-{
-    onEmergensyStoped = callback;
-}
-
-
-void MoveControllerBase::prepareMoveWithoutSync()
-{
-    Axis** axes = axisList;
-    while(*(axes) != nullptr)
-    {
-        (*axes)->canOpenCharacteristics.x6081_profileVelocity = (*axes)->speedUnitsToRevolutionsPerMinute(regularSpeedUnits);
-        (*axes)->canOpenCharacteristics.x6083_profileAcceleration = (*axes)->accelerationUnitsTorpmPerSecond(accelerationUnits);
-        (*axes++);
-    }
-}
-
 void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe other corner cases
 {
-    leadAxis = axisList[0];
-
-    if (leadAxis == nullptr)
-        return ;
-
-    stepsDoneAll = 0;
-    stepsAll = 0;
-
-    Axis** axes = axisList;
-    while (*(axes) != nullptr)
-    {
-        if (std::fabs(leadAxis->movementUnits) < std::fabs((*axes)->movementUnits)) // Edited for C++
-            leadAxis = (*axes);
-
-        (*axes++);
+    if (axesCnt == 0 || axes.empty()) { 
+        Serial2.println("No axes configured"); 
+        return; 
     }
-    
+#ifdef DEBUG
+    Serial2.println("MoveControllerBase.cpp prepareMove called");
+#endif    
+    uint8_t maxMovementAxisId = 0;
+    bool firstAxis = true;
+    double maxMovement = 0;
 
-    double maxPath = fabs(leadAxis->movementUnits);
-    axes = axisList;
-    if(accelerationUnits == 0){
-        Serial2.println("MoveControllerBase.cpp accelerationUnits division by zero");
+    for (auto it = axes.begin(); it != axes.end(); ++it) {
+        Axis& axis = it->second;
+        double axisMovement = std::fabs(axis.getMovementUnits());
+        if (firstAxis || axisMovement > maxMovement) {
+            maxMovement = axisMovement;
+            maxMovementAxisId = axis.nodeId;
+            firstAxis = false;
+        }
+    }
+
+    if(accelerationUnits == 0){ // Right now we do not support zero acceleration. But in the future we can add special handling for this case.
+        Serial2.println("MoveControllerBase.cpp zero acceleration is not supported");
+        return;
     }
     double tAcceleration = regularSpeedUnits / accelerationUnits; // в секундах
-    if(regularSpeedUnits == 0){
-        Serial2.println("MoveControllerBase.cpp accelerationUnits division by zero");
+    if(regularSpeedUnits == 0){ // Zero speed means no movement at all. It is strange to call move with zero speed
+        Serial2.println("MoveControllerBase.cpp zero regularSpeedUnits is not supported (zero speed)");
+        return;
     }
-    double tCruising = (maxPath - regularSpeedUnits * regularSpeedUnits / accelerationUnits) / regularSpeedUnits;
+    double tCruising = (maxMovement - regularSpeedUnits * regularSpeedUnits / accelerationUnits) / regularSpeedUnits;
     double res = 0;
-    while (*(axes) != nullptr)
-    {
-        if(maxPath == 0){
-            Serial2.println("MoveControllerBase.cpp maxPath division by zero");
-       }
-        double syncCoefficient = fabs((*axes)->movementUnits) / maxPath;
-        double axisMovementUnits = fabs((*axes)->movementUnits);
-        if(tAcceleration == 0 || (tAcceleration + tCruising == 0)){
-            Serial2.println("MoveControllerBase.cpp tAcceleration or tAcceleration + tCruising division by zero");
-        }
-        (*axes)->acceleration = (axisMovementUnits) / (tAcceleration * (tAcceleration + tCruising));
-        (*axes)->regularSpeed = (*axes)->acceleration * tAcceleration;
-        (*axes)->canOpenCharacteristics.x6083_profileAcceleration = (*axes)->accelerationUnitsTorpmPerSecond((*axes)->acceleration);
-        (*axes)->canOpenCharacteristics.x6081_profileVelocity = (*axes)->speedUnitsToRevolutionsPerMinute((*axes)->regularSpeed);
 
-        (*axes++);
+    if(maxMovement == 0){
+        Serial2.println("MoveControllerBase.cpp maxMovement division by zero. Motors do not need to move.");
+        return;
     }
 
-    axes = axisList;
+    if(tAcceleration == 0 || (tAcceleration + tCruising == 0)){
+        Serial2.println("MoveControllerBase.cpp tAcceleration or tAcceleration + tCruising division by zero");
+        return;
+    }
+
+    for (auto it = axes.begin(); it != axes.end(); ++it) {
+        Axis& axis = it->second;
+
+        double axisMovementUnits = std::fabs(axis.getMovementUnits());
+
+        axis.acceleration = (axisMovementUnits) / (tAcceleration * (tAcceleration + tCruising));
+        axis.regularSpeed = axis.acceleration * tAcceleration;
+        axis.canOpenCharacteristics.x6083_profileAcceleration = axis.accelerationUnitsTorpmPerSecond(axis.acceleration);
+        axis.canOpenCharacteristics.x6081_profileVelocity = axis.speedUnitsToRevolutionsPerMinute(axis.regularSpeed);
+
+    }
 }
 
 void MoveControllerBase::sendMove()
 {
-    Axis** axes = axisList;
-    while (*(axes) != nullptr)
-    {
-        Axis* axis = *axes;
-        canOpen->send_x6081_profileVelocity(axis->nodeId, axis->canOpenCharacteristics.x6081_profileVelocity);
+    for (auto it = axes.begin(); it != axes.end(); ++it) {
+        Axis& axis = it->second;
+        canOpen->send_x6081_profileVelocity(axis.nodeId, axis.canOpenCharacteristics.x6081_profileVelocity);
         delay(5);
-        canOpen->send_x6083_profileAcceleration(axis->nodeId, axis->canOpenCharacteristics.x6083_profileAcceleration);
+        canOpen->send_x6083_profileAcceleration(axis.nodeId, axis.canOpenCharacteristics.x6083_profileAcceleration);
         delay(5);
         
-        canOpen->send_x6040_controlword(axis->nodeId, 0x004F);
+        canOpen->send_x6040_controlword(axis.nodeId, 0x004F);
         delay(5);
         
-        canOpen->send_x6040_controlword(axis->nodeId, 0x005F);
+        canOpen->send_x6040_controlword(axis.nodeId, 0x005F);
         delay(5);
         
-        canOpen->sendPDO4_x607A_SyncMovement(axis->nodeId, axis->getTargetPositionAbsolute());
+        canOpen->sendPDO4_x607A_SyncMovement(axis.nodeId, axis.getTargetPositionAbsolute());
         delay(5);
         
-        (*axes)->canOpenCharacteristics.x6064_positionActualValue = (*axes)->canOpenCharacteristics.x607A_targetPosition;
-        
-        (*axes++);
+        axis.canOpenCharacteristics.x6064_positionActualValue = axis.canOpenCharacteristics.x607A_targetPosition; // Imitation, that the motor reached the target position
     }
+    
     delay(5);
     canOpen->sendSYNC();
 }
@@ -133,6 +106,41 @@ double MoveControllerBase::getRegularSpeedUnits() const
 double MoveControllerBase::getAccelerationUnits() const
 {
     return accelerationUnits;
+}
+
+bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
+    if (axesCnt == 0) { 
+        Serial2.println("MoveControllerBase.cpp start -- axesCnt is zero");
+        return false;
+    }   
+    if (canOpen == nullptr) {
+        Serial2.println("MoveControllerBase.cpp start -- canOpen is nullptr");
+        return false;
+    }
+
+    this->canOpen = canOpen;
+    this->axesCnt = axesCnt;
+
+    for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId){
+        axes[nodeId] = Axis(nodeId);
+    }
+
+    initialized = true;
+    return true;
+}
+
+void MoveControllerBase::move() {
+#ifdef DEBUG
+    Serial2.println("MoveControllerBase.cpp move called");
+#endif 
+   
+    if (!initialized) {
+        Serial2.println("MoveControllerBase.cpp move -- MoveControllerBase not initialized");
+        return;
+    }
+    prepareMove();
+    sendMove();
+
 }
 
 }

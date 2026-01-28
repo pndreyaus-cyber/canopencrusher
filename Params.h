@@ -1,5 +1,9 @@
 #ifndef PARAMS_H
+
 #define PARAMS_H
+
+#include <cstddef>
+
 enum struct ParamsStatus
 {
 	OK,
@@ -17,10 +21,11 @@ enum struct CanResult
 	RECEIVED
 };
 
+template <std::size_t N>
 struct MoveParams
 {
 	ParamsStatus status;
-	double movementUnits[6];
+	double movementUnits[N];
 	double speed;
 	double acceleration;
 	//double deceleration;

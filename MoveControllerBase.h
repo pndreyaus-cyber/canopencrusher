@@ -1,33 +1,29 @@
 #ifndef MOVECONTROLLERBASE_H
+
 #define MOVECONTROLLERBASE_H
 
-#include "ControllerBase.h"
+#include <string>
+#include <unordered_map>
 #include "CanOpen.h"
 #include "Params.h"
-#include <string>
+#include "Axis.h"
+
 
 namespace StepDirController{ 
-class MoveControllerBase : public ControllerBase{
+class MoveControllerBase {
     public:
-        //MoveControllerBase(CanOpen *canOpen);
-        bool start(CanOpen* canOpen){
-            this->canOpen = canOpen;
-            return true;
-        }
+        bool start(CanOpen* canOpen, uint8_t axesCnt);
+
+        uint8_t getAxesCount() const { return axesCnt; }
+        Axis& getAxis(uint8_t nodeId) { return axes.at(nodeId);}
         
-        void setRegularSpeedUnits(double speed) override; // настройка крейсерской скорости в единицах измерения в секунду (градусы в секунду)
-        void setAccelerationUnits(double acceleration) override; // настройка ускорения в единицах измерения в секунду^2 (градусы в секунду^2)
+        void setRegularSpeedUnits(double speed); // настройка крейсерской скорости в единицах измерения в секунду (градусы в секунду)
+        void setAccelerationUnits(double acceleration); // настройка ускорения в единицах измерения в секунду^2 (градусы в секунду^2)
 
         double getRegularSpeedUnits() const;
         double getAccelerationUnits() const;
 
-        void setOnMoveStarted(void (*callback)());
-        void setOnMoveFinished(void (*callback)());
-        void setOnEmergensyStoped(void (*callback)());
-
-
-        template<typename... Axes>
-        void moveAsync(Axis& axis, Axes&... axes);
+        void move();
 
         // TODO: добавить метод, например, void tick(), вызывать его из loop в ino-файле
         // метод tick() должен вызывать метод чтения (который нужно написать) у CanOpen (который сам взаимодействует с шиной CAN)
@@ -39,30 +35,18 @@ class MoveControllerBase : public ControllerBase{
 
     protected:
         void prepareMove();
-        void prepareMoveWithoutSync();
-
-        void (*onMoveStarted)() = nullptr; // callback перед началом движения
-        void (*onMoveFinished)() = nullptr; // callback после завершения движения
-
-        void (*onEmergensyStoped)() = nullptr; // callback после аварийной остановки
         
     private:
         CanOpen* canOpen;
+        std::unordered_map<uint8_t, Axis> axes;
+        bool initialized = false;
+        uint8_t axesCnt = 0;
+
+        double regularSpeedUnits = 1.0f; // The speed of the maximum moving axis in percent of full speed (1.0 = 100%)
+        double accelerationUnits = 1.0f; // The acceleration of the maximum moving axis in percent of full acceleration (1.0 = 100%)
+
         void sendMove();
 };
-
-template <typename... Axes>
-void MoveControllerBase::moveAsync(Axis& axis, Axes&... axes)
-{
-    if (isMoving())
-        return;
-
-    movingInProgress = true;
-    attachAxes(axis, axes...);
-    prepareMove();
-    sendMove();
-    movingInProgress = false; // TODO: снимать флаг при получении ответа от двигателей о завершении движения
-}
 
 }
 
