@@ -12,6 +12,16 @@ namespace RobotConstants {
         constexpr double SECONDS_IN_MINUTE = 60.0;
     }
 
+    // 
+    namespace COMMANDS {        
+        const String MOVE_ABSOLUTE = "MAJ";
+        const String MOVE_RELATIVE = "MRJ";
+        const String ECHO = "ECH";
+        const String SET_CURRENT_POSITION_IN_STEPS = "SCS";
+        const String SET_CURRENT_POSITION_IN_UNITS = "SCU";
+        const String ZERO_INITIALIZE = "ZEI";
+    }
+
     // Robot specifications
     namespace Robot {
         constexpr uint8_t AXIS_COUNT = 6;

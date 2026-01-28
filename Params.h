@@ -38,4 +38,11 @@ struct PositionParams
 	uint8_t nodeId; 
 };
 
+struct ZEIParams
+{
+    ParamsStatus status;
+    bool forAllNodes;
+    std::vector<uint8_t> nodeIds; 
+};
+
 #endif

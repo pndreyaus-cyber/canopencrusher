@@ -6,13 +6,6 @@
 
 #define DEBUG
 
-const String COMMAND_MOVE_ABSOLUTE = "MAJ";
-const String COMMAND_MOVE_RELATIVE = "MRJ";
-const String COMMAND_ECHO = "ECH";
-const String COMMAND_SET_CURRENT_POSITION_IN_STEPS = "SCS";
-const String COMMAND_SET_CURRENT_POSITION_IN_UNITS = "SCU";
-
-
 const double MAX_SPEED = 360;
 const double MAX_ACCELERATION = 7864.20;
 
@@ -26,6 +19,128 @@ uint8_t buf[8];
 String inData;
 uint8_t bufIndex = 0;			 // хранилище данных с последовательного порта
 std::vector<String> outData; // очередь сообщений на отправку
+
+MoveParams<RobotConstants::Robot::AXIS_COUNT> stringToMoveParams(String command);
+PositionParams stringToPositionParams(String command);
+void handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove);
+void handleSetCurrentPositionInSteps(PositionParams params);
+void handleSetCurrentPositionInUnits(PositionParams params);
+bool handleZeroInitialize(ZEIParams params);
+
+void setup() {
+    Serial2.setRx(PA3);
+    Serial2.setTx(PA2);
+
+    Serial2.begin(115200); 
+    while(!Serial2){}
+    Serial2.println("Serial connected!");
+
+    if (!canOpen.startCan(1000000)) {
+        Serial2.println("Failed to initialize CAN bus");
+        while (1);
+    } else {
+        Serial2.println("CAN bus initialized successfully");
+    }
+    
+    if(!moveController.start(&canOpen, RobotConstants::Robot::AXIS_COUNT)) {
+        Serial2.println("Failed to initialize MoveController");
+        while (1);
+    } else {
+        Serial2.println("MoveController initialized successfully");
+    }
+
+    inData.reserve(128);
+    outData.reserve(128);
+
+}
+
+void loop() {
+    if (receiveCommand())
+        handleCommand();
+
+    sendData();
+}
+
+bool receiveCommand()
+{
+    char received = 0x00;
+    if(Serial2.available()){
+        received = Serial2.read();
+        inData += received;
+    }
+    return received == '\n';
+}
+
+void handleCommand()
+{
+    inData.replace(" ","");
+    inData.replace("\n", "");
+    inData.replace("\r", "");
+
+    if (inData.length() < 3)
+    {
+        inData = "";
+        addDataToOutQueue("INVALID COMMAND: TOO SHORT");
+        return;
+    }
+
+    String function = inData.substring(0, 3);
+
+    if (function.equals(RobotConstants::COMMANDS::MOVE_ABSOLUTE))
+    {
+        handleMove(stringToMoveParams(inData), true);
+        addDataToOutQueue("MAJ COMMAND COMPLETED");
+    }
+
+    else if (function.equals(RobotConstants::COMMANDS::MOVE_RELATIVE))
+    {
+        handleMove(stringToMoveParams(inData), false);
+        addDataToOutQueue("MRJ COMMAND COMPLETED");
+    }
+    else if (function.equals(RobotConstants::COMMANDS::ECHO))
+    {
+        addDataToOutQueue(inData);  
+    }
+    else if(function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_STEPS))
+    {
+        handleSetCurrentPositionInSteps(stringToPositionParams(inData));
+        addDataToOutQueue("SCS COMMAND COMPLETED");
+    }
+    else if(function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_UNITS))
+    {
+        handleSetCurrentPositionInUnits(stringToPositionParams(inData));
+        addDataToOutQueue("SCU COMMAND COMPLETED");
+    }
+    else if(function.equals(RobotConstants::COMMANDS::ZERO_INITIALIZE)) 
+    {
+        handleZeroInitialize(stringToZEIParams(inData));
+        addDataToOutQueue("ZEI COMMAND COMPLETED");
+    }
+    else
+        addDataToOutQueue("INVALID COMMAND");
+
+    inData = "";
+}
+
+void addDataToOutQueue(String data) // добавление сообщений в очередь на отправку на компьютер
+{
+    noInterrupts();
+    outData.push_back(data);
+    interrupts();
+}
+
+void sendData() // отправка сообщений на компьютер
+{
+    if (outData.size() == 0)
+        return;
+
+    noInterrupts();
+    String data = outData.front();
+    outData.erase(outData.begin());
+    interrupts();
+
+    Serial2.println(data);
+}
 
 MoveParams<RobotConstants::Robot::AXIS_COUNT> stringToMoveParams(String command)
 {
@@ -106,6 +221,58 @@ PositionParams stringToPositionParams(String command)
 	return params;
 }
 
+ZEIParams stringToZEIParams(String command)
+{
+    if (command.equals(RobotConstants::COMMANDS::ZERO_INITIALIZE))
+    {
+        ZEIParams params;
+        params.status = ParamsStatus::OK;
+        params.forAllNodes = true;
+        return params;
+    }
+    
+    ZEIParams params;
+    
+    int idStartIndex = RobotConstants::COMMANDS::ZERO_INITIALIZE.length();
+    
+    while(idStartIndex != -1) {
+        if(inData.charAt(idStartIndex) != 'M') {
+            addDataToOutQueue("INVALID PARAMETERS FOR ZEI. EXPECTED 'M' AT INDEX " + String(idStartIndex));
+            params.status = ParamsStatus::INVALID_PARAMS;
+            params.forAllNodes = false;
+            params.nodeIds.clear();
+            return params;
+        }
+        
+        int nextIdStartIndex = inData.indexOf('M', idStartIndex + 1);
+        String idStr = inData.substring(idStartIndex + 1, nextIdStartIndex == -1 ? inData.length() : nextIdStartIndex);
+
+        // check if idStr is a valid number
+        if (idStr.length() == 0 || !idStr.equals(String(idStr.toInt()))) {
+            addDataToOutQueue("NODE ID IS NOT A VALID INTEGER: " + idStr);
+            params.status = ParamsStatus::INVALID_PARAMS;
+            params.forAllNodes = false;
+            params.nodeIds.clear();
+            return params;
+        }
+
+        uint8_t nodeId = idStr.toInt();
+        if (nodeId < 1 || nodeId > RobotConstants::Robot::AXIS_COUNT) {
+            addDataToOutQueue("INVALID NODE ID FOR ZEI: " + String(nodeId));
+            params.status = ParamsStatus::INVALID_PARAMS;
+            params.forAllNodes = false;
+            params.nodeIds.clear();
+            return params;
+        }
+        params.nodeIds.push_back(nodeId);
+        idStartIndex = nextIdStartIndex;
+    }
+
+    params.status = ParamsStatus::OK;
+    params.forAllNodes = false;
+    return params;
+}
+
 
 void handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove){
     if(params.status != ParamsStatus::OK){
@@ -147,111 +314,34 @@ void handleSetCurrentPositionInUnits(PositionParams params){
     addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
 }
 
-
-void setup() {
-    Serial2.setRx(PA3);
-    Serial2.setTx(PA2);
-
-    Serial2.begin(115200); 
-    while(!Serial2){}
-    Serial2.println("Serial connected!");
-
-    if (!canOpen.startCan(1000000)) {
-        Serial2.println("Failed to initialize CAN bus");
-        while (1);
+bool handleZeroInitialize(ZEIParams params) {
+    std::vector<uint8_t> failedNodeIds;
+    if (params.status != ParamsStatus::OK) {
+        addDataToOutQueue("INVALID PARAMS FOR ZEI");
+        return false;
+    }
+    if(params.forAllNodes){
+        addDataToOutQueue("ZEI FOR ALL NODES");
+        for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXIS_COUNT; ++nodeId) {
+            if (!canOpen.send_zeroInitialize(nodeId)) {
+                failedNodeIds.push_back(nodeId);
+            }
+        }
     } else {
-        Serial2.println("CAN bus initialized successfully");
-    }
-    
-    if(!moveController.start(&canOpen, RobotConstants::Robot::AXIS_COUNT)) {
-        Serial2.println("Failed to initialize MoveController");
-        while (1);
-    } else {
-        Serial2.println("MoveController initialized successfully");
+        for (uint8_t nodeId : params.nodeIds) {
+            if(!canOpen.send_zeroInitialize(nodeId)) {
+                failedNodeIds.push_back(nodeId);
+            }
+        }
     }
 
-    inData.reserve(128);
-    outData.reserve(128);
-
-}
-
-void loop() {
-    if (receiveCommand())
-        handleCommand();
-
-    sendData();
-}
-
-bool receiveCommand()
-{
-    char received = 0x00;
-    if(Serial2.available()){
-        received = Serial2.read();
-        inData += received;
+    if(failedNodeIds.size() > 0) {
+        String errorMsg = "ZEI FAILED FOR NODES: ";
+        for (uint8_t id : failedNodeIds) {
+            errorMsg += String(id) + " ";
+        }
+        addDataToOutQueue(errorMsg);
+        return false;
     }
-    return received == '\n';
-}
-
-void handleCommand()
-{
-    inData.replace(" ","");
-    inData.replace("\n", "");
-    inData.replace("\r", "");
-
-    if (inData.length() < 3)
-    {
-        inData = "";
-        addDataToOutQueue("INVALID COMMAND: TOO SHORT");
-        return;
-    }
-
-    String function = inData.substring(0, 3);
-
-    if (function == COMMAND_MOVE_ABSOLUTE)
-    {
-        handleMove(stringToMoveParams(inData), true);
-        addDataToOutQueue("MAJ COMMAND COMPLETED");
-    }
-
-    else if (function == COMMAND_MOVE_RELATIVE)
-    {
-        handleMove(stringToMoveParams(inData), false);
-        addDataToOutQueue("MRJ COMMAND COMPLETED");
-    }
-    else if (function.equals(COMMAND_ECHO))
-        addDataToOutQueue(inData.substring(4));  
-    else if(function == "SCS")
-    {
-        handleSetCurrentPositionInSteps(stringToPositionParams(inData));
-        addDataToOutQueue("SCS COMMAND COMPLETED");
-    }
-    else if(function == "SCU")
-    {
-        handleSetCurrentPositionInUnits(stringToPositionParams(inData));
-        addDataToOutQueue("SCU COMMAND COMPLETED");
-    }
-    else
-        addDataToOutQueue("INVALID COMMAND");
-
-    inData = "";
-}
-
-void addDataToOutQueue(String data) // добавление сообщений в очередь на отправку на компьютер
-{
-    noInterrupts();
-    outData.push_back(data);
-    interrupts();
-}
-
-void sendData() // отправка сообщений на компьютер
-{
-    if (outData.size() == 0)
-        return;
-
-    noInterrupts();
-    String data = outData.front();
-    outData.erase(outData.begin());
-    interrupts();
-
-    Serial2.println(data);
+    return true;
 }
