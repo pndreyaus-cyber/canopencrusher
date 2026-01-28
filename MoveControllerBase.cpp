@@ -17,22 +17,22 @@ void MoveControllerBase::setAccelerationUnits(double acceleration)
 
 void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe other corner cases
 {
-    if (axesCnt == 0) { 
+    if (axesCnt == 0 || axes.empty()) { 
         Serial2.println("No axes configured"); 
         return; 
     }
     
     Serial2.println("MoveControllerBase.cpp prepareMove called");
-    int maxMovementAxisId = 1;;
+    int maxMovementAxisId = axes.begin()->first;
+    double maxMovement = std::fabs(axes.at(maxMovementAxisId).getMovementUnits());
 
-    for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId) {
-        if (std::fabs(axes.at(nodeId).getMovementUnits()) > std::fabs(axes.at(maxMovementAxisId).getMovementUnits())) {
-            maxMovementAxisId = nodeId;
+    for (auto it = axes.begin(); it != axes.end(); ++it) {
+        Axis& axis = it->second;
+        if (std::fabs(axis.getMovementUnits()) > maxMovement) {
+            maxMovement = std::fabs(axis.getMovementUnits());
+            maxMovementAxisId = axis.nodeId;
         }
-    }   
-
-    Axis *leadAxis = &axes.at(maxMovementAxisId);
-    double maxPath = std::fabs(leadAxis->getMovementUnits());
+    }
 
     if(accelerationUnits == 0){ // Right now we do not support zero acceleration. But in the future we can add special handling for this case.
         Serial2.println("MoveControllerBase.cpp accelerationUnits division by zero");
@@ -43,11 +43,11 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
         Serial2.println("MoveControllerBase.cpp regularSpeedUnits division by zero");
         return;
     }
-    double tCruising = (maxPath - regularSpeedUnits * regularSpeedUnits / accelerationUnits) / regularSpeedUnits;
+    double tCruising = (maxMovement - regularSpeedUnits * regularSpeedUnits / accelerationUnits) / regularSpeedUnits;
     double res = 0;
 
-    if(maxPath == 0){
-        Serial2.println("MoveControllerBase.cpp maxPath division by zero. Motors do not need to move.");
+    if(maxMovement == 0){
+        Serial2.println("MoveControllerBase.cpp maxMovement division by zero. Motors do not need to move.");
         return;
     }
 
@@ -113,7 +113,7 @@ bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
         Serial2.println("MoveControllerBase.cpp start -- canOpen is nullptr");
         return false;
     }
-    
+
     this->canOpen = canOpen;
     this->axesCnt = axesCnt;
 
