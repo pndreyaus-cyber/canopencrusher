@@ -3,6 +3,7 @@
 #define PARAMS_H
 
 #include <cstddef>
+#include <unordered_set>
 
 enum struct ParamsStatus
 {
@@ -36,6 +37,13 @@ struct PositionParams
 	ParamsStatus status;
 	int32_t currentPosition;
 	uint8_t nodeId; 
+};
+
+struct ZEIParams
+{
+    ParamsStatus status;
+    bool forAllNodes;
+    std::unordered_set<uint8_t> nodeIds; 
 };
 
 #endif
