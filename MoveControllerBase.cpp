@@ -25,14 +25,16 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
     }
     
     Serial2.println("MoveControllerBase.cpp prepareMove called");
-    int maxMovementAxisIndex = 0;
-    for (int i = 1; i < axesCnt; ++i) {
-        if (std::fabs(axes[i].getMovementUnits()) > std::fabs(axes[maxMovementAxisIndex].getMovementUnits())) {
-            maxMovementAxisIndex = i;
+    uint8_t maxMovementAxisNodeId = 1;
+    double maxMovement = 0;
+    for (const auto& pair : axes) {
+        if (std::fabs(pair.second.getMovementUnits()) > maxMovement) {
+            maxMovement = std::fabs(pair.second.getMovementUnits());
+            maxMovementAxisNodeId = pair.first;
         }
     }   
 
-    Axis *leadAxis = &axes[maxMovementAxisIndex];
+    Axis *leadAxis = &axes[maxMovementAxisNodeId];
     double maxPath = std::fabs(leadAxis->getMovementUnits());
 
     if(accelerationUnits == 0){ // Right now we do not support zero acceleration. But in the future we can add special handling for this case.
@@ -56,7 +58,8 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
         Serial2.println("MoveControllerBase.cpp tAcceleration or tAcceleration + tCruising division by zero");
         return;
     }
-    for (Axis& axis : axes) {
+    for (auto& pair : axes) {
+        Axis& axis = pair.second;
 
         double axisMovementUnits = std::fabs(axis.movementUnits);
 
@@ -70,7 +73,8 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
 
 void MoveControllerBase::sendMove()
 {
-    for (Axis& axis : axes) {
+    for (auto& pair : axes) {
+        Axis& axis = pair.second;
         canOpen->send_x6081_profileVelocity(axis.nodeId, axis.canOpenCharacteristics.x6081_profileVelocity);
         delay(5);
         canOpen->send_x6083_profileAcceleration(axis.nodeId, axis.canOpenCharacteristics.x6083_profileAcceleration);
@@ -113,14 +117,13 @@ bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
 }
 
 void MoveControllerBase::initializeAxes(){
-    axes.resize(axesCnt);
-
     for (uint8_t i = 0; i < axesCnt; ++i){
-        axes[i] = Axis(i + 1); // Node IDs start from 1
-        init_od_ram(&axes[i].canOpenCharacteristics);
+        uint8_t nodeId = i + 1; // Node IDs start from 1
+        axes[nodeId] = Axis(nodeId);
+        init_od_ram(&axes[nodeId].canOpenCharacteristics);
 
-        axes[i].setStepsPerRevolution(STEPS_PER_REVOLUTION);
-        axes[i].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
+        axes[nodeId].setStepsPerRevolution(STEPS_PER_REVOLUTION);
+        axes[nodeId].setUnitsPerRevolution(UNITS_PER_REVOLUTION);
     }
 }
 

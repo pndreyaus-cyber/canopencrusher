@@ -3,7 +3,7 @@
 #define MOVECONTROLLERBASE_H
 
 #include <string>
-#include <vector>
+#include <unordered_map>
 #include "CanOpen.h"
 #include "Params.h"
 #include "Axis.h"
@@ -15,7 +15,7 @@ class MoveControllerBase {
         bool start(CanOpen* canOpen, uint8_t axesCnt);
 
         uint8_t getAxesCount() const { return axesCnt; }
-        Axis& getAxis(uint8_t index) { return axes.at(index); }
+        Axis& getAxis(uint8_t nodeId) { return axes.at(nodeId); }
         
         void setRegularSpeedUnits(double speed); // настройка крейсерской скорости в единицах измерения в секунду (градусы в секунду)
         void setAccelerationUnits(double acceleration); // настройка ускорения в единицах измерения в секунду^2 (градусы в секунду^2)
@@ -38,7 +38,7 @@ class MoveControllerBase {
         
     private:
         CanOpen* canOpen;
-        std::vector<Axis> axes;
+        std::unordered_map<uint8_t, Axis> axes;
 
         uint8_t axesCnt = 0;
 

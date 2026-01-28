@@ -114,9 +114,9 @@ void handleMove(MoveParams params, bool isAbsoluteMove){
     }
     
     for(int i = 0; i < moveController.getAxesCount(); ++i){
-
-        if(isAbsoluteMove) moveController.getAxis(i).setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
-        else moveController.getAxis(i).setTargetPositionRelativeInUnits(params.movementUnits[i]);
+        uint8_t nodeId = i + 1; // Node IDs start from 1
+        if(isAbsoluteMove) moveController.getAxis(nodeId).setTargetPositionAbsoluteInUnits(params.movementUnits[i]);
+        else moveController.getAxis(nodeId).setTargetPositionRelativeInUnits(params.movementUnits[i]);
     }
 
     moveController.setRegularSpeedUnits(params.speed);
@@ -131,8 +131,8 @@ void handleSetCurrentPositionInSteps(PositionParams params){
 }
 
 void handleSetCurrentPositionInUnits(PositionParams params){
-    moveController.getAxis(params.nodeId - 1).setCurrentPositionInUnits(params.currentPosition);
-    addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId - 1).getCurrentPositionInSteps()));
+    moveController.getAxis(params.nodeId).setCurrentPositionInUnits(params.currentPosition);
+    addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
 }
 
 
