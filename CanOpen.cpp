@@ -1,6 +1,33 @@
 #include "CanOpen.h"
 #include <cstring> // for memcpy
 
+bool CanOpen::send_zeroInitialize(uint8_t nodeId)
+{
+    uint8_t data1[2] = {0x66, 0xEA};
+    uint8_t data2[2] = {0x70, 0xEA};
+
+    bool ok = sendSDO(
+        nodeId,
+        2,
+        0x260A,
+        0x00,
+        data1
+    );
+
+    if (!ok) {
+        Serial2.println("Failed to send first part of zero initialization");
+        return false;
+    }
+
+    return sendSDO(
+        nodeId,
+        2,
+        0x260A,
+        0x00,
+        data2
+    );
+}
+
 bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value)
 {
     return sendSDO(
