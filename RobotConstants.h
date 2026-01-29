@@ -12,6 +12,17 @@ namespace RobotConstants {
         constexpr double SECONDS_IN_MINUTE = 60.0;
     }
 
+    // Command identifiers sent to the robot controller
+    namespace COMMANDS {        
+        constexpr const char* MOVE_ABSOLUTE = "MAJ";
+        constexpr const char* MOVE_RELATIVE = "MRJ";
+        constexpr const char* ECHO = "ECH";
+        constexpr const char* SET_CURRENT_POSITION_IN_STEPS = "SCS";
+        constexpr const char* SET_CURRENT_POSITION_IN_UNITS = "SCU";
+        constexpr const char* ZERO_INITIALIZE = "ZEI";
+        constexpr int COMMAND_LEN = 3;
+    }
+
     // Robot specifications
     namespace Robot {
         constexpr uint8_t AXIS_COUNT = 6;

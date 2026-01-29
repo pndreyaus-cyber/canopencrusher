@@ -1,12 +1,55 @@
-#include "CanOpen.h"
 #include <cstring> // for memcpy
+#include "CanOpen.h"
+#include "RobotConstants.h"
+
+bool CanOpen::send_zeroInitialize(uint8_t nodeId)
+{
+    /*
+    According to the device documentation, 
+    zero initialization involves writing two specific values to an Electronic Gear Molecule register (with address 0x260A)  
+    
+    The first value is 0xEA66 (60006 in decimal)
+    The second value is 0xEA70 (60016 in decimal)
+
+    The CAN package uses little-endian format, so we need to reverse the byte order when sending
+    */
+    uint8_t data1[2] = {0x66, 0xEA};
+    uint8_t data2[2] = {0x70, 0xEA};
+
+    bool ok = sendSDO(
+        nodeId,
+        2,
+        RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES,
+        0x00,
+        data1
+    );
+
+    if (!ok) {
+        Serial2.println("Failed to send first part of zero initialization");
+        return false;
+    }
+
+    ok = sendSDO(
+        nodeId,
+        2,
+        RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES,
+        0x00,
+        data2
+    );
+
+    if (!ok) {
+        Serial2.println("Failed to send second part of zero initialization");
+        return false;
+    }
+    return true;
+}
 
 bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value)
 {
     return sendSDO(
         nodeId,
         4,
-        _ElectronicGearMolecules_Idx,
+        RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES,
         _ElectronicGearMolecules_ElectronicGearMolecules_sIdx,
         &value
     );
