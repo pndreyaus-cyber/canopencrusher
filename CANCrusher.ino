@@ -257,23 +257,30 @@ ZEIParams stringToZEIParams(String command)
     }
     
     ZEIParams params;
+    params.status = ParamsStatus::INVALID_PARAMS;
+    params.forAllNodes = false;
+
+    auto fail = [&]() {
+        params.status = ParamsStatus::INVALID_PARAMS;
+        params.forAllNodes = false;
+        params.nodeIds.clear();
+        return params;
+    };
     
     int idStartIndex = RobotConstants::COMMANDS::ZERO_INITIALIZE.length();
     
     while(idStartIndex != -1) {
         if(command.charAt(idStartIndex) != 'M') {
             addDataToOutQueue("INVALID PARAMETERS FOR ZEI. EXPECTED 'M' AT INDEX " + String(idStartIndex));
-            params.status = ParamsStatus::INVALID_PARAMS;
-            params.forAllNodes = false;
-            params.nodeIds.clear();
-            return params;
+            return fail();
         }
         
         int nextIdStartIndex = command.indexOf('M', idStartIndex + 1);
         String idStr = command.substring(idStartIndex + 1, nextIdStartIndex == -1 ? command.length() : nextIdStartIndex);
         bool isValidInteger = true;
         if (idStr.length() == 0) {
-            isValidInteger = false;
+            addDataToOutQueue("INVALID PARAMETERS FOR ZEI. EMPTY NODE ID.");
+            return fail();
         }else {
             for (size_t i = 0; i < idStr.length(); ++i) {
                 if (!isDigit(idStr.charAt(i))) {
@@ -284,21 +291,17 @@ ZEIParams stringToZEIParams(String command)
         }
 
         if (!isValidInteger ) {
-            params.status = ParamsStatus::INVALID_PARAMS;
-            params.forAllNodes = false;
-            params.nodeIds.clear();
-            return params;
+            addDataToOutQueue("INVALID PARAMETERS FOR ZEI. NODE ID MUST BE A VALID INTEGER: " + idStr);
+            return fail();
         }
 
-        uint8_t nodeId = idStr.toInt();
-        if (nodeId < 1 || nodeId > RobotConstants::Robot::AXIS_COUNT) {
-            addDataToOutQueue("INVALID NODE ID FOR ZEI: " + String(nodeId));
-            params.status = ParamsStatus::INVALID_PARAMS;
-            params.forAllNodes = false;
-            params.nodeIds.clear();
-            return params;
+        long nodeIdLong = idStr.toInt();
+
+        if (nodeIdLong < 1 || nodeIdLong > RobotConstants::Robot::AXIS_COUNT) {
+            addDataToOutQueue("INVALID NODE ID FOR ZEI: " + String(nodeIdLong));
+            return fail();
         }
-        params.nodeIds.insert(nodeId);
+        params.nodeIds.insert(static_cast<uint8_t>(nodeIdLong));
         idStartIndex = nextIdStartIndex;
     }
 
@@ -357,28 +360,39 @@ bool handleZeroInitialize(ZEIParams params) {
         addDataToOutQueue("INVALID PARAMS FOR ZEI");
         return false;
     }
-    if(params.forAllNodes){
+
+    uint8_t totalNodes = 0;
+
+    if (params.forAllNodes) {
         addDataToOutQueue("ZEI FOR ALL NODES");
+        totalNodes = RobotConstants::Robot::AXIS_COUNT;
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXIS_COUNT; ++nodeId) {
             if (!canOpen.send_zeroInitialize(nodeId)) {
                 failedNodeIds.insert(nodeId);
             }
         }
     } else {
+        totalNodes = static_cast<uint8_t>(params.nodeIds.size());
         for (uint8_t nodeId : params.nodeIds) {
-            if(!canOpen.send_zeroInitialize(nodeId)) {
+            if (!canOpen.send_zeroInitialize(nodeId)) {
                 failedNodeIds.insert(nodeId);
             }
         }
     }
 
-    if(failedNodeIds.size() > 0) {
-        String errorMsg = "ZEI FAILED FOR NODES: ";
-        for (uint8_t id : failedNodeIds) {
-            errorMsg += String(id) + " ";
+    if (failedNodeIds.size() > 0) {
+        if (failedNodeIds.size() == totalNodes) {
+            addDataToOutQueue("ZEI FAILED FOR ALL NODES");
+        } else {
+            String errorMsg = "ZEI PARTIALLY FAILED FOR NODES: ";
+            for (uint8_t id : failedNodeIds) {
+                errorMsg += String(id) + " ";
+            }
+            addDataToOutQueue(errorMsg);
         }
-        addDataToOutQueue(errorMsg);
         return false;
     }
+
+    addDataToOutQueue("ZEI COMPLETED FOR ALL TARGETED NODES");
     return true;
 }

@@ -14,12 +14,12 @@ namespace RobotConstants {
 
     // Command identifiers sent to the robot controller
     namespace COMMANDS {        
-        const String MOVE_ABSOLUTE = "MAJ";
-        const String MOVE_RELATIVE = "MRJ";
-        const String ECHO = "ECH";
-        const String SET_CURRENT_POSITION_IN_STEPS = "SCS";
-        const String SET_CURRENT_POSITION_IN_UNITS = "SCU";
-        const String ZERO_INITIALIZE = "ZEI";
+        constexpr const char* MOVE_ABSOLUTE = "MAJ";
+        constexpr const char* MOVE_RELATIVE = "MRJ";
+        constexpr const char* ECHO = "ECH";
+        constexpr const char* SET_CURRENT_POSITION_IN_STEPS = "SCS";
+        constexpr const char* SET_CURRENT_POSITION_IN_UNITS = "SCU";
+        constexpr const char* ZERO_INITIALIZE = "ZEI";
     }
 
     // Robot specifications
