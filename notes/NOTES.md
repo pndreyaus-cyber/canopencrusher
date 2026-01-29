@@ -35,3 +35,16 @@
 * Merge PR to main
 * Create a branch for feature/zeroInitializeEncoders. Implement this feature. Check it. Call it every time, the program is reset
 * Start reading data from CAN
+
+# 28.01
+## Results
+* Finished PR with moving axes management to movecontroller
+* Made a PR for zero initialization command
+    * It is handled from Serial
+    * Checked for correctness: length, parameter values, number of parameters
+    * Zero-initialization commands sent to CAN bus
+
+## What to do tomorrow
+* Start reading data from CAN
+* Read motor positions at setup and set axes positions to the consecutive positions
+* Check/modify code, so that functions have the same return style (return boolean or int to show the result of running this function)
