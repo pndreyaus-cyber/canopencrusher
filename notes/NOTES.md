@@ -48,3 +48,16 @@
 * Start reading data from CAN
 * Read motor positions at setup and set axes positions to the consecutive positions
 * Check/modify code, so that functions have the same return style (return boolean or int to show the result of running this function)
+
+# 29.01
+## Results
+* Finished PR with zero intialization
+* Implemented "RPP" command to request position
+* Version 1 of reading from CAN bus
+* Parsing of heartbeat and position messages
+* Made a PR for reading feature
+
+## What to do tomorrow
+* 2-3 times request a review of the PR from Copilot
+* Fix zero initialization function (so that the sequence is send - acknowledge - send - acknowledge)
+* At the start of the program aks all the motors for the current position
