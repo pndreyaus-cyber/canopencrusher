@@ -24,6 +24,7 @@ class MoveControllerBase {
         double getAccelerationUnits() const;
 
         void move();
+        
 
         // TODO: добавить метод, например, void tick(), вызывать его из loop в ino-файле
         // метод tick() должен вызывать метод чтения (который нужно написать) у CanOpen (который сам взаимодействует с шиной CAN)

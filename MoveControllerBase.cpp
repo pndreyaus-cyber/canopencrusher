@@ -91,7 +91,7 @@ void MoveControllerBase::sendMove()
         canOpen->sendPDO4_x607A_SyncMovement(axis.nodeId, axis.getTargetPositionAbsolute());
         delay(5);
         
-        axis.canOpenCharacteristics.x6064_positionActualValue = axis.canOpenCharacteristics.x607A_targetPosition; // Imitation, that the motor reached the target position
+        axis.currentPosition = axis.canOpenCharacteristics.x607A_targetPosition; // Imitation, that the motor reached the target position
     }
     
     delay(5);
@@ -124,6 +124,15 @@ bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
     for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId){
         axes[nodeId] = Axis(nodeId);
     }
+
+    canOpen->setSdoReadPositionCallback([this](uint8_t nodeId, int32_t position){
+        auto it = axes.find(nodeId);
+        if (it != axes.end()) {
+            Axis& axis = it->second;
+            axis.currentPosition = position;
+            Serial2.println("Axis " + String(nodeId) + " position updated via SDO callback: " + String(position));
+        }
+    });
 
     initialized = true;
     return true;
