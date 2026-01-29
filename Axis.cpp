@@ -41,7 +41,7 @@ Axis &Axis::setUnitsPerRevolution(double units)
     unitsPerRevolution = units;
     return *this;
 }
-
+/*
 Axis &Axis::enableLimits(double minUnits, double maxUnits)
 {
     if (!initialized) {
@@ -81,6 +81,7 @@ Axis &Axis::disableLimits()
     usePositionLimits = false;
     return *this;
 }
+*/
 
 Axis &Axis::setCurrentPositionInUnits(double units)
 {
@@ -316,6 +317,7 @@ double Axis::rpmPerSecondToAccelerationUnits(double rpmPerSecond) const  // Пе
     return (double)rpmPerSecond / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution; // TODO: потенциальная потеря точности расчетов из-за SECONDS_IN_MINUTE, лучше объявить как константу float/double
 }
 
+/*
 double Axis::getMaxLimitUnits() const
 {
     if (!initialized) {
@@ -338,6 +340,7 @@ double Axis::getMinLimitUnits() const
     }
     return minPositionUnits;
 }
+*/
 
 uint8_t Axis::getNodeId() const
 {

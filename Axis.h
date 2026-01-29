@@ -19,9 +19,9 @@ class Axis{
         Axis &setStepsPerRevolution(uint32_t steps); // +
         Axis &setUnitsPerRevolution(double units); // +
 
-        Axis &enableLimits(double minUnits, double maxUnits); // + включение ограничений на минимальное и максимальное положение оси в единицах измерения.
-        Axis &enableLimits(); // + включение ограничений на минимальное и максимальное положение оси в единицах измерения.
-        Axis &disableLimits(); // + отключение ограничений на положение оси
+        //Axis &enableLimits(double minUnits, double maxUnits); // + включение ограничений на минимальное и максимальное положение оси в единицах измерения.
+        //Axis &enableLimits(); // + включение ограничений на минимальное и максимальное положение оси в единицах измерения.
+        //Axis &disableLimits(); // + отключение ограничений на положение оси
 
         Axis &setCurrentPositionInUnits(double units); // +
         Axis &setCurrentPositionInSteps(int32_t steps); // +
@@ -64,10 +64,10 @@ class Axis{
         uint32_t stepsPerRevolution = 0; // количество шагов на оборот
         double unitsPerRevolution = 0; // количество единиц измерения на оборот
 
-        double maxPositionUnits = 0.0f; // максимальное положение оси в единицах измерения
-        double minPositionUnits = 0.0f; // минимальное положение оси в единицах измерения
+        //double maxPositionUnits = 0.0f; // максимальное положение оси в единицах измерения
+        //double minPositionUnits = 0.0f; // минимальное положение оси в единицах измерения
 
-        bool usePositionLimits = false; // флаг использования максимального и минимального положения оси
+        //bool usePositionLimits = false; // флаг использования максимального и минимального положения оси
 
 
         double movementUnits; // относительное перемещение в единицах измерения; используется для расчета синхронизации осей
@@ -77,11 +77,6 @@ class Axis{
 
         double regularSpeed; // крейсерская скорость в шагах/сек
         double acceleration; // ускорение в шагах/сек^2
-
-
-        void (*onStepDone)() = nullptr; // callback на каждом шаге
-
-        // TODO: Добавить возможность назначения колбэков, которые буду вызываться при обновлении параметров двигателя
 
         friend class MoveControllerBase;
 };

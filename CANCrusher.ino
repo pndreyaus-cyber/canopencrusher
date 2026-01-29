@@ -64,6 +64,7 @@ void loop() {
         handleCommand();
 
     sendData();
+    canOpen.read();
 }
 
 bool receiveCommand()

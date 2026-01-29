@@ -43,7 +43,7 @@ public:
 
     void writeReversedToBuf(const void* data, size_t size, uint8_t* bufStart);
 
-    void read(); // TODO: implement using CANopenNode
+    uint8_t read(); // TODO: implement using CANopenNode
 
 };
 

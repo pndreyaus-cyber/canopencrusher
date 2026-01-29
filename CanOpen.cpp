@@ -291,3 +291,18 @@ bool CanOpen::receive(uint32_t &id, uint8_t *data, uint8_t &len)
     }
     return false;
 }
+
+uint8_t CanOpen::read() 
+{
+    uint32_t id;
+    uint8_t data[8];
+    uint8_t len;
+
+    uint8_t processedCanMessages = 0;
+    while (receive(id, data, len)) {
+        Serial2.print("Received CAN message - ID: 0x");
+        Serial2.print(id, HEX); 
+        processedCanMessages++;
+    }
+    return processedCanMessages;
+}
