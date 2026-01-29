@@ -11,7 +11,7 @@ bool CanOpen::send_zeroInitialize(uint8_t nodeId)
     The first value is 0xEA66 (60006 in decimal)
     The second value is 0xEA70 (60016 in decimal)
 
-    The CAN package use little-endian format, so we need to reverse the byte order when sending
+    The CAN package uses little-endian format, so we need to reverse the byte order when sending
     */
     uint8_t data1[2] = {0x66, 0xEA};
     uint8_t data2[2] = {0x70, 0xEA};

@@ -19,7 +19,7 @@ MoveController moveController;
 uint8_t buf[8];
 
 String inData;
-uint8_t bufIndex = 0;			 // хранилище данных с последовательного порта
+uint8_t bufIndex = 0; // хранилище данных с последовательного порта
 std::vector<String> outData; // очередь сообщений на отправку
 
 // Forward declarations
@@ -36,8 +36,8 @@ void setup() {
     Serial2.setRx(PA3);
     Serial2.setTx(PA2);
 
-    Serial2.begin(115200); 
-    while(!Serial2){}
+    Serial2.begin(115200);
+    while (!Serial2) {}
     Serial2.println("Serial connected!");
 
     if (!canOpen.startCan(1000000)) {
@@ -47,7 +47,7 @@ void setup() {
         Serial2.println("CAN bus initialized successfully");
     }
     
-    if(!moveController.start(&canOpen, RobotConstants::Robot::AXIS_COUNT)) {
+    if (!moveController.start(&canOpen, RobotConstants::Robot::AXIS_COUNT)) {
         Serial2.println("Failed to initialize MoveController");
         while (1);
     } else {
@@ -69,7 +69,7 @@ void loop() {
 bool receiveCommand()
 {
     char received = 0x00;
-    if(Serial2.available()){
+    if (Serial2.available()) {
         received = Serial2.read();
         inData += received;
     }
@@ -78,7 +78,7 @@ bool receiveCommand()
 
 void handleCommand()
 {
-    inData.replace(" ","");
+    inData.replace(" ", "");
     inData.replace("\n", "");
     inData.replace("\r", "");
 
@@ -93,7 +93,7 @@ void handleCommand()
 
     if (function.equals(RobotConstants::COMMANDS::MOVE_ABSOLUTE))
     {
-        if(handleMove(stringToMoveParams(inData), true)){
+        if (handleMove(stringToMoveParams(inData), true)) {
             addDataToOutQueue("MAJ COMMAND COMPLETED");
         }
         else {
@@ -103,7 +103,7 @@ void handleCommand()
 
     else if (function.equals(RobotConstants::COMMANDS::MOVE_RELATIVE))
     {
-        if(handleMove(stringToMoveParams(inData), false)){
+        if (handleMove(stringToMoveParams(inData), false)) {
             addDataToOutQueue("MRJ COMMAND COMPLETED");
         }
         else {
@@ -112,36 +112,36 @@ void handleCommand()
     }
     else if (function.equals(RobotConstants::COMMANDS::ECHO))
     {
-        addDataToOutQueue(inData.substring(4));  
+        addDataToOutQueue(inData.substring(4));
     }
-    else if(function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_STEPS))
+    else if (function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_STEPS))
     {
-        if(handleSetCurrentPositionInSteps(stringToPositionParams(inData))){
+        if (handleSetCurrentPositionInSteps(stringToPositionParams(inData))) {
             addDataToOutQueue("SCS COMMAND COMPLETED");
         }
         else {
             addDataToOutQueue("SCS COMMAND FAILED");
         }
     }
-    else if(function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_UNITS))
+    else if (function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_UNITS))
     {
-        if(handleSetCurrentPositionInUnits(stringToPositionParams(inData))){
+        if (handleSetCurrentPositionInUnits(stringToPositionParams(inData))) {
             addDataToOutQueue("SCU COMMAND COMPLETED");
         }
         else {
             addDataToOutQueue("SCU COMMAND FAILED");
         }
     }
-    else if(function.equals(RobotConstants::COMMANDS::ZERO_INITIALIZE)) 
+    else if (function.equals(RobotConstants::COMMANDS::ZERO_INITIALIZE))
     {
-        if(handleZeroInitialize(stringToZEIParams(inData))){
+        if (handleZeroInitialize(stringToZEIParams(inData))) {
             addDataToOutQueue("ZEI COMMAND COMPLETED");
         }
         else {
             addDataToOutQueue("ZEI COMMAND FAILED");
         }
     }
-    else{
+    else {
         addDataToOutQueue("INVALID COMMAND");
     }
     inData = "";
@@ -169,81 +169,81 @@ void sendData() // отправка сообщений на компьютер
 
 MoveParams<RobotConstants::Robot::AXIS_COUNT> stringToMoveParams(String command)
 {
-	MoveParams<RobotConstants::Robot::AXIS_COUNT> params;
+    MoveParams<RobotConstants::Robot::AXIS_COUNT> params;
 
-	int JA_Index = command.indexOf("JA");
-	int JB_Index = command.indexOf("JB");
-	int JC_Index = command.indexOf("JC");
-  	int JD_Index = command.indexOf("JD");
-  	int JE_Index = command.indexOf("JE");
-  	int JF_Index = command.indexOf("JF");
+    int JA_Index = command.indexOf("JA");
+    int JB_Index = command.indexOf("JB");
+    int JC_Index = command.indexOf("JC");
+    int JD_Index = command.indexOf("JD");
+    int JE_Index = command.indexOf("JE");
+    int JF_Index = command.indexOf("JF");
 
-	int speed_Index = command.indexOf("SP");
-	int ACC_Index = command.indexOf("AC");
+    int speed_Index = command.indexOf("SP");
+    int ACC_Index = command.indexOf("AC");
 
-	if ((JA_Index == -1) || (JB_Index == -1) || (JC_Index == -1) || (JD_Index == -1) 
-  || (JE_Index == -1) || (JF_Index == -1) || (speed_Index == -1) || (ACC_Index == -1) )
-	{
-		params.status = ParamsStatus::INCORRECT_COMMAND;
-		return params;
-	}
+    if ((JA_Index == -1) || (JB_Index == -1) || (JC_Index == -1) || (JD_Index == -1)
+        || (JE_Index == -1) || (JF_Index == -1) || (speed_Index == -1) || (ACC_Index == -1))
+    {
+        params.status = ParamsStatus::INCORRECT_COMMAND;
+        return params;
+    }
 
-	params.movementUnits[0] = command.substring(JA_Index + 2, JB_Index).toFloat();
-	params.movementUnits[1] = command.substring(JB_Index + 2, JC_Index).toFloat();
-	params.movementUnits[2] = command.substring(JC_Index + 2, JD_Index).toFloat();
-	params.movementUnits[3] = command.substring(JD_Index + 2, JE_Index).toFloat();
-	params.movementUnits[4] = command.substring(JE_Index + 2, JF_Index).toFloat();
-  params.movementUnits[5] = command.substring(JF_Index + 2, speed_Index).toFloat();
+    params.movementUnits[0] = command.substring(JA_Index + 2, JB_Index).toFloat();
+    params.movementUnits[1] = command.substring(JB_Index + 2, JC_Index).toFloat();
+    params.movementUnits[2] = command.substring(JC_Index + 2, JD_Index).toFloat();
+    params.movementUnits[3] = command.substring(JD_Index + 2, JE_Index).toFloat();
+    params.movementUnits[4] = command.substring(JE_Index + 2, JF_Index).toFloat();
+    params.movementUnits[5] = command.substring(JF_Index + 2, speed_Index).toFloat();
 
-	params.speed = command.substring(speed_Index + 2, ACC_Index).toFloat();
-	params.acceleration = command.substring(ACC_Index + 2).toFloat();
+    params.speed = command.substring(speed_Index + 2, ACC_Index).toFloat();
+    params.acceleration = command.substring(ACC_Index + 2).toFloat();
 
-	if ((params.speed <= 0.0F) || (params.acceleration <= 0.0F))
-	{
-		params.status = ParamsStatus::INVALID_PARAMS;
-		return params;
-	}
+    if ((params.speed <= 0.0F) || (params.acceleration <= 0.0F))
+    {
+        params.status = ParamsStatus::INVALID_PARAMS;
+        return params;
+    }
 
-	if (params.acceleration < 1.0F)
-		params.acceleration = 1.0F;
+    if (params.acceleration < 1.0F)
+        params.acceleration = 1.0F;
 
-	if (params.speed > 100.0F)
-		params.speed = 100.0F;
-	
-	if (params.acceleration > 100.0F)
-		params.acceleration = 100.0F;
+    if (params.speed > 100.0F)
+        params.speed = 100.0F;
 
-	params.speed = MAX_SPEED * params.speed / 100.0F;
-	params.acceleration = MAX_ACCELERATION * params.acceleration / 100.0F;
+    if (params.acceleration > 100.0F)
+        params.acceleration = 100.0F;
 
-	params.status = ParamsStatus::OK;
-	return params;
+    params.speed = MAX_SPEED * params.speed / 100.0F;
+    params.acceleration = MAX_ACCELERATION * params.acceleration / 100.0F;
+
+    params.status = ParamsStatus::OK;
+    return params;
 }
 
 PositionParams stringToPositionParams(String command)
 {
-	PositionParams params;
+    PositionParams params;
 
-	int positionIndex = command.indexOf("POS");
-	int idIndex = command.indexOf("ID");
+    int positionIndex = command.indexOf("POS");
+    int idIndex = command.indexOf("ID");
 
-	if ((positionIndex == -1) || (idIndex == -1) )
-	{
-		params.status = ParamsStatus::INCORRECT_COMMAND;
-		return params;
-	}
+    if ((positionIndex == -1) || (idIndex == -1))
+    {
+        params.status = ParamsStatus::INCORRECT_COMMAND;
+        return params;
+    }
 
-  params.currentPosition = command.substring(positionIndex + 3, idIndex).toFloat();
-  params.nodeId = command.substring(idIndex + 2).toInt();
+    params.currentPosition = command.substring(positionIndex + 3, idIndex).toFloat();
+    params.nodeId = command.substring(idIndex + 2).toInt();
 
-	if ((params.nodeId <= 0) || (params.nodeId > RobotConstants::Robot::AXIS_COUNT))
-	{
-		params.status = ParamsStatus::INVALID_PARAMS;
-		return params;
-	}
+    if ((params.nodeId <= 0) || (params.nodeId > RobotConstants::Robot::AXIS_COUNT))
+    {
+        params.status = ParamsStatus::INVALID_PARAMS;
+        return params;
+    }
 
-	params.status = ParamsStatus::OK;
-	return params;
+    params.status = ParamsStatus::OK;
+    return params;
 }
 
 ZEIParams stringToZEIParams(String command)
@@ -253,35 +253,36 @@ ZEIParams stringToZEIParams(String command)
         ZEIParams params;
         params.status = ParamsStatus::OK;
         params.forAllNodes = true;
+        params.errorMsg = "";
         return params;
     }
     
     ZEIParams params;
     params.status = ParamsStatus::INVALID_PARAMS;
     params.forAllNodes = false;
+    params.errorMsg = "INVALID PARAMS FOR ZEI";
 
-    auto fail = [&]() {
+    auto fail = [&](const String& msg) {
         params.status = ParamsStatus::INVALID_PARAMS;
         params.forAllNodes = false;
         params.nodeIds.clear();
+        params.errorMsg = msg;
         return params;
     };
     
     int idStartIndex = RobotConstants::COMMANDS::COMMAND_LEN;
     
-    while(idStartIndex != -1) {
-        if(command.charAt(idStartIndex) != 'M') {
-            addDataToOutQueue("INVALID PARAMETERS FOR ZEI. EXPECTED 'M' AT INDEX " + String(idStartIndex));
-            return fail();
+    while (idStartIndex != -1) {
+        if (command.charAt(idStartIndex) != 'M') {
+            return fail("INVALID PARAMETERS FOR ZEI. EXPECTED 'M' AT INDEX " + String(idStartIndex));
         }
         
         int nextIdStartIndex = command.indexOf('M', idStartIndex + 1);
         String idStr = command.substring(idStartIndex + 1, nextIdStartIndex == -1 ? command.length() : nextIdStartIndex);
         bool isValidInteger = true;
         if (idStr.length() == 0) {
-            addDataToOutQueue("INVALID PARAMETERS FOR ZEI. EMPTY NODE ID.");
-            return fail();
-        }else {
+            return fail("INVALID PARAMETERS FOR ZEI. EMPTY NODE ID.");
+        } else {
             for (size_t i = 0; i < idStr.length(); ++i) {
                 if (!isDigit(idStr.charAt(i))) {
                     isValidInteger = false;
@@ -290,16 +291,14 @@ ZEIParams stringToZEIParams(String command)
             }
         }
 
-        if (!isValidInteger ) {
-            addDataToOutQueue("INVALID PARAMETERS FOR ZEI. NODE ID MUST BE A VALID INTEGER: " + idStr);
-            return fail();
+        if (!isValidInteger) {
+            return fail("INVALID PARAMETERS FOR ZEI. NODE ID MUST BE A VALID INTEGER: " + idStr);
         }
 
         long nodeIdLong = idStr.toInt();
 
         if (nodeIdLong < 1 || nodeIdLong > RobotConstants::Robot::AXIS_COUNT) {
-            addDataToOutQueue("INVALID NODE ID FOR ZEI: " + String(nodeIdLong));
-            return fail();
+            return fail("INVALID NODE ID FOR ZEI: " + String(nodeIdLong));
         }
         params.nodeIds.insert(static_cast<uint8_t>(nodeIdLong));
         idStartIndex = nextIdStartIndex;
@@ -307,22 +306,23 @@ ZEIParams stringToZEIParams(String command)
 
     params.status = ParamsStatus::OK;
     params.forAllNodes = false;
+    params.errorMsg = "";
     return params;
 }
 
 
-bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove){
-    if(params.status != ParamsStatus::OK){
-        if(params.status == ParamsStatus::INVALID_PARAMS)
+bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove) {
+    if (params.status != ParamsStatus::OK) {
+        if (params.status == ParamsStatus::INVALID_PARAMS)
             addDataToOutQueue("INVALID PARAMS");
-        else if(params.status == ParamsStatus::INCORRECT_COMMAND)
+        else if (params.status == ParamsStatus::INCORRECT_COMMAND)
             addDataToOutQueue("INCORRECT COMMAND");
         return false;
     }
-    
-    for(uint8_t nodeId = 1; nodeId <= moveController.getAxesCount(); ++nodeId){
 
-        if(isAbsoluteMove) moveController.getAxis(nodeId).setTargetPositionAbsoluteInUnits(params.movementUnits[nodeId - 1]);
+    for (uint8_t nodeId = 1; nodeId <= moveController.getAxesCount(); ++nodeId) {
+
+        if (isAbsoluteMove) moveController.getAxis(nodeId).setTargetPositionAbsoluteInUnits(params.movementUnits[nodeId - 1]);
         else moveController.getAxis(nodeId).setTargetPositionRelativeInUnits(params.movementUnits[nodeId - 1]);
     }
 
@@ -333,8 +333,8 @@ bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbs
     return true;
 }
 
-bool handleSetCurrentPositionInSteps(PositionParams params){
-    if(params.nodeId < 1 || params.nodeId > RobotConstants::Robot::AXIS_COUNT){
+bool handleSetCurrentPositionInSteps(PositionParams params) {
+    if (params.nodeId < 1 || params.nodeId > RobotConstants::Robot::AXIS_COUNT) {
         addDataToOutQueue("INVALID NODE ID: " + String(params.nodeId));
         return false;
     }
@@ -344,8 +344,8 @@ bool handleSetCurrentPositionInSteps(PositionParams params){
     return true;
 }
 
-bool handleSetCurrentPositionInUnits(PositionParams params){
-    if(params.nodeId < 1 || params.nodeId > moveController.getAxesCount()){
+bool handleSetCurrentPositionInUnits(PositionParams params) {
+    if (params.nodeId < 1 || params.nodeId > moveController.getAxesCount()) {
         addDataToOutQueue("INVALID NODE ID: " + String(params.nodeId));
         return false;
     }
@@ -357,7 +357,11 @@ bool handleSetCurrentPositionInUnits(PositionParams params){
 bool handleZeroInitialize(ZEIParams params) {
     std::unordered_set<uint8_t> failedNodeIds;
     if (params.status != ParamsStatus::OK) {
-        addDataToOutQueue("INVALID PARAMS FOR ZEI");
+        if (params.errorMsg.length() > 0) {
+            addDataToOutQueue(params.errorMsg);
+        } else {
+            addDataToOutQueue("INVALID PARAMS FOR ZEI");
+        }
         return false;
     }
 
