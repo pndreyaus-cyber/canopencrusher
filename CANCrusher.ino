@@ -267,7 +267,7 @@ ZEIParams stringToZEIParams(String command)
         return params;
     };
     
-    int idStartIndex = RobotConstants::COMMANDS::ZERO_INITIALIZE.length();
+    int idStartIndex = RobotConstants::COMMANDS::COMMAND_LEN;
     
     while(idStartIndex != -1) {
         if(command.charAt(idStartIndex) != 'M') {
