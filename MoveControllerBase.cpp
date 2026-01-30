@@ -150,7 +150,7 @@ void MoveControllerBase::move() {
     sendMove();
 
 }
-// std::function<void(uint8_t, int32_t)>;
+
 void MoveControllerBase::positionUpdateCallback(uint8_t nodeId, int32_t position) {
     auto it = axes.find(nodeId);
     if (it != axes.end()) {

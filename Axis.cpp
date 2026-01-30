@@ -40,47 +40,6 @@ Axis &Axis::setUnitsPerRevolution(double units)
     unitsPerRevolution = units;
     return *this;
 }
-/*
-Axis &Axis::enableLimits(double minUnits, double maxUnits)
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::enableLimits -- Axis not initialized");
-#endif        
-        return *this;
-    }
-
-    minPositionUnits = maxUnits > minUnits ? minUnits : maxUnits;
-    maxPositionUnits = maxUnits > minUnits ? maxUnits : minUnits;
-    return enableLimits();
-}
-
-Axis &Axis::enableLimits()
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::enableLimits -- Axis not initialized");
-#endif        
-        return *this;
-    }
-
-    usePositionLimits = true;
-    return *this;
-}
-
-Axis &Axis::disableLimits()
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::disableLimits -- Axis not initialized");
-#endif        
-        return *this;
-    }
-      
-    usePositionLimits = false;
-    return *this;
-}
-*/
 
 Axis &Axis::setCurrentPositionInUnits(double units)
 {
@@ -187,19 +146,6 @@ double Axis::getPositionInUnits() const
     double position = stepsToUnits(getCurrentPositionInSteps());
     return position;
 }
-
-// int32_t Axis::getPositionInSteps() const
-// {
-//     if (!initialized) {
-// #ifdef DEBUG
-//         Serial2.println("Axis::getPositionInSteps -- Axis not initialized");
-// #endif        
-//         return -1;
-//     }
-
-//     int32_t position = getCurrentPositionInSteps();
-//     return position;
-// }
 
 uint32_t Axis::getStepsPerRevolution() const
 {
@@ -314,31 +260,6 @@ double Axis::rpmPerSecondToAccelerationUnits(double rpmPerSecond) const  // Пе
     }   
     return (double)rpmPerSecond / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution; // TODO: потенциальная потеря точности расчетов из-за SECONDS_IN_MINUTE, лучше объявить как константу float/double
 }
-
-/*
-double Axis::getMaxLimitUnits() const
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::getMaxLimitUnits -- Axis not initialized");
-#endif        
-        return -1;
-    }
-
-    return maxPositionUnits;
-}
-
-double Axis::getMinLimitUnits() const
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::getMinLimitUnits -- Axis not initialized");
-#endif        
-        return -1;
-    }
-    return minPositionUnits;
-}
-*/
 
 uint8_t Axis::getNodeId() const
 {

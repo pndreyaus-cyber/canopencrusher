@@ -5,6 +5,7 @@
 bool CanOpen::send_zeroInitialize(uint8_t nodeId)
 {
     /*
+    STATUS: IN CONSTRUCTION. DO NOT USE YET.
     According to the device documentation, 
     zero initialization involves writing two specific values to an Electronic Gear Molecule register (with address 0x260A)  
     
@@ -304,13 +305,12 @@ bool CanOpen::receive(uint16_t &cob_id, uint8_t *data, uint8_t &len)
     return false;
 }
 
-uint8_t CanOpen::read() 
+bool CanOpen::read() 
 {
     uint16_t id;
     uint8_t data[8];
     uint8_t len;
 
-    uint8_t processedCanMessages = 0;
     if (receive(id, data, len)) {
         uint16_t node = id & 0x7F; // Extract node ID from COB-ID
         uint16_t function_code = id & 0x780; // Extract base COB-ID
@@ -333,11 +333,17 @@ uint8_t CanOpen::read()
         } else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE) {
             Serial2.println("SDO Response from node " + String(node));
 
+            // Validate length: SDO responses we handle here are expected to be 8 bytes            
+            if (data[0] == 0x80) {
+                Serial2.println("SDO Error response from node " + String(node));
+                return false;
+            }
+
             uint8_t registerSize;
-            switch (data[0] & 0x03) {
-                case 0: registerSize = 4; break;
-                case 1: registerSize = 2; break;
-                case 2: registerSize = 1; break;
+            switch (data[0] & 0xF) {
+                case 3: registerSize = 4; break;
+                case 11: registerSize = 2; break;
+                case 15: registerSize = 1; break;
                 default: registerSize = 0; break; // error
             }
 
@@ -348,6 +354,11 @@ uint8_t CanOpen::read()
             Serial2.println(registerAddress, HEX);
 
             if (registerAddress == RobotConstants::ODIndices::POSITION_ACTUAL_VALUE) {
+                if (registerSize != 4) {
+                    Serial2.println("Unexpected register size for Position Actual Value");
+                    return false;
+                }
+
                 int32_t positionValue = (static_cast<int32_t>(data[7]) << 24) |
                                         (static_cast<int32_t>(data[6]) << 16) |
                                         (static_cast<int32_t>(data[5]) << 8)  |
@@ -360,10 +371,10 @@ uint8_t CanOpen::read()
                 if (sdoReadPositionCallback) {
                     sdoReadPositionCallback(node, positionValue);
                 }
+                return true;
             }
         }
-
-        processedCanMessages++;
+        return false;
     }
-    return processedCanMessages;
+    return false;
 }

@@ -51,7 +51,7 @@ public:
         sdoReadPositionCallback = callback;
     }
 
-    uint8_t read(); // TODO: implement using CANopenNode
+    bool read(); // TODO: implement using CANopenNode
 
 };
 
