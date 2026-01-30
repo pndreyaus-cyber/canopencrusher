@@ -4,13 +4,13 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <functional>
 #include "OD.h"
 #include "objdict_objectdefines.h"
 #include "STM32_CAN.h"
 
-// Callback types for received SDO and PDO messages
-//typedef void (*SdoReceiveCallback)(uint8_t nodeId, uint16_t index, uint8_t subindex, const uint8_t* data, uint8_t len);
-//typedef void (*PdoReceiveCallback)(uint16_t cobId, const uint8_t* data, uint8_t len);
+// Make SDOReceiveCallback type
+using SdoReadPositionCallback = std::function<void(uint8_t, int32_t)>;
 
 class CanOpen {
 private:
@@ -21,10 +21,13 @@ private:
     bool loopbackTest();
     uint32_t canBaudRate;
 
-    ODObjs_t* ODObjs = nullptr;
+    //ODObjs_t* ODObjs = nullptr;
+
+    SdoReadPositionCallback sdoReadPositionCallback = nullptr;
 
     bool send(uint32_t id, const uint8_t* data, uint8_t len);
-    bool receive(uint32_t &id, uint8_t* data, uint8_t &len);
+    bool receive(uint16_t &cob_id, uint8_t* data, uint8_t &len);
+
 public:
     CanOpen() : Can(PA11, PA12) {};
     bool startCan(uint32_t baudRate);
@@ -38,12 +41,17 @@ public:
     bool send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value/*, ODObjs_t * odobjs*/);
 
     bool sendSDO(uint8_t nodeId, uint8_t dataLen, uint16_t index, uint8_t subindex, void* data);
+    bool sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex);
     bool sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute);
     bool sendSYNC();
 
     void writeReversedToBuf(const void* data, size_t size, uint8_t* bufStart);
 
-    void read(); // TODO: implement using CANopenNode
+    void setSdoReadPositionCallback(SdoReadPositionCallback callback) {
+        sdoReadPositionCallback = callback;
+    }
+
+    bool read(); // TODO: implement using CANopenNode
 
 };
 

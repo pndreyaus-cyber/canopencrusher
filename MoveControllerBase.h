@@ -24,6 +24,7 @@ class MoveControllerBase {
         double getAccelerationUnits() const;
 
         void move();
+        
 
         // TODO: добавить метод, например, void tick(), вызывать его из loop в ino-файле
         // метод tick() должен вызывать метод чтения (который нужно написать) у CanOpen (который сам взаимодействует с шиной CAN)
@@ -46,6 +47,8 @@ class MoveControllerBase {
         double accelerationUnits = 1.0f; // The acceleration of the maximum moving axis in percent of full acceleration (1.0 = 100%)
 
         void sendMove();
+
+        void positionUpdateCallback(uint8_t nodeId, int32_t position);
 };
 
 }

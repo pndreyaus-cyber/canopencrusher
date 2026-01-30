@@ -9,10 +9,9 @@ namespace StepDirController{
 Axis::Axis() : nodeId(kInvalidNodeId) {}
 
 Axis::Axis(uint8_t nodeId) : nodeId(nodeId) {
-    init_od_ram(&canOpenCharacteristics);
-    currentPosition = 0;
+    init_od_ram(&params);
     movementUnits = 0.0;
-    canOpenCharacteristics.x6064_positionActualValue = 0;
+    params.x6064_positionActualValue = 0;
     stepsPerRevolution = RobotConstants::Axis::DEFAULT_STEPS_PER_REVOLUTION;
     unitsPerRevolution = RobotConstants::Axis::DEFAULT_UNITS_PER_REVOLUTION;
     initialized = true;
@@ -42,46 +41,6 @@ Axis &Axis::setUnitsPerRevolution(double units)
     return *this;
 }
 
-Axis &Axis::enableLimits(double minUnits, double maxUnits)
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::enableLimits -- Axis not initialized");
-#endif        
-        return *this;
-    }
-
-    minPositionUnits = maxUnits > minUnits ? minUnits : maxUnits;
-    maxPositionUnits = maxUnits > minUnits ? maxUnits : minUnits;
-    return enableLimits();
-}
-
-Axis &Axis::enableLimits()
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::enableLimits -- Axis not initialized");
-#endif        
-        return *this;
-    }
-
-    usePositionLimits = true;
-    return *this;
-}
-
-Axis &Axis::disableLimits()
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::disableLimits -- Axis not initialized");
-#endif        
-        return *this;
-    }
-      
-    usePositionLimits = false;
-    return *this;
-}
-
 Axis &Axis::setCurrentPositionInUnits(double units)
 {
     if (!initialized) {
@@ -104,8 +63,7 @@ Axis &Axis::setCurrentPositionInSteps(int32_t steps)
         return *this;
     }
       
-    currentPosition = steps;
-    canOpenCharacteristics.x6064_positionActualValue = steps;
+    params.x6064_positionActualValue = steps;
     return *this;
 }
 
@@ -118,7 +76,7 @@ int32_t Axis::getCurrentPositionInSteps() const
         return -1;
     }
       
-    return canOpenCharacteristics.x6064_positionActualValue;
+    return params.x6064_positionActualValue;
 }
 
 bool Axis::setTargetPositionRelativeInUnits(double units)
@@ -143,7 +101,7 @@ bool Axis::setTargetPositionRelativeInSteps(int32_t steps)
 #endif        
         return false;
     }
-    return setTargetPositionAbsoluteInSteps(steps + canOpenCharacteristics.x6064_positionActualValue); // Проверить
+    return setTargetPositionAbsoluteInSteps(steps + params.x6064_positionActualValue); // Проверить
 }
 
 bool Axis::setTargetPositionAbsoluteInUnits(double units)
@@ -169,10 +127,10 @@ bool Axis::setTargetPositionAbsoluteInSteps(int32_t steps)
         return false;
     }
 
-    int32_t relativePosition = steps - canOpenCharacteristics.x6064_positionActualValue;
+    int32_t relativePosition = steps - getCurrentPositionInSteps();
     movementUnits = stepsToUnits(relativePosition);
     movementSteps = std::fabs(relativePosition);
-    canOpenCharacteristics.x607A_targetPosition = steps;
+    params.x607A_targetPosition = steps;
     return true;
 }
 
@@ -185,20 +143,7 @@ double Axis::getPositionInUnits() const
         return -1;
     }
 
-    double position = stepsToUnits(canOpenCharacteristics.x6064_positionActualValue);
-    return position;
-}
-
-int32_t Axis::getPositionInSteps() const
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::getPositionInSteps -- Axis not initialized");
-#endif        
-        return -1;
-    }
-
-    int32_t position = canOpenCharacteristics.x6064_positionActualValue;
+    double position = stepsToUnits(getCurrentPositionInSteps());
     return position;
 }
 
@@ -316,29 +261,6 @@ double Axis::rpmPerSecondToAccelerationUnits(double rpmPerSecond) const  // Пе
     return (double)rpmPerSecond / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution; // TODO: потенциальная потеря точности расчетов из-за SECONDS_IN_MINUTE, лучше объявить как константу float/double
 }
 
-double Axis::getMaxLimitUnits() const
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::getMaxLimitUnits -- Axis not initialized");
-#endif        
-        return -1;
-    }
-
-    return maxPositionUnits;
-}
-
-double Axis::getMinLimitUnits() const
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::getMinLimitUnits -- Axis not initialized");
-#endif        
-        return -1;
-    }
-    return minPositionUnits;
-}
-
 uint8_t Axis::getNodeId() const
 {
     if (!initialized) {
@@ -371,7 +293,7 @@ int32_t Axis::getTargetPositionAbsolute() const
         return -1;
     }
     
-    return canOpenCharacteristics.x607A_targetPosition;
+    return params.x607A_targetPosition;
 }
 
 }

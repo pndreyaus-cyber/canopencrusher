@@ -67,8 +67,8 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
 
         axis.acceleration = (axisMovementUnits) / (tAcceleration * (tAcceleration + tCruising));
         axis.regularSpeed = axis.acceleration * tAcceleration;
-        axis.canOpenCharacteristics.x6083_profileAcceleration = axis.accelerationUnitsTorpmPerSecond(axis.acceleration);
-        axis.canOpenCharacteristics.x6081_profileVelocity = axis.speedUnitsToRevolutionsPerMinute(axis.regularSpeed);
+        axis.params.x6083_profileAcceleration = axis.accelerationUnitsTorpmPerSecond(axis.acceleration);
+        axis.params.x6081_profileVelocity = axis.speedUnitsToRevolutionsPerMinute(axis.regularSpeed);
 
     }
 }
@@ -77,9 +77,9 @@ void MoveControllerBase::sendMove()
 {
     for (auto it = axes.begin(); it != axes.end(); ++it) {
         Axis& axis = it->second;
-        canOpen->send_x6081_profileVelocity(axis.nodeId, axis.canOpenCharacteristics.x6081_profileVelocity);
+        canOpen->send_x6081_profileVelocity(axis.nodeId, axis.params.x6081_profileVelocity);
         delay(5);
-        canOpen->send_x6083_profileAcceleration(axis.nodeId, axis.canOpenCharacteristics.x6083_profileAcceleration);
+        canOpen->send_x6083_profileAcceleration(axis.nodeId, axis.params.x6083_profileAcceleration);
         delay(5);
         
         canOpen->send_x6040_controlword(axis.nodeId, 0x004F);
@@ -91,7 +91,9 @@ void MoveControllerBase::sendMove()
         canOpen->sendPDO4_x607A_SyncMovement(axis.nodeId, axis.getTargetPositionAbsolute());
         delay(5);
         
-        axis.canOpenCharacteristics.x6064_positionActualValue = axis.canOpenCharacteristics.x607A_targetPosition; // Imitation, that the motor reached the target position
+        // Imitation, that the motor reached the target position
+        axis.setCurrentPositionInSteps(axis.params.x607A_targetPosition);
+        //axis.params.x6064_positionActualValue = axis.params.x607A_targetPosition;
     }
     
     delay(5);
@@ -125,6 +127,12 @@ bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
         axes[nodeId] = Axis(nodeId);
     }
 
+    canOpen->setSdoReadPositionCallback([this](uint8_t nodeId, int32_t position) {
+        this->positionUpdateCallback(nodeId, position);
+    });
+
+
+
     initialized = true;
     return true;
 }
@@ -141,6 +149,17 @@ void MoveControllerBase::move() {
     prepareMove();
     sendMove();
 
+}
+
+void MoveControllerBase::positionUpdateCallback(uint8_t nodeId, int32_t position) {
+    auto it = axes.find(nodeId);
+    if (it != axes.end()) {
+        Axis& axis = it->second;
+        
+        axis.setCurrentPositionInSteps(position);
+        //axis.params.x6064_positionActualValue = position;
+        Serial2.println("Axis " + String(nodeId) + " position updated via SDO callback: " + String(position));
+    }
 }
 
 }

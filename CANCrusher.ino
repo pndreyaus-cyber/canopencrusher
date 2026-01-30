@@ -26,10 +26,12 @@ std::vector<String> outData; // очередь сообщений на отпр�
 MoveParams<RobotConstants::Robot::AXIS_COUNT> stringToMoveParams(String command);
 PositionParams stringToPositionParams(String command);
 ZEIParams stringToZEIParams(String command);
+int stringToNodeId(String command);
 bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove);
 bool handleSetCurrentPositionInSteps(PositionParams params);
 bool handleSetCurrentPositionInUnits(PositionParams params);
 bool handleZeroInitialize(ZEIParams params);
+bool handleRequestPosition(int parsedId);
 
 
 void setup() {
@@ -64,6 +66,7 @@ void loop() {
         handleCommand();
 
     sendData();
+    canOpen.read();
 }
 
 bool receiveCommand()
@@ -139,6 +142,16 @@ void handleCommand()
         }
         else {
             addDataToOutQueue("ZEI COMMAND FAILED");
+        }
+    }
+    else if (function.equals(RobotConstants::COMMANDS::REQUEST_POSITION))
+    {
+        if(handleRequestPosition(stringToNodeId(inData))) {
+            addDataToOutQueue("RPP COMMAND COMPLETED");
+        }
+        else 
+        {
+            addDataToOutQueue("RPP COMMAND FAILED");
         }
     }
     else {
@@ -310,6 +323,30 @@ ZEIParams stringToZEIParams(String command)
     return params;
 }
 
+int stringToNodeId(String command) { // RPP 1
+    if (command.equals(RobotConstants::COMMANDS::REQUEST_POSITION)) {
+        return -1;
+    }
+
+    String idStr = command.substring(RobotConstants::COMMANDS::COMMAND_LEN);
+    bool isValidInteger = true;
+    if (idStr.length() == 0) {
+        return -1;
+    } else {
+        for (size_t i = 0; i < idStr.length(); ++i) {
+            if (!isDigit(idStr.charAt(i))) {
+                isValidInteger = false;
+                break;
+            }
+        }
+    }
+
+    if (!isValidInteger){
+        return -1;
+    } else {
+        return idStr.toInt();
+    }
+}
 
 bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove) {
     if (params.status != ParamsStatus::OK) {
@@ -399,4 +436,24 @@ bool handleZeroInitialize(ZEIParams params) {
 
     addDataToOutQueue("ZEI COMPLETED FOR ALL TARGETED NODES");
     return true;
+}
+
+bool handleRequestPosition(int parsedId){
+    if(parsedId == -1) {
+        addDataToOutQueue("RPP COMMAND: INVALID PARAMETERS");
+        return false;
+    }
+    if (parsedId < 1 || RobotConstants::Robot::AXIS_COUNT < parsedId) {
+        addDataToOutQueue("RPP COMMAND: NODE ID IS INVALID: " + String(parsedId));
+        return false;
+    }
+    uint8_t nodeId = static_cast<uint8_t>(parsedId);
+
+    if(!canOpen.sendSDORead(nodeId, RobotConstants::ODIndices::POSITION_ACTUAL_VALUE, 0)) {
+        addDataToOutQueue("RPP COMMAND: SDO SEND FAILED");
+        return false;
+    }
+    addDataToOutQueue("RPP COMMAND: SDO SEND SUCCESS");
+    return true;
+
 }

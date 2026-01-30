@@ -20,6 +20,7 @@ namespace RobotConstants {
         constexpr const char* SET_CURRENT_POSITION_IN_STEPS = "SCS";
         constexpr const char* SET_CURRENT_POSITION_IN_UNITS = "SCU";
         constexpr const char* ZERO_INITIALIZE = "ZEI";
+        constexpr const char* REQUEST_POSITION = "RPP";
         constexpr int COMMAND_LEN = 3;
     }
 
