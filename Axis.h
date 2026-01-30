@@ -35,7 +35,7 @@ class Axis{
         int32_t getTargetPositionAbsolute() const;
 
         double getPositionInUnits() const;
-        int32_t getPositionInSteps() const;
+        //int32_t getPositionInSteps() const;
 
         uint32_t getStepsPerRevolution() const;
         double getUnitsPerRevolution() const;
@@ -43,8 +43,8 @@ class Axis{
         double stepsToUnits(int32_t steps) const; // Перевести шаги в градусы
         int32_t unitsToSteps(double units) const; // Перевести градусы в шаги
 
-        double getMinLimitUnits() const;
-        double getMaxLimitUnits() const;
+        //double getMinLimitUnits() const;
+        //double getMaxLimitUnits() const;
 
         uint32_t speedUnitsToRevolutionsPerMinute(double speedUnits) const; // Перевести градусы/сек в об/мин
         double revolutionsPerMinuteToSpeedUnits(uint32_t rpm) const; // Перевести из об/мин в градусы/сек
@@ -59,7 +59,7 @@ class Axis{
     protected:
         bool initialized = false;
         uint8_t nodeId;
-        OD_RAM_t canOpenCharacteristics;
+        OD_RAM_t params;
 
         uint32_t stepsPerRevolution = 0; // количество шагов на оборот
         double unitsPerRevolution = 0; // количество единиц измерения на оборот
@@ -72,8 +72,6 @@ class Axis{
 
         double movementUnits; // относительное перемещение в единицах измерения; используется для расчета синхронизации осей
         volatile uint32_t movementSteps; // относительное перемещение в шагах; 
-
-        volatile int32_t currentPosition; // текущее положение в шагах 
 
         double regularSpeed; // крейсерская скорость в шагах/сек
         double acceleration; // ускорение в шагах/сек^2

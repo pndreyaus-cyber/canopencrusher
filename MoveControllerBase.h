@@ -47,6 +47,8 @@ class MoveControllerBase {
         double accelerationUnits = 1.0f; // The acceleration of the maximum moving axis in percent of full acceleration (1.0 = 100%)
 
         void sendMove();
+
+        void positionUpdateCallback(uint8_t nodeId, int32_t position);
 };
 
 }

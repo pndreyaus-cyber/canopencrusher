@@ -208,7 +208,7 @@ void init_od_ram(OD_RAM_t *obj) {
 /*******************************************************************************
     All OD objects (constant definitions)
 *******************************************************************************/
-
+/*
 void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
     *odobjs = (ODObjs_t){
         .o_1000_deviceType = {
@@ -1015,3 +1015,4 @@ void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs){
     };
 }
 
+*/

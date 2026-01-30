@@ -235,6 +235,7 @@ typedef struct {
     int32_t x60FF_targetVelocity;
 } OD_RAM_t;
 
+/*
 #ifndef OD_ATTR_RAM
 #define OD_ATTR_RAM
 #endif
@@ -244,97 +245,99 @@ typedef struct {
 #define OD_ATTR_OD
 #endif
 // extern OD_ATTR_OD OD_t *OD;
+*/
+//typedef uint32_t OD_size_t; /**< Variable of type OD_size_t contains data length in bytes of OD variable */
 
-typedef uint32_t OD_size_t; /**< Variable of type OD_size_t contains data length in bytes of OD variable */
-typedef uint8_t OD_attr_t; 
+//typedef uint8_t OD_attr_t; 
 
-typedef enum {
-    ODA_SDO_R = 0x01U,  /**< SDO server may read from the variable */
-    ODA_SDO_W = 0x02U,  /**< SDO server may write to the variable */
-    ODA_SDO_RW = 0x03U, /**< SDO server may read from or write to the variable */
-    ODA_TPDO = 0x04U,   /**< Variable is mappable into TPDO (can be read) */
-    ODA_RPDO = 0x08U,   /**< Variable is mappable into RPDO (can be written) */
-    ODA_TRPDO = 0x0CU,  /**< Variable is mappable into TPDO or RPDO */
-    ODA_TSRDO = 0x10U,  /**< Variable is mappable into transmitting SRDO */
-    ODA_RSRDO = 0x20U,  /**< Variable is mappable into receiving SRDO */
-    ODA_TRSRDO = 0x30U, /**< Variable is mappable into tx or rx SRDO */
-    ODA_MB = 0x40U,     /**< Variable is multi-byte ((u)int16_t to (u)int64_t) */
-    ODA_STR = 0x80U     /**< Shorter value, than specified variable size, may be written to the variable. SDO write will
-                           fill remaining memory with zeroes. Attribute is used for VISIBLE_STRING and UNICODE_STRING. */
-} OD_attributes_t;
+//typedef enum {
+//    ODA_SDO_R = 0x01U,  /**< SDO server may read from the variable */
+//    ODA_SDO_W = 0x02U,  /**< SDO server may write to the variable */
+//     ODA_SDO_RW = 0x03U, /**< SDO server may read from or write to the variable */
+//     ODA_TPDO = 0x04U,   /**< Variable is mappable into TPDO (can be read) */
+//     ODA_RPDO = 0x08U,   /**< Variable is mappable into RPDO (can be written) */
+//     ODA_TRPDO = 0x0CU,  /**< Variable is mappable into TPDO or RPDO */
+//     ODA_TSRDO = 0x10U,  /**< Variable is mappable into transmitting SRDO */
+//     ODA_RSRDO = 0x20U,  /**< Variable is mappable into receiving SRDO */
+//     ODA_TRSRDO = 0x30U, /**< Variable is mappable into tx or rx SRDO */
+//     ODA_MB = 0x40U,     /**< Variable is multi-byte ((u)int16_t to (u)int64_t) */
+//     ODA_STR = 0x80U     /**< Shorter value, than specified variable size, may be written to the variable. SDO write will
+//                            fill remaining memory with zeroes. Attribute is used for VISIBLE_STRING and UNICODE_STRING. */
+// } OD_attributes_t;
 
-typedef struct {
-    void* dataOrig;       /**< Pointer to data */
-    OD_attr_t attribute;  /**< Attribute bitfield, see @ref OD_attributes_t */
-    OD_size_t dataLength; /**< Data length in bytes */
-} OD_obj_var_t;
+// typedef struct {
+//     void* dataOrig;       /**< Pointer to data */
+//     OD_attr_t attribute;  /**< Attribute bitfield, see @ref OD_attributes_t */
+//     OD_size_t dataLength; /**< Data length in bytes */
+// } OD_obj_var_t;
 
-typedef struct {
-    void* dataOrig;       /**< Pointer to data */
-    uint8_t subIndex;     /**< Sub index of element. */
-    OD_attr_t attribute;  /**< Attribute bitfield, see @ref OD_attributes_t */
-    OD_size_t dataLength; /**< Data length in bytes */
-} OD_obj_record_t;
+// typedef struct {
+//     void* dataOrig;       /**< Pointer to data */
+//     uint8_t subIndex;     /**< Sub index of element. */
+//     OD_attr_t attribute;  /**< Attribute bitfield, see @ref OD_attributes_t */
+//     OD_size_t dataLength; /**< Data length in bytes */
+// } OD_obj_record_t;
 
 void init_od_ram(OD_RAM_t *obj);
 
-typedef struct {
-    OD_obj_var_t o_1000_deviceType;
-    OD_obj_var_t o_1001_errorRegister;
-    OD_obj_var_t o_1005_SYNC_COB_ID;
-    OD_obj_var_t o_1006_communicationCyclePeriod;
-    OD_obj_record_t o_1016_consumerHeartbeatTime[2];
-    OD_obj_var_t o_1017_producerHeartbeatTime;
-    OD_obj_record_t o_1018_identity[5];
-    OD_obj_record_t o_1200_serverSDO_Parameter[3];
-    OD_obj_record_t o_1201_additionalServerSDO1Parameter[4];
-    OD_obj_record_t o_1280_clientSDO1Parameter[4];
-    OD_obj_record_t o_1400_receivePDO1Parameter[6];
-    OD_obj_record_t o_1401_receivePDO2Parameter[6];
-    OD_obj_record_t o_1402_receivePDO3Parameter[6];
-    OD_obj_record_t o_1403_receivePDO4Parameter[6];
-    OD_obj_record_t o_1600_receivePDO1Mapping[4];
-    OD_obj_record_t o_1601_receivePDO2Mapping[3];
-    OD_obj_record_t o_1602_receivePDO3Mapping[4];
-    OD_obj_record_t o_1603_receivePDO4Mapping[2];
-    OD_obj_record_t o_1800_transmitPDO1Parameter[6];
-    OD_obj_record_t o_1801_transmitPDO2Parameter[6];
-    OD_obj_record_t o_1802_transmitPDO3Parameter[6];
-    OD_obj_record_t o_1803_transmitPDO4Parameter[6];
-    OD_obj_record_t o_1A00_transmitPDO1Mapping[3];
-    OD_obj_record_t o_1A01_transmitPDO2Mapping[3];
-    OD_obj_record_t o_1A02_transmitPDO3Mapping[3];
-    OD_obj_record_t o_1A03_transmitPDO4Mapping[3];
-    OD_obj_var_t o_2600_modbusEnable;
-    OD_obj_var_t o_2601_driverEnable;
-    OD_obj_var_t o_2604_weakMagneticAngle;
-    OD_obj_var_t o_2609_DIR;
-    OD_obj_var_t o_260A_electronicGearMolecules;
-    OD_obj_var_t o_260B_electronicGearDenominator;
-    OD_obj_var_t o_260C_incrementalPosition;
-    OD_obj_var_t o_260E_ERROCode;
-    OD_obj_var_t o_2612_systemTemperature;
-    OD_obj_var_t o_2613_PWM;
-    OD_obj_var_t o_2614_parameterSaveFlag;
-    OD_obj_var_t o_2615_deviceAddress;
-    OD_obj_var_t o_2618_staticMaxAllowOutput;
-    OD_obj_var_t o_2619_specialFunction;
-    OD_obj_var_t o_261C_CAN_CommunicationControlWord;
-    OD_obj_var_t o_261D_maximumAllowableCurrent;
-    OD_obj_var_t o_6040_controlword;
-    OD_obj_var_t o_6041_statusword;
-    OD_obj_var_t o_6060_modesOfOperation;
-    OD_obj_var_t o_6064_positionActualValue;
-    OD_obj_var_t o_606C_velocityActualValue;
-    OD_obj_var_t o_6078_currentActualValue;
-    OD_obj_var_t o_607A_targetPosition;
-    OD_obj_var_t o_6081_profileVelocity;
-    OD_obj_var_t o_6083_profileAcceleration;
-    OD_obj_record_t o_60F9_velocityControlParameterSet[3];
-    OD_obj_record_t o_60FB_positionControlParameterSet[6];
-    OD_obj_var_t o_60FF_targetVelocity;
-} ODObjs_t;
+// typedef struct {
+//     OD_obj_var_t o_1000_deviceType;
+//     OD_obj_var_t o_1001_errorRegister;
+//     OD_obj_var_t o_1005_SYNC_COB_ID;
+//     OD_obj_var_t o_1006_communicationCyclePeriod;
+//     OD_obj_record_t o_1016_consumerHeartbeatTime[2];
+//     OD_obj_var_t o_1017_producerHeartbeatTime;
+//     OD_obj_record_t o_1018_identity[5];
+//     OD_obj_record_t o_1200_serverSDO_Parameter[3];
+//     OD_obj_record_t o_1201_additionalServerSDO1Parameter[4];
+//     OD_obj_record_t o_1280_clientSDO1Parameter[4];
+//     OD_obj_record_t o_1400_receivePDO1Parameter[6];
+//     OD_obj_record_t o_1401_receivePDO2Parameter[6];
+//     OD_obj_record_t o_1402_receivePDO3Parameter[6];
+//     OD_obj_record_t o_1403_receivePDO4Parameter[6];
+//     OD_obj_record_t o_1600_receivePDO1Mapping[4];
+//     OD_obj_record_t o_1601_receivePDO2Mapping[3];
+//     OD_obj_record_t o_1602_receivePDO3Mapping[4];
+//     OD_obj_record_t o_1603_receivePDO4Mapping[2];
+//     OD_obj_record_t o_1800_transmitPDO1Parameter[6];
+//     OD_obj_record_t o_1801_transmitPDO2Parameter[6];
+//     OD_obj_record_t o_1802_transmitPDO3Parameter[6];
+//     OD_obj_record_t o_1803_transmitPDO4Parameter[6];
+//     OD_obj_record_t o_1A00_transmitPDO1Mapping[3];
+//     OD_obj_record_t o_1A01_transmitPDO2Mapping[3];
+//     OD_obj_record_t o_1A02_transmitPDO3Mapping[3];
+//     OD_obj_record_t o_1A03_transmitPDO4Mapping[3];
+//     OD_obj_var_t o_2600_modbusEnable;
+//     OD_obj_var_t o_2601_driverEnable;
+//     OD_obj_var_t o_2604_weakMagneticAngle;
+//     OD_obj_var_t o_2609_DIR;
+//     OD_obj_var_t o_260A_electronicGearMolecules;
+//     OD_obj_var_t o_260B_electronicGearDenominator;
+//     OD_obj_var_t o_260C_incrementalPosition;
+//     OD_obj_var_t o_260E_ERROCode;
+//     OD_obj_var_t o_2612_systemTemperature;
+//     OD_obj_var_t o_2613_PWM;
+//     OD_obj_var_t o_2614_parameterSaveFlag;
+//     OD_obj_var_t o_2615_deviceAddress;
+//     OD_obj_var_t o_2618_staticMaxAllowOutput;
+//     OD_obj_var_t o_2619_specialFunction;
+//     OD_obj_var_t o_261C_CAN_CommunicationControlWord;
+//     OD_obj_var_t o_261D_maximumAllowableCurrent;
+//     OD_obj_var_t o_6040_controlword;
+//     OD_obj_var_t o_6041_statusword;
+//     OD_obj_var_t o_6060_modesOfOperation;
+//     OD_obj_var_t o_6064_positionActualValue;
+//     OD_obj_var_t o_606C_velocityActualValue;
+//     OD_obj_var_t o_6078_currentActualValue;
+//     OD_obj_var_t o_607A_targetPosition;
+//     OD_obj_var_t o_6081_profileVelocity;
+//     OD_obj_var_t o_6083_profileAcceleration;
+//     OD_obj_record_t o_60F9_velocityControlParameterSet[3];
+//     OD_obj_record_t o_60FB_positionControlParameterSet[6];
+//     OD_obj_var_t o_60FF_targetVelocity;
+// } ODObjs_t;
 
-void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs);
+// void init_odobjs(OD_RAM_t *obj, ODObjs_t* odobjs);
+
 
 #endif /* OD_H */

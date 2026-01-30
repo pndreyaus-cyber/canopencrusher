@@ -21,7 +21,7 @@ private:
     bool loopbackTest();
     uint32_t canBaudRate;
 
-    ODObjs_t* ODObjs = nullptr;
+    //ODObjs_t* ODObjs = nullptr;
 
     SdoReadPositionCallback sdoReadPositionCallback = nullptr;
 

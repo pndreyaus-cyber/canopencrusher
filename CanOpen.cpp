@@ -20,10 +20,10 @@ bool CanOpen::send_zeroInitialize(uint8_t nodeId)
         return false;
     }
 
-    if (zeroInitState[nodeId] != ZERO_INIT_NONE) {
-        Serial2.println("Zero initialization already in progress for node " + String(nodeId));
-        return false;
-    }
+    // if (zeroInitState[nodeId] != ZERO_INIT_NONE) {
+    //     Serial2.println("Zero initialization already in progress for node " + String(nodeId));
+    //     return false;
+    // }
 
     bool ok = sendSDO(
         nodeId,
@@ -38,7 +38,7 @@ bool CanOpen::send_zeroInitialize(uint8_t nodeId)
         return false;
     }
 
-    zeroInitState[nodeId] = ZERO_INIT_WAIT_FIRST;
+    // zeroInitState[nodeId] = ZERO_INIT_WAIT_FIRST;
     return true;
 }
 
@@ -330,7 +330,6 @@ uint8_t CanOpen::read()
             }
 
             Serial2.println("Heartbeat " + String(node) + ": " + status);
-            break;
         } else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE) {
             Serial2.println("SDO Response from node " + String(node));
 
@@ -347,37 +346,6 @@ uint8_t CanOpen::read()
 
             Serial2.print("Register address: ");
             Serial2.println(registerAddress, HEX);
-
-            if (registerAddress == RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES) {
-                if (data[0] == 0x60) { // SDO write response
-                    if (node <= RobotConstants::Robot::MAX_NODE_ID) {
-                        if (zeroInitState[node] == ZERO_INIT_WAIT_FIRST) {
-                            uint8_t data2[2] = {0x70, 0xEA};
-                            bool ok = sendSDO(
-                                static_cast<uint8_t>(node),
-                                2,
-                                RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES,
-                                0x00,
-                                data2
-                            );
-                            if (ok) {
-                                zeroInitState[node] = ZERO_INIT_WAIT_SECOND;
-                            } else {
-                                zeroInitState[node] = ZERO_INIT_NONE;
-                                Serial2.println("Failed to send second part of zero initialization for node " + String(node));
-                            }
-                        } else if (zeroInitState[node] == ZERO_INIT_WAIT_SECOND) {
-                            zeroInitState[node] = ZERO_INIT_NONE;
-                            Serial2.println("Zero initialization completed for node " + String(node));
-                        }
-                    }
-                } else if (data[0] == 0x80) { // SDO abort
-                    if (node <= RobotConstants::Robot::MAX_NODE_ID) {
-                        zeroInitState[node] = ZERO_INIT_NONE;
-                    }
-                    Serial2.println("SDO abort during zero initialization for node " + String(node));
-                }
-            }
 
             if (registerAddress == RobotConstants::ODIndices::POSITION_ACTUAL_VALUE) {
                 int32_t positionValue = (static_cast<int32_t>(data[7]) << 24) |
