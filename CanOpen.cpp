@@ -319,10 +319,16 @@ bool CanOpen::read()
             String status;
             switch (data[0]) {
                 case 0x05:
-                    status = "normal";
+                    status = "operational";
                     break;
                 case 0x04:
                     status = "alarm";
+                    break;
+                case 0x7F:
+                    status = "pre-operational";
+                    break;
+                case 0x00:
+                    status = "boot-up";
                     break;
                 default:
                     status = "unknown";
@@ -330,10 +336,16 @@ bool CanOpen::read()
             }
 
             Serial2.println("Heartbeat " + String(node) + ": " + status);
+            return true;
         } else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE) {
             Serial2.println("SDO Response from node " + String(node));
+            
+            // Validate length: SDO responses we handle here are expected to be 8 bytes
+            if (len < 8) {
+                Serial2.println("Invalid SDO response length from node " + String(node) + ": " + String(len));
+                return false;
+            }
 
-            // Validate length: SDO responses we handle here are expected to be 8 bytes            
             if (data[0] == 0x80) {
                 Serial2.println("SDO Error response from node " + String(node));
                 return false;
@@ -376,5 +388,5 @@ bool CanOpen::read()
         }
         return false;
     }
-    return false;
+    return false;   
 }
