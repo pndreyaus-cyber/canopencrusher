@@ -27,22 +27,14 @@ bool CanOpen::send_zeroInitialize(uint8_t nodeId, int commandNum)
         return false;
     }
 
-    bool ok = sendSDO(
-        nodeId,
-        2,
-        RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES,
-        0x00,
-        (commandNum == 1) ? data1 : data2
-    );
-
-    return true;
+    return send_x260A_electronicGearMolecules(nodeId, (commandNum == 1) ? 0xEA66 : 0xEA70);
 }
 
-bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value)
+bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, uint16_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
-        4,
+        2,
         RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES,
         _ElectronicGearMolecules_ElectronicGearMolecules_sIdx,
         &value
@@ -51,10 +43,10 @@ bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value)
 
 bool CanOpen::send_x60FF_targetVelocity(uint8_t nodeId, int32_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
         4,
-        _Target_velocity_Idx,
+        RobotConstants::ODIndices::TARGET_VELOCITY,
         _Target_velocity_Target_velocity_sIdx,
         &value
     );
@@ -62,10 +54,10 @@ bool CanOpen::send_x60FF_targetVelocity(uint8_t nodeId, int32_t value)
 
 bool CanOpen::send_x6083_profileAcceleration(uint8_t nodeId, uint32_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
         4,
-        _Profile_acceleration_Idx,
+        RobotConstants::ODIndices::PROFILE_ACCELERATION,
         _Profile_acceleration_Profile_acceleration_sIdx,
         &value
     );
@@ -73,10 +65,10 @@ bool CanOpen::send_x6083_profileAcceleration(uint8_t nodeId, uint32_t value)
 
 bool CanOpen::send_x6081_profileVelocity(uint8_t nodeId, uint32_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
         4,
-        _Profile_velocity_Idx,
+        RobotConstants::ODIndices::PROFILE_VELOCITY,
         _Profile_velocity_Profile_velocity_sIdx,
         &value
     );
@@ -84,10 +76,10 @@ bool CanOpen::send_x6081_profileVelocity(uint8_t nodeId, uint32_t value)
 
 bool CanOpen::send_x6040_controlword(uint8_t nodeId, uint16_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
         2,
-        _Controlword_Idx,
+        RobotConstants::ODIndices::CONTROLWORD,
         _Controlword_Controlword_sIdx,
         &value
     );
@@ -99,48 +91,55 @@ Modes of operation:
 */
 bool CanOpen::send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
         1,
-        _Modes_of_operation_Idx,
+        RobotConstants::ODIndices::MODES_OF_OPERATION,
         _Modes_of_operation_Modes_of_operation_sIdx,
         &value
     );    
 }
 
-bool CanOpen::sendSDO(uint8_t nodeId, uint8_t dataLen, uint16_t index, uint8_t subindex, void *data)
+bool CanOpen::sendSDOWrite(uint8_t nodeId, uint8_t dataLenBytes, uint16_t index, uint8_t subindex, const void *data)
 {
-    uint8_t msgBuf[8] = {0};
+    uint8_t msgBuf[RobotConstants::CANOpen::HEADER_SIZE +
+                   RobotConstants::CANOpen::MAX_SDO_WRITE_DATA_SIZE ] = {0}; // 8 bytes of CAN message data
     
     // SDO expedited write (1-4 bytes, command specifier по размеру данных)
     uint8_t cs;
-    switch (dataLen) {
+    switch (dataLenBytes) {
         case 1: cs = 0x2F; break;
         case 2: cs = 0x2B; break;
         case 3: cs = 0x27; break;
         case 4: cs = 0x23; break;
         default: return false; // error
     }
+    // Set function code
     msgBuf[0] = cs;
-    memcpy(&msgBuf[1], &index, 2);
+    // Change index to little-endian format
+    msgBuf[1] = static_cast<uint8_t>(index & 0xFF);
+    msgBuf[2] = static_cast<uint8_t>((index >> 8) & 0xFF);
+    // Set subindex
     msgBuf[3] = subindex;
-    memcpy(&msgBuf[4], data, dataLen);
+    // Copy data in reverse order for little-endian format
+    memcpy(&msgBuf[4], data, dataLenBytes);
 
-    // Отправляем (если ваша библиотека использует CAN.write или queue)
-    return send(0x600 + nodeId, msgBuf, dataLen + 4);
+    return send(0x600 + nodeId, msgBuf, dataLenBytes + 4);
 }
-//Example: Sending SDO request to read position: "40 64 60 00 00 00 00 00"
+//Example: Sending SDO request to read position: "40 64 60 00"
 bool CanOpen::sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex) {
-    uint8_t msgBuf[8] = {0x40,
-                         static_cast<uint8_t>(index & 0xFF),
-                         static_cast<uint8_t>((index >> 8) & 0xFF),
-                         subindex,
-                         0, 0, 0, 0};
+    uint8_t msgBuf[4] = {0};
+    msgBuf[0] = 0x40; // SDO read command specifier
+    // Change index to little-endian format
+    msgBuf[1] = static_cast<uint8_t>(index & 0xFF);
+    msgBuf[2] = static_cast<uint8_t>((index >> 8) & 0xFF);
+    // Set subindex
+    msgBuf[3] = subindex;
 
     return send(
         0x600 + nodeId,
         msgBuf,
-        8
+        4
     );
 }
 
@@ -156,15 +155,6 @@ bool CanOpen::sendSYNC()
     Serial2.println("Sending SYNC");
     return send(0x80, nullptr, 0);
 }
-
-void CanOpen::writeReversedToBuf(const void* data, size_t size, uint8_t* bufStart) {
-    const uint8_t* src_bytes = static_cast<const uint8_t*>(data);
-    
-    for (size_t i = 0; i < size; ++i) {
-        bufStart[i] = src_bytes[size - 1 - i];  // Reverse copy
-    }
-}
-
 
 bool CanOpen::startCan(uint32_t baudRate)
 {
@@ -255,16 +245,16 @@ bool CanOpen::loopbackTest(){
 }
 
 
-bool CanOpen::send(uint32_t id, const uint8_t *data, uint8_t len)
+bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // data contains not only data but also SDO command specifier, index, subindex etc.
 {
     // Check for null data pointer
-    if(data == nullptr && len > 0) {
+    if(msgData == nullptr && msgDataLen > 0) {
         Serial2.println("Error: Null data pointer in CAN send");
         return false;
     }
     
     // Check for invalid length (CAN frame can have max 8 bytes of data)
-    if(len > 8) {
+    if(msgDataLen > 8) {
         Serial2.println("Error: Invalid data length in CAN send");
         return false;
     }
@@ -274,21 +264,16 @@ bool CanOpen::send(uint32_t id, const uint8_t *data, uint8_t len)
     CAN_TX_msg.len = 8;
     
     // Copy data to CAN message buffer
-    for(int i = 0; i < len; ++i){
-        CAN_TX_msg.buf[i] = data[i];
+    for(int i = 0; i < msgDataLen; ++i){
+        CAN_TX_msg.buf[i] = msgData[i];
     }
     
-    // Zero out unused bytes in the buffer
-    for(int i = len; i < 8; ++i){
+    // Zero out unused bytes in the buffer. Necessary, because the buffer may contain old data
+    for(int i = msgDataLen; i < 8; ++i){
         CAN_TX_msg.buf[i] = 0;
     }
     
-    // Send the message and check if it was successful
-    if(Can.write(CAN_TX_msg)) {
-        return true;
-    } else {
-        return false;
-    }
+    return Can.write(CAN_TX_msg);
 }
 
 bool CanOpen::receive(uint16_t &cob_id, uint8_t *data, uint8_t &len)
@@ -336,14 +321,14 @@ bool CanOpen::read()
 
             //Serial2.println("Heartbeat " + String(node) + ": " + status);
             return true;
-        } else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE) {
+        } else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE) { // SDO READ/WRITE RESPONSE
             Serial2.println("SDO Response from node " + String(node));
             
-            // Validate length: SDO responses we handle here are expected to be 8 bytes
-            //if (len < 8) {
-            //    Serial2.println("Invalid SDO response length from node " + String(node) + ": " + String(len));
-            //   return false;
-            //}
+            // Accept 4-byte write acks and 8-byte read responses
+            if (len < 4) {
+                Serial2.println("Invalid SDO response length from node " + String(node) + ": " + String(len));
+                return false;
+            }
 
             uint16_t registerAddress = data[1] | (data[2] << 8);
 

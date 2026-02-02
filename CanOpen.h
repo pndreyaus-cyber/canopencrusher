@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <functional>
-#include <unordered_map>
 #include "OD.h"
 #include "objdict_objectdefines.h"
 #include "STM32_CAN.h"
@@ -34,19 +33,17 @@ public:
     bool startCan(uint32_t baudRate);
 
     bool send_zeroInitialize(uint8_t nodeId, int commandNum);
-    bool send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value);
+    bool send_x260A_electronicGearMolecules(uint8_t nodeId, uint16_t value);
     bool send_x60FF_targetVelocity(uint8_t nodeId, int32_t value);
     bool send_x6083_profileAcceleration(uint8_t nodeId, uint32_t value);
     bool send_x6081_profileVelocity(uint8_t nodeId, uint32_t value);
     bool send_x6040_controlword(uint8_t nodeId, uint16_t value);
     bool send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value);
 
-    bool sendSDO(uint8_t nodeId, uint8_t dataLen, uint16_t index, uint8_t subindex, void* data);
+    bool sendSDOWrite(uint8_t nodeId, uint8_t dataLen, uint16_t index, uint8_t subindex, const void* data);
     bool sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex);
     bool sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute);
     bool sendSYNC();
-
-    void writeReversedToBuf(const void* data, size_t size, uint8_t* bufStart);
 
     void setSdoReadPositionCallback(SdoReadPositionCallback callback) {
         sdoReadPositionCallback = callback;

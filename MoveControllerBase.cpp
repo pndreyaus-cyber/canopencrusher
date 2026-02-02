@@ -97,7 +97,7 @@ void MoveControllerBase::sendMove()
     }
     
     delay(5);
-    //canOpen->sendSYNC();
+    canOpen->sendSYNC();
 }
 
 double MoveControllerBase::getRegularSpeedUnits() const
@@ -167,7 +167,6 @@ void MoveControllerBase::positionUpdateCallback(uint8_t nodeId, int32_t position
 void MoveControllerBase::electronicGearMoleculesWriteStatusCallback(uint8_t nodeId, bool success) {
     auto it = axes.find(nodeId);
     if (it != axes.end()) {
-        Axis& axis = it->second;
         
         if (success) {
             if (axisZeroInitStatus[nodeId] == ZEI_WAIT_FIRST_REPLY) {
@@ -219,6 +218,11 @@ void MoveControllerBase::tick() {
 }
 
 void MoveControllerBase::startZeroInitialization(uint8_t nodeId) {
+    if (axes.find(nodeId) == axes.end()) {
+        Serial2.println("Axis " + String(nodeId) + " not found.");
+        return;
+    }
+
     if (axisZeroInitStatus.find(nodeId) == axisZeroInitStatus.end() || axisZeroInitStatus[nodeId] == ZEI_NONE) {
         Serial2.println("Starting zero initialization for Axis " + String(nodeId));
         axisZeroInitStatus[nodeId] = ZEI_SEND_FIRST;

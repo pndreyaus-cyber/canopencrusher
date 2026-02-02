@@ -44,7 +44,14 @@ namespace RobotConstants {
         // PDO mapping
         constexpr uint8_t PDO_COUNT = 4;
         constexpr uint8_t PDO_MAPPING_MAX_ENTRIES = 8;
-    }
+
+        // SDO 
+        constexpr uint8_t MAX_SDO_WRITE_DATA_SIZE = 4; // Max 4 bytes for expedited SDO write
+        constexpr uint8_t REGISTER_INDEX_SIZE = 2; // 2 bytes for index
+        constexpr uint8_t REGISTER_SUBINDEX_SIZE = 1; // 1 byte for subindex
+        constexpr uint8_t SDO_FUNCTION_CODE_SIZE = 1; // 1 byte for function code
+        constexpr uint8_t HEADER_SIZE = SDO_FUNCTION_CODE_SIZE + REGISTER_INDEX_SIZE + REGISTER_SUBINDEX_SIZE;
+    }   
 
     // Object dictionary indices (from OD.h)
     namespace ODIndices {

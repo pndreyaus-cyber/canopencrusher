@@ -199,7 +199,7 @@ typedef struct {
     uint8_t x2601_driverEnable;
     uint8_t x2604_weakMagneticAngle;
     uint8_t x2609_DIR;
-    uint8_t x260A_electronicGearMolecules;
+    uint16_t x260A_electronicGearMolecules; // do not know why 8 bits. The manual sa1ys it is 16 bits
     uint8_t x260B_electronicGearDenominator;
     uint8_t x260C_incrementalPosition;
     uint8_t x260E_ERROCode;
