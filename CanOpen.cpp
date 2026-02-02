@@ -2,7 +2,7 @@
 #include "CanOpen.h"
 #include "RobotConstants.h"
 
-bool CanOpen::send_zeroInitialize(uint8_t nodeId)
+bool CanOpen::send_zeroInitialize(uint8_t nodeId, int commandNum)
 {
     /*
     STATUS: IN CONSTRUCTION. DO NOT USE YET.
@@ -15,31 +15,26 @@ bool CanOpen::send_zeroInitialize(uint8_t nodeId)
     The CAN package uses little-endian format, so we need to reverse the byte order when sending
     */
     uint8_t data1[2] = {0x66, 0xEA};
+    uint8_t data2[2] = {0x70, 0xEA};
 
     if (nodeId > RobotConstants::Robot::MAX_NODE_ID) {
         Serial2.println("Invalid nodeId for zero initialization");
         return false;
     }
 
-    // if (zeroInitState[nodeId] != ZERO_INIT_NONE) {
-    //     Serial2.println("Zero initialization already in progress for node " + String(nodeId));
-    //     return false;
-    // }
+    if (commandNum != 1 && commandNum != 2) {
+        Serial2.println("Invalid commandNum for zero initialization");
+        return false;
+    }
 
     bool ok = sendSDO(
         nodeId,
         2,
         RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES,
         0x00,
-        data1
+        (commandNum == 1) ? data1 : data2
     );
 
-    if (!ok) {
-        Serial2.println("Failed to send first part of zero initialization");
-        return false;
-    }
-
-    // zeroInitState[nodeId] = ZERO_INIT_WAIT_FIRST;
     return true;
 }
 
@@ -98,6 +93,10 @@ bool CanOpen::send_x6040_controlword(uint8_t nodeId, uint16_t value)
     );
 }
 
+/*
+Modes of operation:
+- 
+*/
 bool CanOpen::send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value)
 {
     return sendSDO(
@@ -272,7 +271,7 @@ bool CanOpen::send(uint32_t id, const uint8_t *data, uint8_t len)
     
     CAN_TX_msg.id = id;
     CAN_TX_msg.flags.extended = 0;
-    CAN_TX_msg.len = len;
+    CAN_TX_msg.len = 8;
     
     // Copy data to CAN message buffer
     for(int i = 0; i < len; ++i){
@@ -335,58 +334,67 @@ bool CanOpen::read()
                     break;
             }
 
-            Serial2.println("Heartbeat " + String(node) + ": " + status);
+            //Serial2.println("Heartbeat " + String(node) + ": " + status);
             return true;
         } else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE) {
             Serial2.println("SDO Response from node " + String(node));
             
             // Validate length: SDO responses we handle here are expected to be 8 bytes
-            if (len < 8) {
-                Serial2.println("Invalid SDO response length from node " + String(node) + ": " + String(len));
-                return false;
-            }
+            //if (len < 8) {
+            //    Serial2.println("Invalid SDO response length from node " + String(node) + ": " + String(len));
+            //   return false;
+            //}
+
+            uint16_t registerAddress = data[1] | (data[2] << 8);
 
             if (data[0] == 0x80) {
                 Serial2.println("SDO Error response from node " + String(node));
+                if (registerAddress == RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES) {
+                    if (electronicGearMoleculesWriteStatusCallback) {
+                        electronicGearMoleculesWriteStatusCallback(node, false);
+                    }
+                }
                 return false;
-            }
+            } else if (data[0] == 0x60) { // Response after successful write
+                Serial2.println("SDO Write Acknowledged for register " + String(registerAddress, HEX) + " from node " + String(node));
+                if (registerAddress == RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES) {
+                    if (electronicGearMoleculesWriteStatusCallback) {
+                        electronicGearMoleculesWriteStatusCallback(node, true);
+                    }
+                }
+            } else if ((data[0] & 0xF0) == 0x40) { // Assume it's a read response. Why exactly 0x40? Because expedited read responses have this pattern. Why assume? Cannot we definitiely say, that it is a read respones?
 
-            uint8_t registerSize;
-            switch (data[0] & 0xF) {
-                case 3: registerSize = 4; break;
-                case 11: registerSize = 2; break;
-                case 15: registerSize = 1; break;
-                default: registerSize = 0; break; // error
-            }
-
-            // constexpr uint16_t POSITION_ACTUAL_VALUE = 0x6064;
-            uint16_t registerAddress = data[1] | (data[2] << 8);
-
-            Serial2.print("Register address: ");
-            Serial2.println(registerAddress, HEX);
-
-            if (registerAddress == RobotConstants::ODIndices::POSITION_ACTUAL_VALUE) {
-                if (registerSize != 4) {
-                    Serial2.println("Unexpected register size for Position Actual Value");
-                    return false;
+                uint8_t registerSize;
+                switch (data[0] & 0xF) {
+                    case 3: registerSize = 4; break;
+                    case 11: registerSize = 2; break;
+                    case 15: registerSize = 1; break;
+                    default: registerSize = 0; break; // error
                 }
 
-                int32_t positionValue = (static_cast<int32_t>(data[7]) << 24) |
-                                        (static_cast<int32_t>(data[6]) << 16) |
-                                        (static_cast<int32_t>(data[5]) << 8)  |
-                                        (static_cast<int32_t>(data[4]));
+                if (registerAddress == RobotConstants::ODIndices::POSITION_ACTUAL_VALUE) {
+                    if (registerSize != 4) {
+                        Serial2.println("Unexpected register size for Position Actual Value");
+                        return false;
+                    }
 
-                Serial2.print("Position Actual Value from node ");
-                Serial2.print(node);
-                Serial2.print(": ");
-                Serial2.println(positionValue, HEX);
-                if (sdoReadPositionCallback) {
-                    sdoReadPositionCallback(node, positionValue);
+                    int32_t positionValue = (static_cast<int32_t>(data[7]) << 24) |
+                                            (static_cast<int32_t>(data[6]) << 16) |
+                                            (static_cast<int32_t>(data[5]) << 8)  |
+                                            (static_cast<int32_t>(data[4]));
+
+                    Serial2.print("Position Actual Value from node ");
+                    Serial2.print(node);
+                    Serial2.print(": ");
+                    Serial2.println(positionValue, HEX);
+                    if (sdoReadPositionCallback) {
+                        sdoReadPositionCallback(node, positionValue);
+                    }
+                    return true;
                 }
-                return true;
             }
+            return false;
         }
-        return false;
     }
     return false;   
 }

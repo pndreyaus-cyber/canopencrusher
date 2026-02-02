@@ -67,6 +67,7 @@ void loop() {
 
     sendData();
     canOpen.read();
+    moveController.tick();
 }
 
 bool receiveCommand()
@@ -137,11 +138,11 @@ void handleCommand()
     }
     else if (function.equals(RobotConstants::COMMANDS::ZERO_INITIALIZE))
     {
-        if (handleZeroInitialize(stringToZEIParams(inData))) {
+        if(handleZeroInitialize(stringToZEIParams(inData))) {
             addDataToOutQueue("ZEI COMMAND COMPLETED");
         }
         else {
-            addDataToOutQueue("ZEI COMMAND FAILED");
+            addDataToOutQueue("ZEI COMMAND FAILED");    
         }
     }
     else if (function.equals(RobotConstants::COMMANDS::REQUEST_POSITION))
@@ -392,7 +393,6 @@ bool handleSetCurrentPositionInUnits(PositionParams params) {
 }
 
 bool handleZeroInitialize(ZEIParams params) {
-    std::unordered_set<uint8_t> failedNodeIds;
     if (params.status != ParamsStatus::OK) {
         if (params.errorMsg.length() > 0) {
             addDataToOutQueue(params.errorMsg);
@@ -408,33 +408,14 @@ bool handleZeroInitialize(ZEIParams params) {
         addDataToOutQueue("ZEI FOR ALL NODES");
         totalNodes = RobotConstants::Robot::AXIS_COUNT;
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXIS_COUNT; ++nodeId) {
-            if (!canOpen.send_zeroInitialize(nodeId)) {
-                failedNodeIds.insert(nodeId);
-            }
+            moveController.startZeroInitialization(nodeId);
         }
     } else {
         totalNodes = static_cast<uint8_t>(params.nodeIds.size());
         for (uint8_t nodeId : params.nodeIds) {
-            if (!canOpen.send_zeroInitialize(nodeId)) {
-                failedNodeIds.insert(nodeId);
-            }
+            moveController.startZeroInitialization(nodeId);
         }
     }
-
-    if (failedNodeIds.size() > 0) {
-        if (failedNodeIds.size() == totalNodes) {
-            addDataToOutQueue("ZEI FAILED FOR ALL NODES");
-        } else {
-            String errorMsg = "ZEI PARTIALLY FAILED FOR NODES: ";
-            for (uint8_t id : failedNodeIds) {
-                errorMsg += String(id) + " ";
-            }
-            addDataToOutQueue(errorMsg);
-        }
-        return false;
-    }
-
-    addDataToOutQueue("ZEI COMPLETED FOR ALL TARGETED NODES");
     return true;
 }
 

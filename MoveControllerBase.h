@@ -10,6 +10,17 @@
 
 
 namespace StepDirController{ 
+
+enum ZeroInitStatus : uint8_t {
+    ZEI_NONE = 0,
+    ZEI_FAILED,
+    ZEI_SEND_FIRST,
+    ZEI_WAIT_FIRST_REPLY,
+    ZEI_SEND_SECOND,
+    ZEI_WAIT_SECOND_REPLY,  
+    ZEI_FINISHED
+};
+
 class MoveControllerBase {
     public:
         bool start(CanOpen* canOpen, uint8_t axesCnt);
@@ -23,7 +34,14 @@ class MoveControllerBase {
         double getRegularSpeedUnits() const;
         double getAccelerationUnits() const;
 
+        void startZeroInitialization(uint8_t nodeId);
+        void setWorkMode(uint8_t nodeId, uint8_t mode);
+        void setControlWord(uint8_t nodeId, uint16_t controlWord);
+
+
         void move();
+
+        void tick();
         
 
         // TODO: добавить метод, например, void tick(), вызывать его из loop в ino-файле
@@ -40,6 +58,8 @@ class MoveControllerBase {
     private:
         CanOpen* canOpen;
         std::unordered_map<uint8_t, Axis> axes;
+        std::unordered_map<uint8_t, ZeroInitStatus> axisZeroInitStatus;
+
         bool initialized = false;
         uint8_t axesCnt = 0;
 
@@ -49,6 +69,7 @@ class MoveControllerBase {
         void sendMove();
 
         void positionUpdateCallback(uint8_t nodeId, int32_t position);
+        void electronicGearMoleculesWriteStatusCallback(uint8_t nodeId, bool success);
 };
 
 }

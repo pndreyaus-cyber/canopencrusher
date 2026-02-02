@@ -97,7 +97,7 @@ void MoveControllerBase::sendMove()
     }
     
     delay(5);
-    canOpen->sendSYNC();
+    //canOpen->sendSYNC();
 }
 
 double MoveControllerBase::getRegularSpeedUnits() const
@@ -130,7 +130,9 @@ bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
     canOpen->setSdoReadPositionCallback([this](uint8_t nodeId, int32_t position) {
         this->positionUpdateCallback(nodeId, position);
     });
-
+    canOpen->setElectronicGearMoleculesWriteStatusCallback([this](uint8_t nodeId, bool success) {
+        this->electronicGearMoleculesWriteStatusCallback(nodeId, success);
+    });
 
 
     initialized = true;
@@ -159,6 +161,88 @@ void MoveControllerBase::positionUpdateCallback(uint8_t nodeId, int32_t position
         axis.setCurrentPositionInSteps(position);
         //axis.params.x6064_positionActualValue = position;
         Serial2.println("Axis " + String(nodeId) + " position updated via SDO callback: " + String(position));
+    }
+}
+
+void MoveControllerBase::electronicGearMoleculesWriteStatusCallback(uint8_t nodeId, bool success) {
+    auto it = axes.find(nodeId);
+    if (it != axes.end()) {
+        Axis& axis = it->second;
+        
+        if (success) {
+            if (axisZeroInitStatus[nodeId] == ZEI_WAIT_FIRST_REPLY) {
+                axisZeroInitStatus[nodeId] = ZEI_SEND_SECOND;
+            } else if (axisZeroInitStatus[nodeId] == ZEI_WAIT_SECOND_REPLY) {
+                axisZeroInitStatus[nodeId] = ZEI_FINISHED;
+            }
+            Serial2.println("Axis " + String(nodeId) + " electronic gear molecules write succeeded.");
+        } else {
+            axisZeroInitStatus[nodeId] = ZEI_FAILED;
+            Serial2.println("Axis " + String(nodeId) + " electronic gear molecules write failed.");
+        }
+    }
+
+}
+
+void MoveControllerBase::tick() {
+    if (!initialized) {
+        Serial2.println("MoveControllerBase.cpp tick -- MoveControllerBase not initialized");
+        return;
+    }
+    
+    for (auto it = axes.begin(); it != axes.end(); ++it){
+        Axis& axis = it->second;
+        if(axisZeroInitStatus[axis.nodeId] == ZEI_SEND_FIRST) {
+            if(canOpen->send_zeroInitialize(axis.nodeId, 1)){
+                axisZeroInitStatus[axis.nodeId] = ZEI_WAIT_FIRST_REPLY;
+            } else {
+                axisZeroInitStatus[axis.nodeId] = ZEI_FAILED;
+                Serial2.println("Axis " + String(axis.nodeId) + " zero initialization failed at first step");
+            }
+        } else if (axisZeroInitStatus[axis.nodeId] == ZEI_SEND_SECOND) {
+            if(canOpen->send_zeroInitialize(axis.nodeId, 2)){
+                axisZeroInitStatus[axis.nodeId] = ZEI_WAIT_SECOND_REPLY;
+            } else {
+                axisZeroInitStatus[axis.nodeId] = ZEI_FAILED;
+                Serial2.println("Axis " + String(axis.nodeId) + " zero initialization failed at second step");
+            }
+        } else if (axisZeroInitStatus[axis.nodeId] == ZEI_FINISHED) {
+            Serial2.println("Axis " + String(axis.nodeId) + " zero initialization finished successfully.");
+            setWorkMode(axis.nodeId, 1); // Set to Profile Position Mode
+            setControlWord(axis.nodeId, 0x0F); // Enable Voltage
+            axisZeroInitStatus[axis.nodeId] = ZEI_NONE; // To prevent repeated messages
+        } else if (axisZeroInitStatus[axis.nodeId] == ZEI_FAILED) {
+            Serial2.println("Axis " + String(axis.nodeId) + " zero initialization failed.");
+            axisZeroInitStatus[axis.nodeId] = ZEI_NONE; // To prevent repeated messages
+        }
+    }
+}
+
+void MoveControllerBase::startZeroInitialization(uint8_t nodeId) {
+    if (axisZeroInitStatus.find(nodeId) == axisZeroInitStatus.end() || axisZeroInitStatus[nodeId] == ZEI_NONE) {
+        Serial2.println("Starting zero initialization for Axis " + String(nodeId));
+        axisZeroInitStatus[nodeId] = ZEI_SEND_FIRST;
+    } else {
+        Serial2.println("Zero initialization for Axis " + String(nodeId) + " is already in progress or completed.");
+        return;
+    }
+}
+
+void MoveControllerBase::setWorkMode(uint8_t nodeId, uint8_t mode) {
+    if (!canOpen->send_x6060_modesOfOperation(nodeId, mode)) {
+        Serial2.println("Failed to set work mode for Axis " + String(nodeId));
+    } else {
+        axes[nodeId].params.x6060_modesOfOperation = mode;
+        Serial2.println("Work mode for Axis " + String(nodeId) + " set to " + String(mode));
+    }
+}
+
+void MoveControllerBase::setControlWord(uint8_t nodeId, uint16_t controlWord) {
+    if (!canOpen->send_x6040_controlword(nodeId, controlWord)) {
+        Serial2.println("Failed to set control word for Axis " + String(nodeId));
+    } else {
+        axes[nodeId].params.x6040_controlword = controlWord;
+        Serial2.println("Control word for Axis " + String(nodeId) + " set to " + String(controlWord, HEX));
     }
 }
 
