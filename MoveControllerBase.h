@@ -4,22 +4,13 @@
 
 #include <string>
 #include <unordered_map>
+#include <type_traits>
 #include "CanOpen.h"
 #include "Params.h"
 #include "Axis.h"
 
 
 namespace StepDirController{ 
-
-enum ZeroInitStatus : uint8_t {
-    ZEI_NONE = 0,
-    ZEI_FAILED,
-    ZEI_SEND_FIRST,
-    ZEI_WAIT_FIRST_REPLY,
-    ZEI_SEND_SECOND,
-    ZEI_WAIT_SECOND_REPLY,  
-    ZEI_FINISHED
-};
 
 class MoveControllerBase {
     public:
@@ -34,15 +25,13 @@ class MoveControllerBase {
         double getRegularSpeedUnits() const;
         double getAccelerationUnits() const;
 
-        void startZeroInitialization(uint8_t nodeId);
+        void startZeroInitializationAllAxes();
+        void startZeroInitializationSingleAxis(uint8_t nodeId);
         void setWorkMode(uint8_t nodeId, uint8_t mode);
         void setControlWord(uint8_t nodeId, uint16_t controlWord);
 
 
         void move();
-
-        void tick();
-        
 
         // TODO: добавить метод, например, void tick(), вызывать его из loop в ino-файле
         // метод tick() должен вызывать метод чтения (который нужно написать) у CanOpen (который сам взаимодействует с шиной CAN)
@@ -58,18 +47,91 @@ class MoveControllerBase {
     private:
         CanOpen* canOpen;
         std::unordered_map<uint8_t, Axis> axes;
-        std::unordered_map<uint8_t, ZeroInitStatus> axisZeroInitStatus;
 
         bool initialized = false;
         uint8_t axesCnt = 0;
+
+        bool zeroInitializeSingleAxis = true;
+        uint8_t axisToInitialize = 0;
 
         double regularSpeedUnits = 1.0f; // The speed of the maximum moving axis in percent of full speed (1.0 = 100%)
         double accelerationUnits = 1.0f; // The acceleration of the maximum moving axis in percent of full acceleration (1.0 = 100%)
 
         void sendMove();
 
-        void positionUpdateCallback(uint8_t nodeId, int32_t position);
-        void electronicGearMoleculesWriteStatusCallback(uint8_t nodeId, bool success);
+        void positionUpdate(uint8_t nodeId, int32_t position);
+
+        template <
+            typename ResetCurrentCallback,
+            typename OnFailureResetCallback,
+            typename OnSuccessBeforeNext,
+            typename SetNextCallback,
+            typename SendNext,
+            typename OnSendFailResetCallback>
+        bool zeroInitialize_advanceStep(
+            uint8_t nodeId,
+            bool success,
+            const char* stepFailMsg,
+            ResetCurrentCallback resetCurrentCallback,
+            OnFailureResetCallback onFailureResetCallback,
+            OnSuccessBeforeNext onSuccessBeforeNext,
+            SetNextCallback setNextCallback,
+            SendNext sendNext,
+            const char* sendFailMsg,
+            OnSendFailResetCallback onSendFailResetCallback) {
+            if constexpr (!std::is_same_v<ResetCurrentCallback, std::nullptr_t>) {
+                resetCurrentCallback(nodeId);
+            }
+
+            if (!success) {
+                if (stepFailMsg != nullptr) {
+                    Serial2.println(String(stepFailMsg) + String(nodeId));
+                }
+                axes[nodeId].initStatus = ZEI_FAILED;
+                if constexpr (!std::is_same_v<OnFailureResetCallback, std::nullptr_t>) {
+                    onFailureResetCallback(nodeId);
+                }
+                zeroInitialize_finalResult();
+                return false;
+            }
+
+            if constexpr (!std::is_same_v<OnSuccessBeforeNext, std::nullptr_t>) {
+                onSuccessBeforeNext(nodeId);
+            }
+
+            if constexpr (!std::is_same_v<SetNextCallback, std::nullptr_t>) {
+                setNextCallback(nodeId);
+            }
+
+            if (!sendNext(nodeId)) {
+                if (sendFailMsg != nullptr) {
+                    Serial2.println(String(sendFailMsg) + String(nodeId));
+                }
+                axes[nodeId].initStatus = ZEI_FAILED;
+                if constexpr (!std::is_same_v<OnSendFailResetCallback, std::nullptr_t>) {
+                    onSendFailResetCallback(nodeId);
+                }
+                zeroInitialize_finalResult();
+                return false;
+            }
+
+            return true;
+        }
+
+// Callbacks
+        void zeroInitialize_firstWriteTo_0x260A(uint8_t nodeId, bool success);
+        void zeroInitialize_secondWriteTo_0x260A(uint8_t nodeId, bool success);
+        void zeroInitialize_firstWriteTo_0x6040(uint8_t nodeId, bool success);
+        void zeroInitialize_writeTo_0x6060(uint8_t nodeId, bool success);
+        void zeroInitialize_requestPosition_0x6064(uint8_t nodeId, bool success, int32_t position);
+        void zeroInitialize_secondWriteTo_0x6040(uint8_t nodeId, bool success);
+        void zeroInitialize_writeTo_0x607A(uint8_t nodeId, bool success);
+        void zeroInitialize_requestStatusword_0x6041(uint8_t nodeId, bool success, uint16_t statusWord);
+
+        void zeroInitialize_finalResult();
+
+        void regularHeartbeatCallback(uint8_t nodeId, uint8_t status);
+        void regularPositionActualValueCallback(uint8_t nodeId, bool success, int32_t position);
 };
 
 }

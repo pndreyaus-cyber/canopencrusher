@@ -100,6 +100,17 @@ bool CanOpen::send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value)
     );    
 }
 
+bool CanOpen::send_x607A_targetPosition(uint8_t nodeId, int32_t value)
+{
+    return sendSDOWrite(
+        nodeId,
+        4,
+        RobotConstants::ODIndices::TARGET_POSITION,
+        _Target_position_Target_position_sIdx,
+        &value
+    );
+}
+
 bool CanOpen::sendSDOWrite(uint8_t nodeId, uint8_t dataLenBytes, uint16_t index, uint8_t subindex, const void *data)
 {
     uint8_t msgBuf[RobotConstants::CANOpen::HEADER_SIZE +
@@ -296,57 +307,64 @@ bool CanOpen::read()
     uint8_t len;
 
     if (receive(id, data, len)) {
-        uint16_t node = id & 0x7F; // Extract node ID from COB-ID
+        uint16_t nodeId = id & 0x7F; // Extract node ID from COB-ID
         uint16_t function_code = id & 0x780; // Extract base COB-ID
 
         if (function_code == RobotConstants::CANOpen::COB_ID_HEARTBEAT_BASE) {
-            String status;
-            switch (data[0]) {
-                case 0x05:
-                    status = "operational";
-                    break;
-                case 0x04:
-                    status = "alarm";
-                    break;
-                case 0x7F:
-                    status = "pre-operational";
-                    break;
-                case 0x00:
-                    status = "boot-up";
-                    break;
-                default:
-                    status = "unknown";
-                    break;
+            if (heartbeatCallback != nullptr) {
+                heartbeatCallback(nodeId, data[0]);
             }
-
-            //Serial2.println("Heartbeat " + String(node) + ": " + status);
-            return true;
         } else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE) { // SDO READ/WRITE RESPONSE
-            Serial2.println("SDO Response from node " + String(node));
+            Serial2.println("SDO Response from node " + String(nodeId));
             
             // Accept 4-byte write acks and 8-byte read responses
             if (len < 4) {
-                Serial2.println("Invalid SDO response length from node " + String(node) + ": " + String(len));
+                Serial2.println("Invalid SDO response length from node " + String(nodeId) + ": " + String(len));
                 return false;
             }
 
             uint16_t registerAddress = data[1] | (data[2] << 8);
 
-            if (data[0] == 0x80) {
-                Serial2.println("SDO Error response from node " + String(node));
-                if (registerAddress == RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES) {
-                    if (electronicGearMoleculesWriteStatusCallback) {
-                        electronicGearMoleculesWriteStatusCallback(node, false);
-                    }
+            if (registerAddress == RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES) { // 0x260A
+                if (electronicGearMoleculesCallbacks_260A[nodeId] != nullptr) {
+                    electronicGearMoleculesCallbacks_260A[nodeId](nodeId, (data[0] == 0x60));
                 }
-                return false;
-            } else if (data[0] == 0x60) { // Response after successful write
-                Serial2.println("SDO Write Acknowledged for register " + String(registerAddress, HEX) + " from node " + String(node));
-                if (registerAddress == RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES) {
-                    if (electronicGearMoleculesWriteStatusCallback) {
-                        electronicGearMoleculesWriteStatusCallback(node, true);
-                    }
+            } else if (registerAddress == RobotConstants::ODIndices::CONTROLWORD) { // 0x6040
+                if (controlWordCallbacks_6040[nodeId] != nullptr) {
+                    controlWordCallbacks_6040[nodeId](nodeId, (data[0] == 0x60));
                 }
+            } else if (registerAddress == RobotConstants::ODIndices::MODES_OF_OPERATION) { // 0x6060
+                if (modesOfOperationCallbacks_6060[nodeId] != nullptr) {
+                    modesOfOperationCallbacks_6060[nodeId](nodeId, (data[0] == 0x60));
+                }
+            } else if (registerAddress == RobotConstants::ODIndices::TARGET_POSITION) { // 0x607A
+                if (targetPositionCallbacks_607A[nodeId] != nullptr) {
+                    targetPositionCallbacks_607A[nodeId](nodeId, (data[0] == 0x60));
+                }
+            } else if (registerAddress == RobotConstants::ODIndices::POSITION_ACTUAL_VALUE) { // 0x6064
+                bool success = (data[0] != 0x80);
+                int32_t positionValue = 0;
+                if (success) {
+                    positionValue = (static_cast<int32_t>(data[7]) << 24) |
+                                    (static_cast<int32_t>(data[6]) << 16) |
+                                    (static_cast<int32_t>(data[5]) << 8)  |
+                                    (static_cast<int32_t>(data[4]));
+                }
+                if (positionReadCallbacks_6064[nodeId] != nullptr) {
+                    positionReadCallbacks_6064[nodeId](nodeId, success, positionValue);
+                }
+            } else if (registerAddress == RobotConstants::ODIndices::STATUSWORD) { // 0x6041
+                if (statusWordCallbacks_6041[nodeId] != nullptr) {
+                    bool success = (data[0] == 0x60);
+                    uint16_t statusWordValue = 0;
+                    if (success) {
+                        statusWordValue = static_cast<uint16_t>(data[4]) | (static_cast<uint16_t>(data[5]) << 8);
+                    }
+                    statusWordCallbacks_6041[nodeId](nodeId, success, statusWordValue);
+                }
+            }
+
+/*
             } else if ((data[0] & 0xF0) == 0x40) { // Assume it's a read response. Why exactly 0x40? Because expedited read responses have this pattern. Why assume? Cannot we definitiely say, that it is a read respones?
 
                 uint8_t registerSize;
@@ -369,15 +387,16 @@ bool CanOpen::read()
                                             (static_cast<int32_t>(data[4]));
 
                     Serial2.print("Position Actual Value from node ");
-                    Serial2.print(node);
+                    Serial2.print(nodeId);
                     Serial2.print(": ");
                     Serial2.println(positionValue, HEX);
                     if (sdoReadPositionCallback) {
-                        sdoReadPositionCallback(node, positionValue);
+                        sdoReadPositionCallback(nodeId, positionValue);
                     }
                     return true;
                 }
             }
+            */
             return false;
         }
     }

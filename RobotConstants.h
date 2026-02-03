@@ -5,6 +5,23 @@
 #include <cstdint>
 #include <array>
 
+using callback_x6064_positionActualValue = std::function<void(uint8_t, bool, int32_t)>;
+using callback_x260A_electronicGearMolecules = std::function<void(uint8_t, bool)>;
+using callback_x6040_controlword = std::function<void(uint8_t, bool)>; 
+using callback_x6040_controlword = std::function<void(uint8_t, bool)>; 
+using callback_x6060_modesOfOperation = std::function<void(uint8_t, bool)>;
+using callback_x607A_targetPosition = std::function<void(uint8_t, bool)>;
+using callback_x6041_statusword = std::function<void(uint8_t, bool, uint16_t)>;
+
+using callback_heartbeat = std::function<void(uint8_t, uint8_t)>;
+
+enum InitStatus : uint8_t {
+    ZEI_NONE = 0,
+    ZEI_FAILED,
+    ZEI_ONGOING,  
+    ZEI_FINISHED
+};
+
 namespace RobotConstants {
 
     // Physical and mathematical constants

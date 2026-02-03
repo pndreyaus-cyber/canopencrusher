@@ -63,6 +63,9 @@ class Axis{
         double acceleration; // ускорение в шагах/сек^2
 
         friend class MoveControllerBase;
+
+        // For zero initialization
+        InitStatus initStatus;
 };
 }
 

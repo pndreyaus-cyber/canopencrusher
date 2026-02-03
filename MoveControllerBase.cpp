@@ -125,15 +125,16 @@ bool MoveControllerBase::start(CanOpen* canOpen, uint8_t axesCnt){
 
     for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId){
         axes[nodeId] = Axis(nodeId);
+        
+        canOpen->setPositionActualValueCallback_0x6064([this](uint8_t nodeId, bool success, int32_t position) {
+            this->regularPositionActualValueCallback(nodeId, success, position);
+        }, nodeId);
     }
 
-    canOpen->setSdoReadPositionCallback([this](uint8_t nodeId, int32_t position) {
-        this->positionUpdateCallback(nodeId, position);
+    canOpen->setHeartbeatCallback([this](uint8_t nodeId, uint8_t status) {
+        this->regularHeartbeatCallback(nodeId, status);
     });
-    canOpen->setElectronicGearMoleculesWriteStatusCallback([this](uint8_t nodeId, bool success) {
-        this->electronicGearMoleculesWriteStatusCallback(nodeId, success);
-    });
-
+    
 
     initialized = true;
     return true;
@@ -153,7 +154,7 @@ void MoveControllerBase::move() {
 
 }
 
-void MoveControllerBase::positionUpdateCallback(uint8_t nodeId, int32_t position) {
+void MoveControllerBase::positionUpdate(uint8_t nodeId, int32_t position) {
     auto it = axes.find(nodeId);
     if (it != axes.end()) {
         Axis& axis = it->second;
@@ -164,71 +165,31 @@ void MoveControllerBase::positionUpdateCallback(uint8_t nodeId, int32_t position
     }
 }
 
-void MoveControllerBase::electronicGearMoleculesWriteStatusCallback(uint8_t nodeId, bool success) {
-    auto it = axes.find(nodeId);
-    if (it != axes.end()) {
-        
-        if (success) {
-            if (axisZeroInitStatus[nodeId] == ZEI_WAIT_FIRST_REPLY) {
-                axisZeroInitStatus[nodeId] = ZEI_SEND_SECOND;
-            } else if (axisZeroInitStatus[nodeId] == ZEI_WAIT_SECOND_REPLY) {
-                axisZeroInitStatus[nodeId] = ZEI_FINISHED;
-            }
-            Serial2.println("Axis " + String(nodeId) + " electronic gear molecules write succeeded.");
-        } else {
-            axisZeroInitStatus[nodeId] = ZEI_FAILED;
-            Serial2.println("Axis " + String(nodeId) + " electronic gear molecules write failed.");
-        }
+void MoveControllerBase::startZeroInitializationAllAxes() {
+    zeroInitializeSingleAxis = false;
+    for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId) {
+        startZeroInitializationSingleAxis(nodeId);
     }
-
 }
 
-void MoveControllerBase::tick() {
-    if (!initialized) {
-        Serial2.println("MoveControllerBase.cpp tick -- MoveControllerBase not initialized");
+void MoveControllerBase::startZeroInitializationSingleAxis(uint8_t nodeId) {
+    if (axes[nodeId].initStatus == ZEI_ONGOING || axes[nodeId].initStatus == ZEI_FINISHED) {
+        Serial2.println("Zero initialization already in progress or finished for Axis " + String(nodeId));
         return;
+    }
+    axes[nodeId].initStatus = ZEI_ONGOING;
+    if (zeroInitializeSingleAxis) {
+        axisToInitialize = nodeId;
     }
     
-    for (auto it = axes.begin(); it != axes.end(); ++it){
-        Axis& axis = it->second;
-        if(axisZeroInitStatus[axis.nodeId] == ZEI_SEND_FIRST) {
-            if(canOpen->send_zeroInitialize(axis.nodeId, 1)){
-                axisZeroInitStatus[axis.nodeId] = ZEI_WAIT_FIRST_REPLY;
-            } else {
-                axisZeroInitStatus[axis.nodeId] = ZEI_FAILED;
-                Serial2.println("Axis " + String(axis.nodeId) + " zero initialization failed at first step");
-            }
-        } else if (axisZeroInitStatus[axis.nodeId] == ZEI_SEND_SECOND) {
-            if(canOpen->send_zeroInitialize(axis.nodeId, 2)){
-                axisZeroInitStatus[axis.nodeId] = ZEI_WAIT_SECOND_REPLY;
-            } else {
-                axisZeroInitStatus[axis.nodeId] = ZEI_FAILED;
-                Serial2.println("Axis " + String(axis.nodeId) + " zero initialization failed at second step");
-            }
-        } else if (axisZeroInitStatus[axis.nodeId] == ZEI_FINISHED) {
-            Serial2.println("Axis " + String(axis.nodeId) + " zero initialization finished successfully.");
-            setWorkMode(axis.nodeId, 1); // Set to Profile Position Mode
-            setControlWord(axis.nodeId, 0x0F); // Enable Voltage
-            axisZeroInitStatus[axis.nodeId] = ZEI_NONE; // To prevent repeated messages
-        } else if (axisZeroInitStatus[axis.nodeId] == ZEI_FAILED) {
-            Serial2.println("Axis " + String(axis.nodeId) + " zero initialization failed.");
-            axisZeroInitStatus[axis.nodeId] = ZEI_NONE; // To prevent repeated messages
-        }
-    }
-}
+    canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A([this](uint8_t callbackNodeId, bool success) {
+        this->zeroInitialize_firstWriteTo_0x260A(callbackNodeId, success);
+    }, nodeId);
 
-void MoveControllerBase::startZeroInitialization(uint8_t nodeId) {
-    if (axes.find(nodeId) == axes.end()) {
-        Serial2.println("Axis " + String(nodeId) + " not found.");
-        return;
-    }
-
-    if (axisZeroInitStatus.find(nodeId) == axisZeroInitStatus.end() || axisZeroInitStatus[nodeId] == ZEI_NONE) {
-        Serial2.println("Starting zero initialization for Axis " + String(nodeId));
-        axisZeroInitStatus[nodeId] = ZEI_SEND_FIRST;
-    } else {
-        Serial2.println("Zero initialization for Axis " + String(nodeId) + " is already in progress or completed.");
-        return;
+    if (!canOpen->send_x260A_electronicGearMolecules(nodeId, 0xEA66)) {
+        Serial2.println("Failed to start zero initialization for Axis " + String(nodeId));
+        axes[nodeId].initStatus = ZEI_FAILED;
+        zeroInitialize_finalResult();
     }
 }
 
@@ -250,4 +211,257 @@ void MoveControllerBase::setControlWord(uint8_t nodeId, uint16_t controlWord) {
     }
 }
 
+// Callbacks 
+void MoveControllerBase::zeroInitialize_firstWriteTo_0x260A(uint8_t nodeId, bool success) {
+    zeroInitialize_advanceStep(
+        nodeId,
+        success,
+        "Zero initialization phase 1 failed for Axis ",
+        nullptr,
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A(nullptr, callbackNodeId);
+        },
+        nullptr,
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A([this](uint8_t cbNodeId, bool cbSuccess) {
+                this->zeroInitialize_secondWriteTo_0x260A(cbNodeId, cbSuccess);
+            }, callbackNodeId);
+        },
+        [this](uint8_t callbackNodeId) {
+            return this->canOpen->send_x260A_electronicGearMolecules(callbackNodeId, 0xEA70);
+        },
+        "Failed to send second write for zero initialization for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A(nullptr, callbackNodeId);
+        });
+}
+
+void MoveControllerBase::zeroInitialize_secondWriteTo_0x260A(uint8_t nodeId, bool success) {
+    zeroInitialize_advanceStep(
+        nodeId,
+        success,
+        "Zero initialization phase 2 failed for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A(nullptr, callbackNodeId);
+        },
+        nullptr,
+        nullptr,
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setControlWordWriteStatusCallback_0x6040([this](uint8_t cbNodeId, bool cbSuccess) {
+                this->zeroInitialize_firstWriteTo_0x6040(cbNodeId, cbSuccess);
+            }, callbackNodeId);
+        },
+        [this](uint8_t callbackNodeId) {
+            return this->canOpen->send_x6040_controlword(callbackNodeId, 0x000F);
+        },
+        "Failed to send control word for zero initialization for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setControlWordWriteStatusCallback_0x6040(nullptr, callbackNodeId);
+        });
+}
+
+void MoveControllerBase::zeroInitialize_firstWriteTo_0x6040(uint8_t nodeId, bool success) {
+    zeroInitialize_advanceStep(
+        nodeId,
+        success,
+        "Zero initialization control word write failed for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setControlWordWriteStatusCallback_0x6040(nullptr, callbackNodeId);
+        },
+        nullptr,
+        nullptr,
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setModesOfOperationWriteStatusCallback_0x6060([this](uint8_t cbNodeId, bool cbSuccess) {
+                this->zeroInitialize_writeTo_0x6060(cbNodeId, cbSuccess);
+            }, callbackNodeId);
+        },
+        [this](uint8_t callbackNodeId) {
+            return this->canOpen->send_x6060_modesOfOperation(callbackNodeId, 0x01);
+        },
+        "Failed to send modes of operation for zero initialization for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setModesOfOperationWriteStatusCallback_0x6060(nullptr, callbackNodeId);
+        });
+}
+
+void MoveControllerBase::zeroInitialize_writeTo_0x6060(uint8_t nodeId, bool success) {
+    zeroInitialize_advanceStep(
+        nodeId,
+        success,
+        "Zero initialization modes of operation write failed for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setModesOfOperationWriteStatusCallback_0x6060(nullptr, callbackNodeId);
+        },
+        nullptr,
+        nullptr,
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setPositionActualValueCallback_0x6064([this](uint8_t cbNodeId, bool cbSuccess, int32_t position) {
+                this->zeroInitialize_requestPosition_0x6064(cbNodeId, cbSuccess, position);
+            }, callbackNodeId);
+        },
+        [this](uint8_t callbackNodeId) {
+            return this->canOpen->sendSDORead(callbackNodeId, RobotConstants::ODIndices::POSITION_ACTUAL_VALUE, 0x00);
+        },
+        "Failed to request position for zero initialization for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setPositionActualValueCallback_0x6064([this](uint8_t cbNodeId, bool cbSuccess, int32_t position) {
+                this->regularPositionActualValueCallback(cbNodeId, cbSuccess, position);
+            }, callbackNodeId);
+        });
+}
+
+void MoveControllerBase::zeroInitialize_requestPosition_0x6064(uint8_t nodeId, bool success, int32_t position) {
+    zeroInitialize_advanceStep(
+        nodeId,
+        success,
+        "Zero initialization position read failed for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setPositionActualValueCallback_0x6064([this](uint8_t cbNodeId, bool cbSuccess, int32_t position) {
+                this->regularPositionActualValueCallback(cbNodeId, cbSuccess, position);
+            }, callbackNodeId);
+        },
+        nullptr,
+        [this, position](uint8_t callbackNodeId) {
+            this->positionUpdate(callbackNodeId, position);
+        },
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setControlWordWriteStatusCallback_0x6040([this](uint8_t cbNodeId, bool cbSuccess) {
+                this->zeroInitialize_secondWriteTo_0x6040(cbNodeId, cbSuccess);
+            }, callbackNodeId);
+        },
+        [this](uint8_t callbackNodeId) {
+            return this->canOpen->send_x6040_controlword(callbackNodeId, 0x002F);
+        },
+        "Failed to send modes of operation for zero initialization for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setControlWordWriteStatusCallback_0x6040(nullptr, callbackNodeId);
+        });
+}
+
+void MoveControllerBase::zeroInitialize_secondWriteTo_0x6040(uint8_t nodeId, bool success) {
+    zeroInitialize_advanceStep(
+        nodeId,
+        success,
+        "Zero initialization final control word write failed for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setControlWordWriteStatusCallback_0x6040(nullptr, callbackNodeId);
+        },
+        nullptr,
+        nullptr,
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setTargetPositionWriteStatusCallback_0x607A([this](uint8_t cbNodeId, bool cbSuccess) {
+                this->zeroInitialize_writeTo_0x607A(cbNodeId, cbSuccess);
+            }, callbackNodeId);
+        },
+        [this](uint8_t callbackNodeId) {
+            return this->canOpen->send_x607A_targetPosition(callbackNodeId, this->axes[callbackNodeId].getCurrentPositionInSteps());
+        },
+        "Failed to send target position for zero initialization for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setTargetPositionWriteStatusCallback_0x607A(nullptr, callbackNodeId);
+        });
+}
+
+void MoveControllerBase::zeroInitialize_writeTo_0x607A(uint8_t nodeId, bool success) {
+    zeroInitialize_advanceStep(
+        nodeId,
+        success,
+        "Zero initialization target position write failed for Axis ",
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setTargetPositionWriteStatusCallback_0x607A(nullptr, callbackNodeId);
+        },
+        nullptr,
+        nullptr,
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setStatusWordCallback_0x6041([this](uint8_t cbNodeId, bool cbSuccess, uint16_t statusWord) {
+                this->zeroInitialize_requestStatusword_0x6041(cbNodeId, cbSuccess, statusWord);
+            }, callbackNodeId);
+        },
+        [this](uint8_t callbackNodeId) {
+            return this->canOpen->sendSDORead(callbackNodeId, RobotConstants::ODIndices::STATUSWORD, 0x00);
+        },
+        nullptr,
+        [this](uint8_t callbackNodeId) {
+            this->canOpen->setStatusWordCallback_0x6041(nullptr, callbackNodeId);
+        });
+}
+
+void MoveControllerBase::zeroInitialize_requestStatusword_0x6041(uint8_t nodeId, bool success, uint16_t statusWord) {
+    canOpen->setStatusWordCallback_0x6041(nullptr, nodeId);
+
+    if(!success) {
+        Serial2.println("Zero initialization status word read failed for Axis " + String(nodeId));
+        axes[nodeId].initStatus = ZEI_FAILED;
+        zeroInitialize_finalResult();
+        return;
+    }
+
+    bool targetReached = statusWord & 0b000001000000000;
+    if (!targetReached) {
+        Serial2.println("Zero initialization failed: target not reached for Axis " + String(nodeId));
+        axes[nodeId].initStatus = ZEI_FAILED;
+    } else {
+        axes[nodeId].initStatus = ZEI_FINISHED;
+    }
+    zeroInitialize_finalResult();
+}
+
+void MoveControllerBase::zeroInitialize_finalResult() {
+    if (zeroInitializeSingleAxis) {
+        String status;
+        if (axes[axisToInitialize].initStatus == ZEI_FINISHED) {
+            status = "successful";
+        } else if (axes[axisToInitialize].initStatus == ZEI_FAILED) {
+            status = "failed";
+        } else {
+            status = "ERROR IN CODE!";
+        }
+        Serial2.println("Zero initialization for Axis " + String(axisToInitialize) + " " + status);
+        axisToInitialize = 0;
+        return;
+    }
+    
+    String successfullAxes = "";
+    String failedAxes = ""; 
+    for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId) {
+        if (axes[nodeId].initStatus == ZEI_ONGOING) {
+            return; // Still ongoing for some axes
+        } else if (axes[nodeId].initStatus == ZEI_FINISHED) {
+            successfullAxes += String(nodeId) + " ";
+        } else if (axes[nodeId].initStatus == ZEI_FAILED) {
+            failedAxes += String(nodeId) + " ";
+        }
+    }
+    Serial2.println("Zero initialization process completed. Successful axes: " + successfullAxes + ". Failed axes: " + failedAxes);
+}
+
+
+void MoveControllerBase::regularHeartbeatCallback(uint8_t nodeId, uint8_t status) {
+    String statusStr;
+    if (status == 0x05) {
+        statusStr = "operational";
+    } else if (status == 0x04) {
+        statusStr = "alarm";
+    } else if (status == 0x7F) {
+        statusStr = "pre-operational";
+    } else if (status == 0x00) {
+        statusStr = "boot-up";
+    } else{
+        statusStr = "unknown";
+    }        
+    //Serial2.println("Heartbeat " + String(node) + ": " + status);
+}
+
+void MoveControllerBase::regularPositionActualValueCallback(uint8_t nodeId, bool success, int32_t position) {
+    if (!success) {
+        Serial2.println("Failed to read Position Actual Value for node " + String(nodeId));
+        return;
+    }
+
+    Serial2.print("Position Actual Value from node ");
+    Serial2.print(nodeId);
+    Serial2.print(": ");
+    Serial2.println(position, HEX);
+    
+    positionUpdate(nodeId, position);
 }

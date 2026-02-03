@@ -44,8 +44,8 @@ struct ZEIParams
 {
     ParamsStatus status;
     bool forAllNodes;
-    std::unordered_set<uint8_t> nodeIds; 
-	String errorMsg;
+    uint8_t nodeId;
+    String errorMsg;
 };
 
 #endif

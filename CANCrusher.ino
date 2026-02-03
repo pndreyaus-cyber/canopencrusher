@@ -67,7 +67,6 @@ void loop() {
 
     sendData();
     canOpen.read();
-    moveController.tick();
 }
 
 bool receiveCommand()
@@ -260,6 +259,7 @@ PositionParams stringToPositionParams(String command)
     return params;
 }
 
+// Right now we support either ZEI for all nodes or only for 1 node specified by its ID.
 ZEIParams stringToZEIParams(String command)
 {
     if (command.equals(RobotConstants::COMMANDS::ZERO_INITIALIZE))
@@ -279,45 +279,37 @@ ZEIParams stringToZEIParams(String command)
     auto fail = [&](const String& msg) {
         params.status = ParamsStatus::INVALID_PARAMS;
         params.forAllNodes = false;
-        params.nodeIds.clear();
+        params.nodeId = 0;
         params.errorMsg = msg;
         return params;
     };
     
     int idStartIndex = RobotConstants::COMMANDS::COMMAND_LEN;
-    
-    while (idStartIndex != -1) {
-        if (command.charAt(idStartIndex) != 'M') {
-            return fail("INVALID PARAMETERS FOR ZEI. EXPECTED 'M' AT INDEX " + String(idStartIndex));
-        }
-        
-        int nextIdStartIndex = command.indexOf('M', idStartIndex + 1);
-        String idStr = command.substring(idStartIndex + 1, nextIdStartIndex == -1 ? command.length() : nextIdStartIndex);
-        bool isValidInteger = true;
-        if (idStr.length() == 0) {
-            return fail("INVALID PARAMETERS FOR ZEI. EMPTY NODE ID.");
-        } else {
-            for (size_t i = 0; i < idStr.length(); ++i) {
-                if (!isDigit(idStr.charAt(i))) {
-                    isValidInteger = false;
-                    break;
-                }
-            }
-        }
-
-        if (!isValidInteger) {
-            return fail("INVALID PARAMETERS FOR ZEI. NODE ID MUST BE A VALID INTEGER: " + idStr);
-        }
-
-        long nodeIdLong = idStr.toInt();
-
-        if (nodeIdLong < 1 || nodeIdLong > RobotConstants::Robot::AXIS_COUNT) {
-            return fail("INVALID NODE ID FOR ZEI: " + String(nodeIdLong));
-        }
-        params.nodeIds.insert(static_cast<uint8_t>(nodeIdLong));
-        idStartIndex = nextIdStartIndex;
+    if (command.charAt(idStartIndex) != 'J') {
+        return fail("INVALID PARAMETERS FOR ZEI. EXPECTED 'J' AT INDEX " + String(idStartIndex));
+    }
+    if (command.length() <= idStartIndex + 1) {
+        return fail("INVALID PARAMETERS FOR ZEI. NO NODE IDS PROVIDED.");
+    }
+    char nodeName = command.charAt(idStartIndex + 1);
+    uint8_t nodeId = 0;
+    switch (nodeName) {
+        case 'A': nodeId = 1; break;
+        case 'B': nodeId = 2; break;
+        case 'C': nodeId = 3; break;
+        case 'D': nodeId = 4; break;
+        case 'E': nodeId = 5; break;
+        case 'F': nodeId = 6; break;
+            break;
+        default:
+            return fail("INVALID PARAMETERS FOR ZEI. EXPECTED NODE ID AFTER 'J' AT INDEX " + String(idStartIndex));
     }
 
+    if (idStartIndex + 2 != command.length()) {
+        return fail("INVALID PARAMETERS FOR ZEI. ONLY SINGLE NODE ID SUPPORTED CURRENTLY.");
+    }
+
+    params.nodeId = nodeId;
     params.status = ParamsStatus::OK;
     params.forAllNodes = false;
     params.errorMsg = "";
@@ -405,16 +397,11 @@ bool handleZeroInitialize(ZEIParams params) {
     uint8_t totalNodes = 0;
 
     if (params.forAllNodes) {
-        addDataToOutQueue("ZEI FOR ALL NODES");
-        totalNodes = RobotConstants::Robot::AXIS_COUNT;
-        for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXIS_COUNT; ++nodeId) {
-            moveController.startZeroInitialization(nodeId);
-        }
+        addDataToOutQueue("START ZEI FOR ALL NODES");
+        moveController.startZeroInitializationAllAxes();
     } else {
-        totalNodes = static_cast<uint8_t>(params.nodeIds.size());
-        for (uint8_t nodeId : params.nodeIds) {
-            moveController.startZeroInitialization(nodeId);
-        }
+        addDataToOutQueue("START ZEI FOR NODE " + String(params.nodeId));
+        moveController.startZeroInitializationSingleAxis(params.nodeId);
     }
     return true;
 }
