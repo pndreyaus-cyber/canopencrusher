@@ -4,296 +4,323 @@
 #include "Axis.h"
 #include "RobotConstants.h"
 
-namespace StepDirController{
-
-Axis::Axis() : nodeId(kInvalidNodeId) {}
-
-Axis::Axis(uint8_t nodeId) : nodeId(nodeId) {
-    init_od_ram(&params);
-    movementUnits = 0.0;
-    params.x6064_positionActualValue = 0;
-    stepsPerRevolution = RobotConstants::Axis::DEFAULT_STEPS_PER_REVOLUTION;
-    unitsPerRevolution = RobotConstants::Axis::DEFAULT_UNITS_PER_REVOLUTION;
-    initialized = true;
-}
-
-Axis &Axis::setStepsPerRevolution(uint32_t steps)
+namespace StepDirController
 {
-    if (!initialized) {
+
+    Axis::Axis() : nodeId(kInvalidNodeId) {}
+
+    Axis::Axis(uint8_t nodeId) : nodeId(nodeId)
+    {
+        init_od_ram(&params);
+        movementUnits = 0.0;
+        params.x6064_positionActualValue = 0;
+        stepsPerRevolution = RobotConstants::Axis::DEFAULT_STEPS_PER_REVOLUTION;
+        unitsPerRevolution = RobotConstants::Axis::DEFAULT_UNITS_PER_REVOLUTION;
+        initialized = true;
+    }
+
+    Axis &Axis::setStepsPerRevolution(uint32_t steps)
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::setStepsPerRevolution -- Axis not initialized");
-#endif        
+            Serial2.println("Axis::setStepsPerRevolution -- Axis not initialized");
+#endif
+            return *this;
+        }
+        stepsPerRevolution = steps;
         return *this;
     }
-    stepsPerRevolution = steps;
-    return *this;
-}
 
-Axis &Axis::setUnitsPerRevolution(double units)
-{
-    if (!initialized) {
+    Axis &Axis::setUnitsPerRevolution(double units)
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::setUnitsPerRevolution -- Axis not initialized");
-#endif        
+            Serial2.println("Axis::setUnitsPerRevolution -- Axis not initialized");
+#endif
+            return *this;
+        }
+        unitsPerRevolution = units;
         return *this;
     }
-    unitsPerRevolution = units;
-    return *this;
-}
 
-Axis &Axis::setCurrentPositionInUnits(double units)
-{
-    if (!initialized) {
+    Axis &Axis::setCurrentPositionInUnits(double units)
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::setCurrentPositionInUnits -- Axis not initialized");
-#endif        
+            Serial2.println("Axis::setCurrentPositionInUnits -- Axis not initialized");
+#endif
+            return *this;
+        }
+
+        int32_t steps = std::round(unitsToSteps(units)); // Edited for C++
+        return setCurrentPositionInSteps(steps);
+    }
+
+    Axis &Axis::setCurrentPositionInSteps(int32_t steps)
+    {
+        if (!initialized)
+        {
+#ifdef DEBUG
+            Serial2.println("Axis::setCurrentPositionInSteps -- Axis not initialized");
+#endif
+            return *this;
+        }
+
+        params.x6064_positionActualValue = steps;
         return *this;
     }
-      
-    int32_t steps = std::round(unitsToSteps(units)); // Edited for C++
-    return setCurrentPositionInSteps(steps);
-}
 
-Axis &Axis::setCurrentPositionInSteps(int32_t steps)
-{
-    if (!initialized) {
+    int32_t Axis::getCurrentPositionInSteps() const
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::setCurrentPositionInSteps -- Axis not initialized");
-#endif        
-        return *this;
-    }
-      
-    params.x6064_positionActualValue = steps;
-    return *this;
-}
+            Serial2.println("Axis::getCurrentPositionInSteps -- Axis not initialized");
+#endif
+            return -1;
+        }
 
-int32_t Axis::getCurrentPositionInSteps() const
-{
-    if (!initialized) {
+        return params.x6064_positionActualValue;
+    }
+
+    bool Axis::setTargetPositionRelativeInUnits(double units)
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::getCurrentPositionInSteps -- Axis not initialized");
-#endif        
-        return -1;
-    }
-      
-    return params.x6064_positionActualValue;
-}
+            Serial2.println("Axis::setTargetPositionRelativeInUnits -- Axis not initialized");
+#endif
+            return false;
+        }
 
-bool Axis::setTargetPositionRelativeInUnits(double units)
-{
-    if (!initialized) {
+        int32_t steps = std::round(unitsToSteps(units)); // Edited for C++
+
+        return setTargetPositionRelativeInSteps(steps);
+    }
+
+    bool Axis::setTargetPositionRelativeInSteps(int32_t steps)
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::setTargetPositionRelativeInUnits -- Axis not initialized");
-#endif        
-        return false;
+            Serial2.println("Axis::setTargetPositionRelativeInSteps -- Axis not initialized");
+#endif
+            return false;
+        }
+        return setTargetPositionAbsoluteInSteps(steps + params.x6064_positionActualValue); // Проверить
     }
-      
-    int32_t steps = std::round(unitsToSteps(units)); // Edited for C++
 
-    return setTargetPositionRelativeInSteps(steps);
-}
-
-bool Axis::setTargetPositionRelativeInSteps(int32_t steps)
-{
-    if (!initialized) {
+    bool Axis::setTargetPositionAbsoluteInUnits(double units)
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::setTargetPositionRelativeInSteps -- Axis not initialized");
-#endif        
-        return false;
-    }
-    return setTargetPositionAbsoluteInSteps(steps + params.x6064_positionActualValue); // Проверить
-}
+            Serial2.println("Axis::setTargetPositionAbsoluteInUnits -- Axis not initialized");
+#endif
+            return false;
+        }
 
-bool Axis::setTargetPositionAbsoluteInUnits(double units)
-{
-    if (!initialized) {
+        int32_t steps = std::round(unitsToSteps(units)); // Edited for C++
+        return setTargetPositionAbsoluteInSteps(steps);
+    }
+
+    bool Axis::setTargetPositionAbsoluteInSteps(int32_t steps)
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::setTargetPositionAbsoluteInUnits -- Axis not initialized");
-#endif        
-        return false;
+            Serial2.println("Axis::setTargetPositionAbsoluteInSteps -- Axis not initialized");
+#endif
+            return false;
+        }
+
+        int32_t relativePosition = steps - getCurrentPositionInSteps();
+        movementUnits = stepsToUnits(relativePosition);
+        movementSteps = std::fabs(relativePosition);
+        params.x607A_targetPosition = steps;
+        return true;
     }
 
-    int32_t steps = std::round(unitsToSteps(units)); // Edited for C++
-    return setTargetPositionAbsoluteInSteps(steps);      
-
-}
-
-bool Axis::setTargetPositionAbsoluteInSteps(int32_t steps)
-{
-    if (!initialized) {
+    double Axis::getPositionInUnits() const
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::setTargetPositionAbsoluteInSteps -- Axis not initialized");
-#endif        
-        return false;
+            Serial2.println("Axis::getPositionInUnits -- Axis not initialized");
+#endif
+            return -1;
+        }
+
+        double position = stepsToUnits(getCurrentPositionInSteps());
+        return position;
     }
 
-    int32_t relativePosition = steps - getCurrentPositionInSteps();
-    movementUnits = stepsToUnits(relativePosition);
-    movementSteps = std::fabs(relativePosition);
-    params.x607A_targetPosition = steps;
-    return true;
-}
-
-double Axis::getPositionInUnits() const
-{
-    if (!initialized) {
+    uint32_t Axis::getStepsPerRevolution() const
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::getPositionInUnits -- Axis not initialized");
-#endif        
-        return -1;
+            Serial2.println("Axis::getStepsPerRevolution -- Axis not initialized");
+#endif
+            return 0;
+        }
+
+        return stepsPerRevolution;
     }
 
-    double position = stepsToUnits(getCurrentPositionInSteps());
-    return position;
-}
-
-uint32_t Axis::getStepsPerRevolution() const
-{
-    if (!initialized) {
+    double Axis::getUnitsPerRevolution() const
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::getStepsPerRevolution -- Axis not initialized");
-#endif        
-        return 0;
+            Serial2.println("Axis::getUnitsPerRevolution -- Axis not initialized");
+#endif
+            return -1;
+        }
+
+        return unitsPerRevolution;
     }
 
-    return stepsPerRevolution;
-}
-
-double Axis::getUnitsPerRevolution() const
-{
-    if (!initialized) {
+    double Axis::stepsToUnits(int32_t steps) const // Перевести шаги в градусы
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::getUnitsPerRevolution -- Axis not initialized");
-#endif        
-        return -1;
-    }
-    
-    return unitsPerRevolution;
-}
+            Serial2.println("Axis::stepsToUnits -- Axis not initialized");
+#endif
+            return -1;
+        }
 
-double Axis::stepsToUnits(int32_t steps) const // Перевести шаги в градусы
-{
-    if (!initialized) {
+        if (stepsPerRevolution == 0 || unitsPerRevolution == 0)
+        { // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
+            Serial2.println("Axis::stepsToUnits -- division by zero");
+            return 0;
+        }
+        return steps / (double)stepsPerRevolution * unitsPerRevolution;
+    }
+
+    int32_t Axis::unitsToSteps(double units) const // Перевести градусы в шаги
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::stepsToUnits -- Axis not initialized");
-#endif        
-        return -1;
+            Serial2.println("Axis::unitsToSteps -- Axis not initialized");
+#endif
+            return 0;
+        }
+
+        if (stepsPerRevolution == 0 || unitsPerRevolution == 0)
+        { // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
+            Serial2.println("Axis::unitsToSteps -- division by zero");
+            return 0;
+        }
+        return units / unitsPerRevolution * stepsPerRevolution;
     }
 
-    if(stepsPerRevolution == 0 || unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
-        Serial2.println("Axis::stepsToUnits -- division by zero"); 
-        return 0;
-    }
-    return steps / (double)stepsPerRevolution * unitsPerRevolution;
-}
-
-int32_t Axis::unitsToSteps(double units) const // Перевести градусы в шаги
-{
-    if (!initialized) {
+    uint32_t Axis::speedUnitsToRevolutionsPerMinute(double speedUnits) const // Перевести градусы/сек в об/мин
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::unitsToSteps -- Axis not initialized");
-#endif        
-        return 0;
-    }
-    
-    if(stepsPerRevolution == 0 || unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
-        Serial2.println("Axis::unitsToSteps -- division by zero");
-        return 0;
-    }
-    return units / unitsPerRevolution * stepsPerRevolution;
-}
+            Serial2.println("Axis::speedUnitsToRevolutionsPerMinute -- Axis not initialized");
+#endif
+            return 0;
+        }
 
-uint32_t Axis::speedUnitsToRevolutionsPerMinute(double speedUnits) const // Перевести градусы/сек в об/мин
-{
-    if (!initialized) {
+        if (unitsPerRevolution == 0)
+        { // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
+            Serial2.println("Axis::speedUnitsToRevolutionsPerMinute -- division by zero");
+            return 0;
+        }
+        return speedUnits * RobotConstants::Math::SECONDS_IN_MINUTE / unitsPerRevolution;
+    }
+
+    double Axis::revolutionsPerMinuteToSpeedUnits(uint32_t rpm) const // Перевести из об/мин в градусы/сек
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::speedUnitsToRevolutionsPerMinute -- Axis not initialized");
-#endif        
-        return 0;
+            Serial2.println("Axis::revolutionsPerMinuteToSpeedUnits -- Axis not initialized");
+#endif
+            return 0;
+        }
+        return (double)rpm / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution;
     }
 
-    if(unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
-        Serial2.println("Axis::speedUnitsToRevolutionsPerMinute -- division by zero");
-        return 0;
-    }
-    return speedUnits * RobotConstants::Math::SECONDS_IN_MINUTE / unitsPerRevolution;
-}
-
-double Axis::revolutionsPerMinuteToSpeedUnits(uint32_t rpm) const // Перевести из об/мин в градусы/сек
-{
-    if (!initialized) {
+    uint32_t Axis::accelerationUnitsTorpmPerSecond(double accelearionUnits) const // Перевести градусы/сек^2 в об/(мин*сек)
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::revolutionsPerMinuteToSpeedUnits -- Axis not initialized");
-#endif        
-        return 0;
+            Serial2.println("Axis::accelerationUnitsTorpmPerSecond -- Axis not initialized");
+#endif
+            return 0;
+        }
+        if (unitsPerRevolution == 0)
+        { // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
+            Serial2.println("Axis::accelerationUnitsTorpmPerSecond -- division by zero");
+            return 0;
+        }
+        return accelearionUnits * RobotConstants::Math::SECONDS_IN_MINUTE / unitsPerRevolution;
     }
-    return (double)rpm / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution;
-}
 
-uint32_t Axis::accelerationUnitsTorpmPerSecond(double accelearionUnits) const // Перевести градусы/сек^2 в об/(мин*сек)
-{
-    if (!initialized) {
+    double Axis::rpmPerSecondToAccelerationUnits(double rpmPerSecond) const // Перевести об/(мин*сек) в градусы/сек^2
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::accelerationUnitsTorpmPerSecond -- Axis not initialized");
-#endif        
-        return 0;
-    }
-    if(unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
-        Serial2.println("Axis::accelerationUnitsTorpmPerSecond -- division by zero");
-        return 0;
-    }
-    return accelearionUnits * RobotConstants::Math::SECONDS_IN_MINUTE / unitsPerRevolution;
-}
+            Serial2.println("Axis::rpmPerSecondToAccelerationUnits -- Axis not initialized");
+#endif
+            return 0;
+        }
 
-double Axis::rpmPerSecondToAccelerationUnits(double rpmPerSecond) const  // Перевести об/(мин*сек) в градусы/сек^2
-{
-    if (!initialized) {
+        if (unitsPerRevolution == 0)
+        { // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
+            Serial2.println("Axis::rpmPerSecondToAccelerationUnits -- division by zero");
+            return 0;
+        }
+        return (double)rpmPerSecond / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution; // TODO: потенциальная потеря точности расчетов из-за SECONDS_IN_MINUTE, лучше объявить как константу float/double
+    }
+
+    uint8_t Axis::getNodeId() const
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::rpmPerSecondToAccelerationUnits -- Axis not initialized");
-#endif        
-        return 0;
+            Serial2.println("Axis::getNodeId -- Axis not initialized");
+#endif
+            return 0;
+        }
+
+        return nodeId;
     }
 
-    if(unitsPerRevolution == 0){ // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
-        Serial2.println("Axis::rpmPerSecondToAccelerationUnits -- division by zero");
-        return 0;
-    }   
-    return (double)rpmPerSecond / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution; // TODO: потенциальная потеря точности расчетов из-за SECONDS_IN_MINUTE, лучше объявить как константу float/double
-}
-
-uint8_t Axis::getNodeId() const
-{
-    if (!initialized) {
+    double Axis::getMovementUnits() const
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::getNodeId -- Axis not initialized");
-#endif        
-        return 0;
+            Serial2.println("Axis::getMovementUnits -- Axis not initialized");
+#endif
+            return -1;
+        }
+        return movementUnits;
     }
 
-    return nodeId;
-}
-
-double Axis::getMovementUnits() const
-{
-    if (!initialized) {
+    int32_t Axis::getTargetPositionAbsolute() const
+    {
+        if (!initialized)
+        {
 #ifdef DEBUG
-        Serial2.println("Axis::getMovementUnits -- Axis not initialized");
-#endif        
-        return -1;
-    }
-    return movementUnits;
-}
+            Serial2.println("Axis::getTargetPositionAbsolute -- Axis not initialized");
+#endif
+            return -1;
+        }
 
-int32_t Axis::getTargetPositionAbsolute() const
-{
-    if (!initialized) {
-#ifdef DEBUG
-        Serial2.println("Axis::getTargetPositionAbsolute -- Axis not initialized");
-#endif        
-        return -1;
+        return params.x607A_targetPosition;
     }
-    
-    return params.x607A_targetPosition;
-}
 
 }

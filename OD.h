@@ -25,7 +25,7 @@
         Product Name: my_motor
         Product ID:   0x00000001
 
-        Description:  
+        Description:
 *******************************************************************************/
 
 #ifndef OD_H
@@ -52,45 +52,51 @@
     Sizes of OD arrays
 *******************************************************************************/
 
-
 /*******************************************************************************
     OD data declaration of all groups
 *******************************************************************************/
-typedef struct {
+typedef struct
+{
     uint32_t x1000_deviceType;
     uint8_t x1001_errorRegister;
     uint32_t x1005_SYNC_COB_ID;
     uint32_t x1006_communicationCyclePeriod;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t consumerHeartbeatTime;
     } x1016_consumerHeartbeatTime;
     uint16_t x1017_producerHeartbeatTime;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t vendorID;
         uint32_t productCode;
         uint32_t revisionNumber;
         uint32_t serialNumber;
     } x1018_identity;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_ID_ClientToServerReceiveSDO;
         uint32_t COB_ID_ServerToClientTransmitSDO;
     } x1200_serverSDO_Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_ID_ClientToServerReceiveSDO;
         uint32_t COB_ID_ServerToClientTransmitSDO;
         uint8_t nodeIDOfTheSDO_Client;
     } x1201_additionalServerSDO1Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_ID_ClientToServerTransmitSDO;
         uint32_t COB_ID_ServerToClientReceiveSDO;
         uint8_t nodeIDOfTheSDO_Server;
     } x1280_clientSDO1Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
@@ -98,7 +104,8 @@ typedef struct {
         uint16_t eventTimer;
         uint8_t SYNCStartValue;
     } x1400_receivePDO1Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
@@ -106,7 +113,8 @@ typedef struct {
         uint16_t eventTimer;
         uint8_t SYNCStartValue;
     } x1401_receivePDO2Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
@@ -114,7 +122,8 @@ typedef struct {
         uint16_t eventTimer;
         uint8_t SYNCStartValue;
     } x1402_receivePDO3Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
@@ -122,28 +131,33 @@ typedef struct {
         uint16_t eventTimer;
         uint8_t SYNCStartValue;
     } x1403_receivePDO4Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t PDO1MappingForAnApplicationObject1;
         uint32_t PDO1MappingForAnApplicationObject2;
         uint32_t PDO1MappingForAnApplicationObject3;
     } x1600_receivePDO1Mapping;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t PDO2MappingForAnApplicationObject1;
         uint32_t PDO2MappingForAnApplicationObject2;
     } x1601_receivePDO2Mapping;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t PDO3MappingForAnApplicationObject1;
         uint32_t PDO3MappingForAnApplicationObject2;
         uint32_t PDO3MappingForAnApplicationObject3;
     } x1602_receivePDO3Mapping;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t PDO4MappingForAnApplicationObject1;
     } x1603_receivePDO4Mapping;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
@@ -151,7 +165,8 @@ typedef struct {
         uint16_t eventTimer;
         uint8_t SYNCStartValue;
     } x1800_transmitPDO1Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
@@ -159,7 +174,8 @@ typedef struct {
         uint16_t eventTimer;
         uint8_t SYNCStartValue;
     } x1801_transmitPDO2Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
@@ -167,7 +183,8 @@ typedef struct {
         uint16_t eventTimer;
         uint8_t SYNCStartValue;
     } x1802_transmitPDO3Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t COB_IDUsedByPDO;
         uint8_t transmissionType;
@@ -175,22 +192,26 @@ typedef struct {
         uint16_t eventTimer;
         uint8_t SYNCStartValue;
     } x1803_transmitPDO4Parameter;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t PDO1MappingForaProcessDataVariable1;
         uint32_t PDO1MappingForaProcessDataVariable2;
     } x1A00_transmitPDO1Mapping;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t PDO2MappingForaProcessDataVariable1;
         uint32_t PDO2MappingForaProcessDataVariable2;
     } x1A01_transmitPDO2Mapping;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t PDO3MappingForaProcessDataVariable1;
         uint32_t PDO3MappingForaProcessDataVariable2;
     } x1A02_transmitPDO3Mapping;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         uint32_t PDO4MappingForaProcessDataVariable1;
         uint32_t PDO4MappingForaProcessDataVariable2;
@@ -220,12 +241,14 @@ typedef struct {
     int32_t x607A_targetPosition;
     uint32_t x6081_profileVelocity;
     uint32_t x6083_profileAcceleration;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         int16_t velocityRegulatorP_gain;
         int16_t velocityRegulatorI_gain;
     } x60F9_velocityControlParameterSet;
-    struct {
+    struct
+    {
         uint8_t numberOfEntries;
         int16_t positionRegulatorP_gain;
         int16_t positionRegulatorI_gain;
@@ -237,6 +260,5 @@ typedef struct {
 } OD_RAM_t;
 
 void init_od_ram(OD_RAM_t *obj);
-
 
 #endif // OD_H

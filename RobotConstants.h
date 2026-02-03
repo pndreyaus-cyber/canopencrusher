@@ -5,73 +5,82 @@
 #include <cstdint>
 #include <array>
 
+//#define DEBUG
+
 using callback_x6064_positionActualValue = std::function<void(uint8_t, bool, int32_t)>;
 using callback_x260A_electronicGearMolecules = std::function<void(uint8_t, bool)>;
-using callback_x6040_controlword = std::function<void(uint8_t, bool)>; 
-using callback_x6040_controlword = std::function<void(uint8_t, bool)>; 
+using callback_x6040_controlword = std::function<void(uint8_t, bool)>;
+using callback_x6040_controlword = std::function<void(uint8_t, bool)>;
 using callback_x6060_modesOfOperation = std::function<void(uint8_t, bool)>;
 using callback_x607A_targetPosition = std::function<void(uint8_t, bool)>;
 using callback_x6041_statusword = std::function<void(uint8_t, bool, uint16_t)>;
 
 using callback_heartbeat = std::function<void(uint8_t, uint8_t)>;
 
-enum InitStatus : uint8_t {
+enum InitStatus : uint8_t
+{
     ZEI_NONE = 0,
     ZEI_FAILED,
-    ZEI_ONGOING,  
+    ZEI_ONGOING,
     ZEI_FINISHED
 };
 
-namespace RobotConstants {
+namespace RobotConstants
+{
 
     // Physical and mathematical constants
-    namespace Math {
+    namespace Math
+    {
         constexpr double SECONDS_IN_MINUTE = 60.0;
     }
 
     // Command identifiers sent to the robot controller
-    namespace COMMANDS {        
-        constexpr const char* MOVE_ABSOLUTE = "MAJ";
-        constexpr const char* MOVE_RELATIVE = "MRJ";
-        constexpr const char* ECHO = "ECH";
-        constexpr const char* SET_CURRENT_POSITION_IN_STEPS = "SCS";
-        constexpr const char* SET_CURRENT_POSITION_IN_UNITS = "SCU";
-        constexpr const char* ZERO_INITIALIZE = "ZEI";
-        constexpr const char* REQUEST_POSITION = "RPP";
+    namespace COMMANDS
+    {
+        constexpr const char *MOVE_ABSOLUTE = "MAJ";
+        constexpr const char *MOVE_RELATIVE = "MRJ";
+        constexpr const char *ECHO = "ECH";
+        constexpr const char *SET_CURRENT_POSITION_IN_STEPS = "SCS";
+        constexpr const char *SET_CURRENT_POSITION_IN_UNITS = "SCU";
+        constexpr const char *ZERO_INITIALIZE = "ZEI";
+        constexpr const char *REQUEST_POSITION = "RPP";
         constexpr int COMMAND_LEN = 3;
     }
 
     // Robot specifications
-    namespace Robot {
+    namespace Robot
+    {
         constexpr uint8_t AXIS_COUNT = 6;
         constexpr uint8_t MAX_NODE_ID = 127;
         constexpr uint32_t CONTROL_LOOP_HZ = 1000;
-        constexpr uint32_t CAN_BAUD_RATE = 1000000;  // 1 Mbps
+        constexpr uint32_t CAN_BAUD_RATE = 1000000; // 1 Mbps
     }
 
     // CANopen communication constants
-    namespace CANOpen {
+    namespace CANOpen
+    {
         constexpr uint32_t COB_ID_SYNC = 0x080;
         constexpr uint32_t COB_ID_NMT = 0x000;
         constexpr uint32_t COB_ID_HEARTBEAT_BASE = 0x700;
         constexpr uint32_t COB_ID_SDO_SERVER_BASE = 0x600;
         constexpr uint32_t COB_ID_SDO_CLIENT_BASE = 0x580;
         constexpr uint32_t COB_ID_PDO_BASE = 0x180;
-        
+
         // PDO mapping
         constexpr uint8_t PDO_COUNT = 4;
         constexpr uint8_t PDO_MAPPING_MAX_ENTRIES = 8;
 
-        // SDO 
+        // SDO
         constexpr uint8_t MAX_SDO_WRITE_DATA_SIZE = 4; // Max 4 bytes for expedited SDO write
-        constexpr uint8_t REGISTER_INDEX_SIZE = 2; // 2 bytes for index
-        constexpr uint8_t REGISTER_SUBINDEX_SIZE = 1; // 1 byte for subindex
-        constexpr uint8_t SDO_FUNCTION_CODE_SIZE = 1; // 1 byte for function code
+        constexpr uint8_t REGISTER_INDEX_SIZE = 2;     // 2 bytes for index
+        constexpr uint8_t REGISTER_SUBINDEX_SIZE = 1;  // 1 byte for subindex
+        constexpr uint8_t SDO_FUNCTION_CODE_SIZE = 1;  // 1 byte for function code
         constexpr uint8_t HEADER_SIZE = SDO_FUNCTION_CODE_SIZE + REGISTER_INDEX_SIZE + REGISTER_SUBINDEX_SIZE;
-    }   
+    }
 
     // Object dictionary indices (from OD.h)
-    namespace ODIndices {
+    namespace ODIndices
+    {
         constexpr uint16_t DEVICE_TYPE = 0x1000;
         constexpr uint16_t ERROR_REGISTER = 0x1001;
         constexpr uint16_t SYNC_COB_ID = 0x1005;
@@ -81,13 +90,13 @@ namespace RobotConstants {
         constexpr uint16_t IDENTITY = 0x1018;
         constexpr uint16_t SERVER_SDO_PARAM = 0x1200;
         constexpr uint16_t CLIENT_SDO_PARAM = 0x1280;
-        
+
         // PDO parameters
         constexpr uint16_t RPDO_PARAM_BASE = 0x1400;
         constexpr uint16_t TPDO_PARAM_BASE = 0x1800;
         constexpr uint16_t RPDO_MAPPING_BASE = 0x1600;
         constexpr uint16_t TPDO_MAPPING_BASE = 0x1A00;
-        
+
         // Motor control
         constexpr uint16_t CONTROLWORD = 0x6040;
         constexpr uint16_t STATUSWORD = 0x6041;
@@ -99,11 +108,11 @@ namespace RobotConstants {
         constexpr uint16_t PROFILE_VELOCITY = 0x6081;
         constexpr uint16_t PROFILE_ACCELERATION = 0x6083;
         constexpr uint16_t TARGET_VELOCITY = 0x60FF;
-        
+
         // Motor parameters
         constexpr uint16_t VELOCITY_CONTROL_PARAM = 0x60F9;
         constexpr uint16_t POSITION_CONTROL_PARAM = 0x60FB;
-        
+
         // Driver specific
         constexpr uint16_t MODBUS_ENABLE = 0x2600;
         constexpr uint16_t DRIVER_ENABLE = 0x2601;
@@ -113,7 +122,8 @@ namespace RobotConstants {
     }
 
     // Control parameters
-    namespace Control {
+    namespace Control
+    {
         constexpr float DEFAULT_SPEED = 1000.0f;
         constexpr float DEFAULT_ACCELERATION = 500.0f;
         constexpr float DEFAULT_DECELERATION = 500.0f;
@@ -125,30 +135,34 @@ namespace RobotConstants {
     }
 
     // Axis configuration
-    namespace Axis {
+    namespace Axis
+    {
         constexpr uint32_t DEFAULT_STEPS_PER_REVOLUTION = 32768;
-        constexpr double DEFAULT_UNITS_PER_REVOLUTION = 7.2; // 
+        constexpr double DEFAULT_UNITS_PER_REVOLUTION = 7.2; //
         constexpr double DEFAULT_MIN_LIMIT = -1000.0;
         constexpr double DEFAULT_MAX_LIMIT = 1000.0;
         constexpr bool DEFAULT_USE_LIMITS = false;
     }
 
     // Communication timeouts
-    namespace Timeouts {
+    namespace Timeouts
+    {
         constexpr uint32_t SDO_TIMEOUT_MS = 1000;
         constexpr uint32_t HEARTBEAT_TIMEOUT_MS = 3000;
         constexpr uint32_t SYNC_TIMEOUT_MS = 100;
     }
 
     // Buffer sizes
-    namespace Buffers {
+    namespace Buffers
+    {
         constexpr size_t CAN_FRAME_SIZE = 8;
         constexpr size_t MAX_CAN_MESSAGE_LEN = 8;
         constexpr size_t MAX_AXIS_COUNT = 6;
     }
 
     // Error codes
-    namespace Errors {
+    namespace Errors
+    {
         constexpr int8_t OK = 0;
         constexpr int8_t INCORRECT_COMMAND = -1;
         constexpr int8_t INVALID_PARAMS = -2;
