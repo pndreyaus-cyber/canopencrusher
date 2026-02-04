@@ -4,10 +4,15 @@
 #include "Axis.h"
 #include "RobotConstants.h"
 
+extern void addDataToOutQueue(String data);
+
 namespace StepDirController
 {
 
-    Axis::Axis() : nodeId(kInvalidNodeId) {}
+    Axis::Axis() : nodeId(kInvalidNodeId) {
+        initialized = false;
+        initStatus = RobotConstants::InitStatus::ZEI_NONE;
+    }
 
     Axis::Axis(uint8_t nodeId) : nodeId(nodeId)
     {
@@ -16,6 +21,7 @@ namespace StepDirController
         params.x6064_positionActualValue = 0;
         stepsPerRevolution = RobotConstants::Axis::DEFAULT_STEPS_PER_REVOLUTION;
         unitsPerRevolution = RobotConstants::Axis::DEFAULT_UNITS_PER_REVOLUTION;
+        initStatus = RobotConstants::InitStatus::ZEI_NONE;
         initialized = true;
     }
 
@@ -24,7 +30,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::setStepsPerRevolution -- Axis not initialized");
+            addDataToOutQueue("Axis::setStepsPerRevolution -- Axis not initialized");
 #endif
             return *this;
         }
@@ -37,7 +43,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::setUnitsPerRevolution -- Axis not initialized");
+            addDataToOutQueue("Axis::setUnitsPerRevolution -- Axis not initialized");
 #endif
             return *this;
         }
@@ -50,7 +56,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::setCurrentPositionInUnits -- Axis not initialized");
+            addDataToOutQueue("Axis::setCurrentPositionInUnits -- Axis not initialized");
 #endif
             return *this;
         }
@@ -64,7 +70,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::setCurrentPositionInSteps -- Axis not initialized");
+            addDataToOutQueue("Axis::setCurrentPositionInSteps -- Axis not initialized");
 #endif
             return *this;
         }
@@ -78,7 +84,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::getCurrentPositionInSteps -- Axis not initialized");
+            addDataToOutQueue("Axis::getCurrentPositionInSteps -- Axis not initialized");
 #endif
             return -1;
         }
@@ -91,7 +97,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::setTargetPositionRelativeInUnits -- Axis not initialized");
+            addDataToOutQueue("Axis::setTargetPositionRelativeInUnits -- Axis not initialized");
 #endif
             return false;
         }
@@ -106,7 +112,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::setTargetPositionRelativeInSteps -- Axis not initialized");
+            addDataToOutQueue("Axis::setTargetPositionRelativeInSteps -- Axis not initialized");
 #endif
             return false;
         }
@@ -118,7 +124,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::setTargetPositionAbsoluteInUnits -- Axis not initialized");
+            addDataToOutQueue("Axis::setTargetPositionAbsoluteInUnits -- Axis not initialized");
 #endif
             return false;
         }
@@ -132,7 +138,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::setTargetPositionAbsoluteInSteps -- Axis not initialized");
+            addDataToOutQueue("Axis::setTargetPositionAbsoluteInSteps -- Axis not initialized");
 #endif
             return false;
         }
@@ -149,7 +155,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::getPositionInUnits -- Axis not initialized");
+            addDataToOutQueue("Axis::getPositionInUnits -- Axis not initialized");
 #endif
             return -1;
         }
@@ -163,7 +169,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::getStepsPerRevolution -- Axis not initialized");
+            addDataToOutQueue("Axis::getStepsPerRevolution -- Axis not initialized");
 #endif
             return 0;
         }
@@ -176,7 +182,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::getUnitsPerRevolution -- Axis not initialized");
+            addDataToOutQueue("Axis::getUnitsPerRevolution -- Axis not initialized");
 #endif
             return -1;
         }
@@ -189,14 +195,14 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::stepsToUnits -- Axis not initialized");
+            addDataToOutQueue("Axis::stepsToUnits -- Axis not initialized");
 #endif
             return -1;
         }
 
         if (stepsPerRevolution == 0 || unitsPerRevolution == 0)
         { // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
-            Serial2.println("Axis::stepsToUnits -- division by zero");
+            addDataToOutQueue("Axis::stepsToUnits -- division by zero");
             return 0;
         }
         return steps / (double)stepsPerRevolution * unitsPerRevolution;
@@ -207,14 +213,14 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::unitsToSteps -- Axis not initialized");
+            addDataToOutQueue("Axis::unitsToSteps -- Axis not initialized");
 #endif
             return 0;
         }
 
         if (stepsPerRevolution == 0 || unitsPerRevolution == 0)
         { // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
-            Serial2.println("Axis::unitsToSteps -- division by zero");
+            addDataToOutQueue("Axis::unitsToSteps -- division by zero");
             return 0;
         }
         return units / unitsPerRevolution * stepsPerRevolution;
@@ -225,14 +231,14 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::speedUnitsToRevolutionsPerMinute -- Axis not initialized");
+            addDataToOutQueue("Axis::speedUnitsToRevolutionsPerMinute -- Axis not initialized");
 #endif
             return 0;
         }
 
         if (unitsPerRevolution == 0)
         { // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
-            Serial2.println("Axis::speedUnitsToRevolutionsPerMinute -- division by zero");
+            addDataToOutQueue("Axis::speedUnitsToRevolutionsPerMinute -- division by zero");
             return 0;
         }
         return speedUnits * RobotConstants::Math::SECONDS_IN_MINUTE / unitsPerRevolution;
@@ -243,7 +249,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::revolutionsPerMinuteToSpeedUnits -- Axis not initialized");
+            addDataToOutQueue("Axis::revolutionsPerMinuteToSpeedUnits -- Axis not initialized");
 #endif
             return 0;
         }
@@ -255,13 +261,13 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::accelerationUnitsTorpmPerSecond -- Axis not initialized");
+            addDataToOutQueue("Axis::accelerationUnitsTorpmPerSecond -- Axis not initialized");
 #endif
             return 0;
         }
         if (unitsPerRevolution == 0)
         { // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
-            Serial2.println("Axis::accelerationUnitsTorpmPerSecond -- division by zero");
+            addDataToOutQueue("Axis::accelerationUnitsTorpmPerSecond -- division by zero");
             return 0;
         }
         return accelearionUnits * RobotConstants::Math::SECONDS_IN_MINUTE / unitsPerRevolution;
@@ -272,14 +278,14 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::rpmPerSecondToAccelerationUnits -- Axis not initialized");
+            addDataToOutQueue("Axis::rpmPerSecondToAccelerationUnits -- Axis not initialized");
 #endif
             return 0;
         }
 
         if (unitsPerRevolution == 0)
         { // TODO: вместо условия выводить ошибку при компиляции, например static_assert(stepsPerRevolution == 0, "Not defined: stepsPerRevolution.. ");
-            Serial2.println("Axis::rpmPerSecondToAccelerationUnits -- division by zero");
+            addDataToOutQueue("Axis::rpmPerSecondToAccelerationUnits -- division by zero");
             return 0;
         }
         return (double)rpmPerSecond / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution; // TODO: потенциальная потеря точности расчетов из-за SECONDS_IN_MINUTE, лучше объявить как константу float/double
@@ -290,7 +296,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::getNodeId -- Axis not initialized");
+            addDataToOutQueue("Axis::getNodeId -- Axis not initialized");
 #endif
             return 0;
         }
@@ -303,7 +309,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::getMovementUnits -- Axis not initialized");
+            addDataToOutQueue("Axis::getMovementUnits -- Axis not initialized");
 #endif
             return -1;
         }
@@ -315,7 +321,7 @@ namespace StepDirController
         if (!initialized)
         {
 #ifdef DEBUG
-            Serial2.println("Axis::getTargetPositionAbsolute -- Axis not initialized");
+            addDataToOutQueue("Axis::getTargetPositionAbsolute -- Axis not initialized");
 #endif
             return -1;
         }

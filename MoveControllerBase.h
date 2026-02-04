@@ -4,7 +4,6 @@
 
 #include <string>
 #include <unordered_map>
-#include <type_traits>
 #include "CanOpen.h"
 #include "Params.h"
 #include "Axis.h"
@@ -15,6 +14,15 @@ namespace StepDirController
     class MoveControllerBase
     {
     public:
+
+        void printStatus() {
+            addDataToOutQueue("MoveControllerBase Status: " + String(axes.size()) + " axes configured. " + axesCnt + " axes count."); 
+            for(const auto& [nodeId, axis] : axes) {
+                String status = "Axis " + String(nodeId) + ": " + String(axis.isAlive) + ", Last Heartbeat: " + String(axis.lastHeartbeatMs) + " ms " + String(RobotConstants::initStatusToString(axis.initStatus));
+                addDataToOutQueue(status);
+            }
+        }
+
         bool start(CanOpen *canOpen, uint8_t axesCnt);
 
         uint8_t getAxesCount() const { return axesCnt; }
@@ -59,9 +67,6 @@ namespace StepDirController
         double regularSpeedUnits = 1.0f; // The speed of the maximum moving axis in percent of full speed (1.0 = 100%)
         double accelerationUnits = 1.0f; // The acceleration of the maximum moving axis in percent of full acceleration (1.0 = 100%)
 
-        static constexpr uint32_t kHeartbeatTimeoutMs = 1000;
-        //static constexpr uint32_t kZeroInitTimeoutMs = 5000;
-
         void sendMove();
 
         void positionUpdate(uint8_t nodeId, int32_t position);
@@ -72,14 +77,14 @@ namespace StepDirController
 
         bool checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
         // Callbacks
-        void zeroInitialize_firstWriteTo_0x260A(uint8_t nodeId, bool success);
-        void zeroInitialize_secondWriteTo_0x260A(uint8_t nodeId, bool success);
-        void zeroInitialize_firstWriteTo_0x6040(uint8_t nodeId, bool success);
-        void zeroInitialize_writeTo_0x6060(uint8_t nodeId, bool success);
-        void zeroInitialize_requestPosition_0x6064(uint8_t nodeId, bool success, int32_t position);
-        void zeroInitialize_secondWriteTo_0x6040(uint8_t nodeId, bool success);
-        void zeroInitialize_writeTo_0x607A(uint8_t nodeId, bool success);
-        void zeroInitialize_requestStatusword_0x6041(uint8_t nodeId, bool success, uint16_t statusWord);
+        void zeroInitialize_AfterFirstWriteTo_0x260A(uint8_t nodeId, bool success);
+        void zeroInitialize_AfterSecondWriteTo_0x260A(uint8_t nodeId, bool success);
+        void zeroInitialize_AfterFirstWriteTo_0x6040(uint8_t nodeId, bool success);
+        void zeroInitialize_AfterWriteTo_0x6060(uint8_t nodeId, bool success);
+        void zeroInitialize_AfterReadPosition_0x6064(uint8_t nodeId, bool success, int32_t position);
+        void zeroInitialize_AfterSecondWriteTo_0x6040(uint8_t nodeId, bool success);
+        void zeroInitialize_AfterWriteTo_0x607A(uint8_t nodeId, bool success);
+        void zeroInitialize_AfterReadStatusword_0x6041(uint8_t nodeId, bool success, uint16_t statusWord);
 
         void zeroInitialize_finalResult();
 

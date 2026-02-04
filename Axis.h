@@ -67,7 +67,7 @@ namespace StepDirController
         friend class MoveControllerBase;
 
         // For zero initialization
-        InitStatus initStatus;
+        RobotConstants::InitStatus initStatus;
         uint8_t statuswordReadAttempts = 0;
         uint32_t lastHeartbeatMs = 0;
         bool isAlive = true;

@@ -296,7 +296,7 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
 
     CAN_TX_msg.id = id;
     CAN_TX_msg.flags.extended = 0;
-    CAN_TX_msg.len = 8;
+    CAN_TX_msg.len = msgDataLen;
 
     // Copy data to CAN message buffer
     for (int i = 0; i < msgDataLen; ++i)
@@ -310,7 +310,12 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
         CAN_TX_msg.buf[i] = 0;
     }
 
-    return Can.write(CAN_TX_msg);
+    bool ok = Can.write(CAN_TX_msg);
+    if (!ok)
+    {
+        addDataToOutQueue("CAN send failed for ID: " + String(id, HEX));
+    }
+    return ok;
 }
 
 bool CanOpen::receive(uint16_t &cob_id, uint8_t *data, uint8_t &len)
@@ -337,6 +342,12 @@ bool CanOpen::read()
     if (receive(id, data, len))
     {
         uint16_t nodeId = id & 0x7F;         // Extract node ID from COB-ID
+        if (nodeId <= 0 || RobotConstants::Robot::MAX_NODE_ID < nodeId)
+        {
+            addDataToOutQueue("Received message from invalid node ID: " + String(nodeId));
+            return false;
+        }
+        
         uint16_t function_code = id & 0x780; // Extract base COB-ID
 
         if (function_code == RobotConstants::CANOpen::COB_ID_HEARTBEAT_BASE)
@@ -418,6 +429,7 @@ bool CanOpen::read()
             }
             return false;
         }
+        return true;
     }
     return false;
 }

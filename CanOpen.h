@@ -36,7 +36,7 @@ private:
     callback_heartbeat heartbeatCallback = nullptr;
 
 public:
-    CanOpen() : Can(PA11, PA12) {};
+    CanOpen() : Can(PA11, PA12, RX_SIZE_128, TX_SIZE_128) {};
     bool startCan(uint32_t baudRate);
 
     bool send_zeroInitialize(uint8_t nodeId, int commandNum);

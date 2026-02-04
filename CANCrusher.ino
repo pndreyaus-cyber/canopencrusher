@@ -14,8 +14,6 @@ HardwareSerial Serial2(PA3, PA2);
 CanOpen canOpen;
 MoveController moveController;
 
-uint8_t buf[8];
-
 String inData;
 uint8_t bufIndex = 0;        // хранилище данных с последовательного порта
 std::vector<String> outData; // очередь сообщений на отправку
@@ -63,7 +61,6 @@ void setup()
     {
         Serial2.println("MoveController initialized successfully");
     }
-
     inData.reserve(128);
     outData.reserve(128);
 }
@@ -103,7 +100,6 @@ void handleCommand()
     }
 
     String function = inData.substring(0, 3);
-
     if (function.equals(RobotConstants::COMMANDS::MOVE_ABSOLUTE))
     {
         if (handleMove(stringToMoveParams(inData), true))
@@ -133,14 +129,7 @@ void handleCommand()
     }
     else if (function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_STEPS))
     {
-        if (handleSetCurrentPositionInSteps(stringToPositionParams(inData)))
-        {
-            addDataToOutQueue("SCS COMMAND COMPLETED");
-        }
-        else
-        {
-            addDataToOutQueue("SCS COMMAND FAILED");
-        }
+        handleSetCurrentPositionInSteps(stringToPositionParams(inData));
     }
     else if (function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_UNITS))
     {
@@ -260,7 +249,7 @@ PositionParams stringToPositionParams(String command)
         return params;
     }
 
-    params.currentPosition = command.substring(positionIndex + 3, idIndex).toFloat();
+    params.currentPosition = command.substring(positionIndex + 3, idIndex).toInt();
     params.nodeId = command.substring(idIndex + 2).toInt();
 
     if ((params.nodeId <= 0) || (params.nodeId > RobotConstants::Robot::AXIS_COUNT))
@@ -329,7 +318,6 @@ ZEIParams stringToZEIParams(String command)
         break;
     case 'F':
         nodeId = 6;
-        break;
         break;
     default:
         return fail("INVALID PARAMETERS FOR ZEI. EXPECTED NODE ID AFTER 'J' AT INDEX " + String(idStartIndex));
@@ -411,15 +399,22 @@ bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbs
 
 bool handleSetCurrentPositionInSteps(PositionParams params)
 {
-    if (params.nodeId < 1 || params.nodeId > RobotConstants::Robot::AXIS_COUNT)
+    /*
+    if (params.nodeId < 1 || RobotConstants::Robot::AXIS_COUNT < params.nodeId )
     {
         addDataToOutQueue("INVALID NODE ID: " + String(params.nodeId));
         return false;
     }
 
-    moveController.getAxis(params.nodeId).setCurrentPositionInSteps(params.currentPosition);
+    addDataToOutQueue("(S)Setting current position for " + String(params.nodeId) + " to " + String(params.currentPosition));
+    addDataToOutQueue(String(params.currentPosition, HEX));
+    addDataToOutQueue(String(params.currentPosition, BIN));
+
+    //moveController.getAxis(params.nodeId).setCurrentPositionInSteps(params.currentPosition);
     addDataToOutQueue("(S)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
-    return true;
+    */
+    moveController.printStatus();
+    return false;
 }
 
 bool handleSetCurrentPositionInUnits(PositionParams params)
@@ -448,8 +443,6 @@ bool handleZeroInitialize(ZEIParams params)
         }
         return false;
     }
-
-    uint8_t totalNodes = 0;
 
     if (params.forAllNodes)
     {

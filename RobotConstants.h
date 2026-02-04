@@ -4,12 +4,12 @@
 
 #include <cstdint>
 #include <array>
+#include <functional>
 
 //#define DEBUG
 
 using callback_x6064_positionActualValue = std::function<void(uint8_t, bool, int32_t)>;
 using callback_x260A_electronicGearMolecules = std::function<void(uint8_t, bool)>;
-using callback_x6040_controlword = std::function<void(uint8_t, bool)>;
 using callback_x6040_controlword = std::function<void(uint8_t, bool)>;
 using callback_x6060_modesOfOperation = std::function<void(uint8_t, bool)>;
 using callback_x607A_targetPosition = std::function<void(uint8_t, bool)>;
@@ -17,16 +17,32 @@ using callback_x6041_statusword = std::function<void(uint8_t, bool, uint16_t)>;
 
 using callback_heartbeat = std::function<void(uint8_t, uint8_t)>;
 
-enum InitStatus : uint8_t
-{
-    ZEI_NONE = 0,
-    ZEI_FAILED,
-    ZEI_ONGOING,
-    ZEI_FINISHED
-};
-
 namespace RobotConstants
 {
+    enum InitStatus : uint8_t
+    {
+        ZEI_NONE = 0,
+        ZEI_FAILED = 1,
+        ZEI_ONGOING = 2,
+        ZEI_FINISHED = 3
+    };
+
+    inline const char *initStatusToString(InitStatus status)
+    {
+        switch (status)
+        {
+        case InitStatus::ZEI_NONE:
+            return "ZEI_NONE";
+        case InitStatus::ZEI_FAILED:
+            return "ZEI_FAILED";
+        case InitStatus::ZEI_ONGOING:
+            return "ZEI_ONGOING";
+        case InitStatus::ZEI_FINISHED:
+            return "ZEI_FINISHED";
+        default:
+            return "UNKNOWN";
+        }
+    }
 
     // Physical and mathematical constants
     namespace Math
@@ -50,10 +66,13 @@ namespace RobotConstants
     // Robot specifications
     namespace Robot
     {
-        constexpr uint8_t AXIS_COUNT = 6;
+        constexpr uint8_t AXIS_COUNT = 3;
         constexpr uint8_t MAX_NODE_ID = 127;
         constexpr uint32_t CONTROL_LOOP_HZ = 1000;
         constexpr uint32_t CAN_BAUD_RATE = 1000000; // 1 Mbps
+        constexpr uint32_t HEARTBEAT_INTERVAL_MS = 500;
+        constexpr uint32_t HEARTBEAT_TIMEOUT_MS = static_cast<uint32_t>(HEARTBEAT_INTERVAL_MS * 1.5);
+        constexpr uint8_t ZEI_MAX_STATUSWORD_READ_ATTEMPTS = 1;
     }
 
     // CANopen communication constants
