@@ -6,7 +6,7 @@
 #include <array>
 #include <functional>
 
-//#define DEBUG
+#define DEBUG
 
 using callback_x6064_positionActualValue = std::function<void(uint8_t, bool, int32_t)>;
 using callback_x260A_electronicGearMolecules = std::function<void(uint8_t, bool)>;
@@ -66,12 +66,12 @@ namespace RobotConstants
     // Robot specifications
     namespace Robot
     {
-        constexpr uint8_t AXIS_COUNT = 3;
+        constexpr uint8_t AXIS_COUNT = 5;
         constexpr uint8_t MAX_NODE_ID = 127;
         constexpr uint32_t CONTROL_LOOP_HZ = 1000;
         constexpr uint32_t CAN_BAUD_RATE = 1000000; // 1 Mbps
-        constexpr uint32_t HEARTBEAT_INTERVAL_MS = 500;
-        constexpr uint32_t HEARTBEAT_TIMEOUT_MS = static_cast<uint32_t>(HEARTBEAT_INTERVAL_MS * 1.5);
+        constexpr uint32_t HEARTBEAT_INTERVAL_MS = 1000;
+        constexpr uint32_t HEARTBEAT_TIMEOUT_MS = static_cast<uint32_t>(HEARTBEAT_INTERVAL_MS * 5);
         constexpr uint8_t ZEI_MAX_STATUSWORD_READ_ATTEMPTS = 1;
     }
 

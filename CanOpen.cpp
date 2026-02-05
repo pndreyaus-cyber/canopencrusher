@@ -119,7 +119,7 @@ bool CanOpen::sendSDOWrite(uint8_t nodeId, uint8_t dataLenBytes, uint16_t index,
         cs = 0x2F;
         break;
     case 2:
-        cs = 0x2B;
+        cs = 0x23; // CHANGE THAT!!!
         break;
     case 3:
         cs = 0x27;

@@ -84,21 +84,21 @@ namespace StepDirController
         for (auto it = axes.begin(); it != axes.end(); ++it)
         {
             Axis &axis = it->second;
-            canOpen->send_x6081_profileVelocity(axis.nodeId, axis.params.x6081_profileVelocity);
-            delay(5);
-            canOpen->send_x6083_profileAcceleration(axis.nodeId, axis.params.x6083_profileAcceleration);
-            delay(5);
+            // canOpen->send_x6081_profileVelocity(axis.nodeId, axis.params.x6081_profileVelocity);
+            // delay(5);
+            // canOpen->send_x6083_profileAcceleration(axis.nodeId, axis.params.x6083_profileAcceleration);
+            // delay(5);
 
             canOpen->send_x6040_controlword(axis.nodeId,
                                             0x004F);
             delay(5);
 
-            canOpen->send_x6040_controlword(axis.nodeId,
-                                            0x005F);
-            delay(5);
+            // canOpen->send_x6040_controlword(axis.nodeId,
+            //                                 0x005F);
+            // delay(5);
 
-            canOpen->sendPDO4_x607A_SyncMovement(axis.nodeId, axis.getTargetPositionAbsolute());
-            delay(5);
+            // canOpen->sendPDO4_x607A_SyncMovement(axis.nodeId, axis.getTargetPositionAbsolute());
+            // delay(5);
 
             // Imitation, that the motor reached the target position
             axis.setCurrentPositionInSteps(axis.params.x607A_targetPosition);
@@ -106,7 +106,7 @@ namespace StepDirController
         }
 
         delay(5);
-        canOpen->sendSYNC();
+        //canOpen->sendSYNC();
     }
 
     double MoveControllerBase::getRegularSpeedUnits() const
@@ -168,8 +168,11 @@ namespace StepDirController
 #ifdef DEBUG
                 addDataToOutQueue("Zero Initialization failed for Axis " + String(nodeId) + ": Heartbeat timeout");
 #endif
-                axis.initStatus = RobotConstants::InitStatus::ZEI_FAILED;
-                zeroInitialize_finalResult();
+                if(nodeId == 2){
+                    axis.initStatus = RobotConstants::InitStatus::ZEI_FAILED;  
+                }
+                //axis.initStatus = RobotConstants::InitStatus::ZEI_FAILED;
+                // zeroInitialize_finalResult();
             }
         }
     }
@@ -198,7 +201,7 @@ namespace StepDirController
 
             axis.setCurrentPositionInSteps(position);
             // axis.params.x6064_positionActualValue = position;
-            addDataToOutQueue("Axis " + String(nodeId) + " new position: " + String(position) + "; " + String(position, HEX) + "; " + String(position, BIN));
+            //addDataToOutQueue("Axis " + String(nodeId) + " new position: " + String(position) + "; " + String(position, HEX) + "; " + String(position, BIN));
         }
     }
 
@@ -214,6 +217,7 @@ namespace StepDirController
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             startZeroInitializationSingleAxis(nodeId);
+            delay(1000);
         }
     }
 
@@ -236,15 +240,15 @@ namespace StepDirController
         canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A([this](uint8_t callbackNodeId, bool success)
                                           { this->zeroInitialize_AfterFirstWriteTo_0x260A(callbackNodeId, success); }, nodeId);
 
-        addDataToOutQueue("Starting zero initialization for Axis " + String(nodeId));
+        //addDataToOutQueue("Starting zero initialization for Axis " + String(nodeId));
         if (!canOpen->send_x260A_electronicGearMolecules(nodeId,
                                                          0xEA66))
         {
-            addDataToOutQueue("Failed to start zero initialization for Axis " + String(nodeId));
+            //addDataToOutQueue("Failed to start zero initialization for Axis " + String(nodeId));
             axes[nodeId].initStatus = RobotConstants::InitStatus::ZEI_FAILED;
             zeroInitialize_finalResult();
         }
-        addDataToOutQueue("Zero initialization command sent for Axis " + String(nodeId));
+        //addDataToOutQueue("Zero initialization command sent for Axis " + String(nodeId));
     }
 
     void MoveControllerBase::setWorkMode(uint8_t nodeId, uint8_t mode)
@@ -346,6 +350,9 @@ namespace StepDirController
         {
             return;
         }
+        //axes[nodeId].initStatus = RobotConstants::InitStatus::ZEI_FINISHED;
+        //zeroInitialize_finalResult();
+        
         // Step 3
         canOpen->setControlWordWriteStatusCallback_0x6040([this](uint8_t cbNodeId, bool cbSuccess)
                                   { this->zeroInitialize_AfterFirstWriteTo_0x6040(cbNodeId, cbSuccess); }, nodeId);
@@ -359,6 +366,7 @@ namespace StepDirController
             // Step 6
             canOpen->setControlWordWriteStatusCallback_0x6040(nullptr, nodeId);
         }
+        
     }
 
     void MoveControllerBase::zeroInitialize_AfterFirstWriteTo_0x6040(uint8_t nodeId, bool success)
@@ -371,6 +379,9 @@ namespace StepDirController
         {
             return;
         }
+        axes[nodeId].initStatus = RobotConstants::InitStatus::ZEI_FINISHED;
+        zeroInitialize_finalResult();
+        /*
         // Step 3
         canOpen->setModesOfOperationWriteStatusCallback_0x6060([this](uint8_t cbNodeId, bool cbSuccess)
                                        { this->zeroInitialize_AfterWriteTo_0x6060(cbNodeId, cbSuccess); }, nodeId);
@@ -384,6 +395,7 @@ namespace StepDirController
             // Step 6
             canOpen->setModesOfOperationWriteStatusCallback_0x6060(nullptr, nodeId);
         }
+        */
     }
 
     void MoveControllerBase::zeroInitialize_AfterWriteTo_0x6060(uint8_t nodeId, bool success)
@@ -429,7 +441,7 @@ namespace StepDirController
                                   { this->zeroInitialize_AfterSecondWriteTo_0x6040(cbNodeId, cbSuccess); }, nodeId);
         // Step 5
         bool successSend = canOpen->send_x6040_controlword(nodeId,
-                                                           0x002F);
+                                                           0x004F);
         // Step 6
         if (!checkResponseStatus(nodeId, successSend,
                                  "Failed to send second 0x6040"))
@@ -477,7 +489,7 @@ namespace StepDirController
         canOpen->setStatusWordCallback_0x6041([this](uint8_t cbNodeId, bool cbSuccess, uint16_t statusWord)
                               { this->zeroInitialize_AfterReadStatusword_0x6041(cbNodeId, cbSuccess, statusWord); }, nodeId);
         // Step 4
-        delay(10); // TODO: Do something with this delay, maybe wait for SYNC or something else
+        delay(1000); // TODO: Do something with this delay, maybe wait for SYNC or something else
         bool successSend = canOpen->sendSDORead(nodeId, RobotConstants::ODIndices::STATUSWORD,
                                                 0x00);
         // Step 5
@@ -623,11 +635,11 @@ namespace StepDirController
             {
                 String message = "==== Heartbeat timeout for Axis " + String(nodeId) + " ====";
                 axis.isAlive = false;
-                addDataToOutQueue(message);
+                //addDataToOutQueue(message);
             } else if ((now - lastHb) <= RobotConstants::Robot::HEARTBEAT_TIMEOUT_MS  && !axis.isAlive) {
                 String message = "==== Heartbeat restored for Axis " + String(nodeId) + " ====";
                 axis.isAlive = true;
-                addDataToOutQueue(message);
+                //addDataToOutQueue(message);
             }
         }
     }
