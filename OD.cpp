@@ -23,7 +23,8 @@
     OD data initialization of all groups
 *******************************************************************************/
 
-void init_od_ram(OD_RAM_t *obj) {
+void init_od_ram(OD_RAM_t *obj)
+{
     *obj = (OD_RAM_t){
         .x1000_deviceType = 0x00020192,
         .x1001_errorRegister = 0x00,
@@ -31,138 +32,28 @@ void init_od_ram(OD_RAM_t *obj) {
         .x1006_communicationCyclePeriod = 0x000007D0,
         .x1016_consumerHeartbeatTime = {
             .numberOfEntries = 0x01,
-            .consumerHeartbeatTime = 0x000007D0
-        },
+            .consumerHeartbeatTime = 0x000007D0},
         .x1017_producerHeartbeatTime = 0x03E8,
-        .x1018_identity = {
-            .numberOfEntries = 0x04,
-            .vendorID = 0x00000331,
-            .productCode = 0x00000001,
-            .revisionNumber = 0x00000100,
-            .serialNumber = 0x00000001
-        },
-        .x1200_serverSDO_Parameter = {
-            .numberOfEntries = 0x02,
-            .COB_ID_ClientToServerReceiveSDO = 0x00000601,
-            .COB_ID_ServerToClientTransmitSDO = 0x00000581
-        },
-        .x1201_additionalServerSDO1Parameter = {
-            .numberOfEntries = 0x03,
-            .COB_ID_ClientToServerReceiveSDO = 0x00000000,
-            .COB_ID_ServerToClientTransmitSDO = 0x00000000,
-            .nodeIDOfTheSDO_Client = 0x00
-        },
-        .x1280_clientSDO1Parameter = {
-            .numberOfEntries = 0x03,
-            .COB_ID_ClientToServerTransmitSDO = 0x00000000,
-            .COB_ID_ServerToClientReceiveSDO = 0x00000000,
-            .nodeIDOfTheSDO_Server = 0x00
-        },
-        .x1400_receivePDO1Parameter = {
-            .numberOfEntries = 0x06,
-            .COB_IDUsedByPDO = 0x00000201,
-            .transmissionType = 0xFF,
-            .inhibitTime = 0x0001,
-            .eventTimer = 0x0000,
-            .SYNCStartValue = 0x00
-        },
-        .x1401_receivePDO2Parameter = {
-            .numberOfEntries = 0x06,
-            .COB_IDUsedByPDO = 0x00000301,
-            .transmissionType = 0xFF,
-            .inhibitTime = 0x0001,
-            .eventTimer = 0x0000,
-            .SYNCStartValue = 0x00
-        },
-        .x1402_receivePDO3Parameter = {
-            .numberOfEntries = 0x06,
-            .COB_IDUsedByPDO = 0x00000401,
-            .transmissionType = 0xFF,
-            .inhibitTime = 0x0001,
-            .eventTimer = 0x0000,
-            .SYNCStartValue = 0x00
-        },
-        .x1403_receivePDO4Parameter = {
-            .numberOfEntries = 0x06,
-            .COB_IDUsedByPDO = 0x00000501,
-            .transmissionType = 0x01,
-            .inhibitTime = 0x0001,
-            .eventTimer = 0x0000,
-            .SYNCStartValue = 0x00
-        },
-        .x1600_receivePDO1Mapping = {
-            .numberOfEntries = 0x03,
-            .PDO1MappingForAnApplicationObject1 = 0x60400010,
-            .PDO1MappingForAnApplicationObject2 = 0x60600008,
-            .PDO1MappingForAnApplicationObject3 = 0x607A0020
-        },
-        .x1601_receivePDO2Mapping = {
-            .numberOfEntries = 0x02,
-            .PDO2MappingForAnApplicationObject1 = 0x607A0020,
-            .PDO2MappingForAnApplicationObject2 = 0x60810020
-        },
-        .x1602_receivePDO3Mapping = {
-            .numberOfEntries = 0x03,
-            .PDO3MappingForAnApplicationObject1 = 0x60400010,
-            .PDO3MappingForAnApplicationObject2 = 0x60600008,
-            .PDO3MappingForAnApplicationObject3 = 0x60FF0020
-        },
-        .x1603_receivePDO4Mapping = {
-            .numberOfEntries = 0x01,
-            .PDO4MappingForAnApplicationObject1 = 0x607A0020
-        },
-        .x1800_transmitPDO1Parameter = {
-            .numberOfEntries = 0x06,
-            .COB_IDUsedByPDO = 0x00000181,
-            .transmissionType = 0xFF,
-            .inhibitTime = 0x0001,
-            .eventTimer = 0x0000,
-            .SYNCStartValue = 0x00
-        },
-        .x1801_transmitPDO2Parameter = {
-            .numberOfEntries = 0x06,
-            .COB_IDUsedByPDO = 0x00000281,
-            .transmissionType = 0xFF,
-            .inhibitTime = 0x0001,
-            .eventTimer = 0x0000,
-            .SYNCStartValue = 0x00
-        },
-        .x1802_transmitPDO3Parameter = {
-            .numberOfEntries = 0x06,
-            .COB_IDUsedByPDO = 0x00000381,
-            .transmissionType = 0xFF,
-            .inhibitTime = 0x0001,
-            .eventTimer = 0x0000,
-            .SYNCStartValue = 0x00
-        },
-        .x1803_transmitPDO4Parameter = {
-            .numberOfEntries = 0x06,
-            .COB_IDUsedByPDO = 0x00000481,
-            .transmissionType = 0xFF,
-            .inhibitTime = 0x0001,
-            .eventTimer = 0x0000,
-            .SYNCStartValue = 0x00
-        },
-        .x1A00_transmitPDO1Mapping = {
-            .numberOfEntries = 0x02,
-            .PDO1MappingForaProcessDataVariable1 = 0x60640020,
-            .PDO1MappingForaProcessDataVariable2 = 0x60410010
-        },
-        .x1A01_transmitPDO2Mapping = {
-            .numberOfEntries = 0x02,
-            .PDO2MappingForaProcessDataVariable1 = 0x60640020,
-            .PDO2MappingForaProcessDataVariable2 = 0x60410010
-        },
-        .x1A02_transmitPDO3Mapping = {
-            .numberOfEntries = 0x02,
-            .PDO3MappingForaProcessDataVariable1 = 0x606C0020,
-            .PDO3MappingForaProcessDataVariable2 = 0x60410010
-        },
-        .x1A03_transmitPDO4Mapping = {
-            .numberOfEntries = 0x02,
-            .PDO4MappingForaProcessDataVariable1 = 0x60640020,
-            .PDO4MappingForaProcessDataVariable2 = 0x60410010
-        },
+        .x1018_identity = {.numberOfEntries = 0x04, .vendorID = 0x00000331, .productCode = 0x00000001, .revisionNumber = 0x00000100, .serialNumber = 0x00000001},
+        .x1200_serverSDO_Parameter = {.numberOfEntries = 0x02, .COB_ID_ClientToServerReceiveSDO = 0x00000601, .COB_ID_ServerToClientTransmitSDO = 0x00000581},
+        .x1201_additionalServerSDO1Parameter = {.numberOfEntries = 0x03, .COB_ID_ClientToServerReceiveSDO = 0x00000000, .COB_ID_ServerToClientTransmitSDO = 0x00000000, .nodeIDOfTheSDO_Client = 0x00},
+        .x1280_clientSDO1Parameter = {.numberOfEntries = 0x03, .COB_ID_ClientToServerTransmitSDO = 0x00000000, .COB_ID_ServerToClientReceiveSDO = 0x00000000, .nodeIDOfTheSDO_Server = 0x00},
+        .x1400_receivePDO1Parameter = {.numberOfEntries = 0x06, .COB_IDUsedByPDO = 0x00000201, .transmissionType = 0xFF, .inhibitTime = 0x0001, .eventTimer = 0x0000, .SYNCStartValue = 0x00},
+        .x1401_receivePDO2Parameter = {.numberOfEntries = 0x06, .COB_IDUsedByPDO = 0x00000301, .transmissionType = 0xFF, .inhibitTime = 0x0001, .eventTimer = 0x0000, .SYNCStartValue = 0x00},
+        .x1402_receivePDO3Parameter = {.numberOfEntries = 0x06, .COB_IDUsedByPDO = 0x00000401, .transmissionType = 0xFF, .inhibitTime = 0x0001, .eventTimer = 0x0000, .SYNCStartValue = 0x00},
+        .x1403_receivePDO4Parameter = {.numberOfEntries = 0x06, .COB_IDUsedByPDO = 0x00000501, .transmissionType = 0x01, .inhibitTime = 0x0001, .eventTimer = 0x0000, .SYNCStartValue = 0x00},
+        .x1600_receivePDO1Mapping = {.numberOfEntries = 0x03, .PDO1MappingForAnApplicationObject1 = 0x60400010, .PDO1MappingForAnApplicationObject2 = 0x60600008, .PDO1MappingForAnApplicationObject3 = 0x607A0020},
+        .x1601_receivePDO2Mapping = {.numberOfEntries = 0x02, .PDO2MappingForAnApplicationObject1 = 0x607A0020, .PDO2MappingForAnApplicationObject2 = 0x60810020},
+        .x1602_receivePDO3Mapping = {.numberOfEntries = 0x03, .PDO3MappingForAnApplicationObject1 = 0x60400010, .PDO3MappingForAnApplicationObject2 = 0x60600008, .PDO3MappingForAnApplicationObject3 = 0x60FF0020},
+        .x1603_receivePDO4Mapping = {.numberOfEntries = 0x01, .PDO4MappingForAnApplicationObject1 = 0x607A0020},
+        .x1800_transmitPDO1Parameter = {.numberOfEntries = 0x06, .COB_IDUsedByPDO = 0x00000181, .transmissionType = 0xFF, .inhibitTime = 0x0001, .eventTimer = 0x0000, .SYNCStartValue = 0x00},
+        .x1801_transmitPDO2Parameter = {.numberOfEntries = 0x06, .COB_IDUsedByPDO = 0x00000281, .transmissionType = 0xFF, .inhibitTime = 0x0001, .eventTimer = 0x0000, .SYNCStartValue = 0x00},
+        .x1802_transmitPDO3Parameter = {.numberOfEntries = 0x06, .COB_IDUsedByPDO = 0x00000381, .transmissionType = 0xFF, .inhibitTime = 0x0001, .eventTimer = 0x0000, .SYNCStartValue = 0x00},
+        .x1803_transmitPDO4Parameter = {.numberOfEntries = 0x06, .COB_IDUsedByPDO = 0x00000481, .transmissionType = 0xFF, .inhibitTime = 0x0001, .eventTimer = 0x0000, .SYNCStartValue = 0x00},
+        .x1A00_transmitPDO1Mapping = {.numberOfEntries = 0x02, .PDO1MappingForaProcessDataVariable1 = 0x60640020, .PDO1MappingForaProcessDataVariable2 = 0x60410010},
+        .x1A01_transmitPDO2Mapping = {.numberOfEntries = 0x02, .PDO2MappingForaProcessDataVariable1 = 0x60640020, .PDO2MappingForaProcessDataVariable2 = 0x60410010},
+        .x1A02_transmitPDO3Mapping = {.numberOfEntries = 0x02, .PDO3MappingForaProcessDataVariable1 = 0x606C0020, .PDO3MappingForaProcessDataVariable2 = 0x60410010},
+        .x1A03_transmitPDO4Mapping = {.numberOfEntries = 0x02, .PDO4MappingForaProcessDataVariable1 = 0x60640020, .PDO4MappingForaProcessDataVariable2 = 0x60410010},
         .x2600_modbusEnable = 0x00,
         .x2601_driverEnable = 0x00,
         .x2604_weakMagneticAngle = 0x00,
@@ -188,19 +79,7 @@ void init_od_ram(OD_RAM_t *obj) {
         .x607A_targetPosition = 0,
         .x6081_profileVelocity = 0x00000000,
         .x6083_profileAcceleration = 0x00000000,
-        .x60F9_velocityControlParameterSet = {
-            .numberOfEntries = 0x02,
-            .velocityRegulatorP_gain = 0,
-            .velocityRegulatorI_gain = 0
-        },
-        .x60FB_positionControlParameterSet = {
-            .numberOfEntries = 0x05,
-            .positionRegulatorP_gain = 0,
-            .positionRegulatorI_gain = 0,
-            .positionRegulatorD_gain = 0,
-            .velocityFeedForwardFactor = 0x0000,
-            .accelerationFeedForwardFactor = 0x0000
-        },
-        .x60FF_targetVelocity = 0
-    };
+        .x60F9_velocityControlParameterSet = {.numberOfEntries = 0x02, .velocityRegulatorP_gain = 0, .velocityRegulatorI_gain = 0},
+        .x60FB_positionControlParameterSet = {.numberOfEntries = 0x05, .positionRegulatorP_gain = 0, .positionRegulatorI_gain = 0, .positionRegulatorD_gain = 0, .velocityFeedForwardFactor = 0x0000, .accelerationFeedForwardFactor = 0x0000},
+        .x60FF_targetVelocity = 0};
 }
