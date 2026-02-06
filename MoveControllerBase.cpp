@@ -217,7 +217,7 @@ namespace StepDirController
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             startZeroInitializationSingleAxis(nodeId);
-            delay(1000);
+            delay(1);
         }
     }
 
@@ -316,6 +316,7 @@ namespace StepDirController
 
     void MoveControllerBase::zeroInitialize_AfterFirstWriteTo_0x260A(uint8_t nodeId, bool success)
     {
+        //addDataToOutQueue("Step 1 + " + String(nodeId) + " " + String(success));
         // Step 1
         canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A(nullptr, nodeId);
         // Step 2
@@ -328,6 +329,7 @@ namespace StepDirController
         canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A([this](uint8_t cbNodeId, bool cbSuccess)
                                           { this->zeroInitialize_AfterSecondWriteTo_0x260A(cbNodeId, cbSuccess); }, nodeId);
         // Step 4
+        //delay(5000);
         bool successSend = canOpen->send_x260A_electronicGearMolecules(nodeId,
                                                                        0xEA70);
         // Step 5
@@ -342,6 +344,7 @@ namespace StepDirController
 
     void MoveControllerBase::zeroInitialize_AfterSecondWriteTo_0x260A(uint8_t nodeId, bool success)
     {
+        //addDataToOutQueue("Step 2 + " + String(nodeId) + " " + String(success));
         // Step 1
         canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A(nullptr, nodeId);
         // Step 2
@@ -349,10 +352,7 @@ namespace StepDirController
                                  "Zero initialization phase 1 failed"))
         {
             return;
-        }
-        //axes[nodeId].initStatus = RobotConstants::InitStatus::ZEI_FINISHED;
-        //zeroInitialize_finalResult();
-        
+        }        
         // Step 3
         canOpen->setControlWordWriteStatusCallback_0x6040([this](uint8_t cbNodeId, bool cbSuccess)
                                   { this->zeroInitialize_AfterFirstWriteTo_0x6040(cbNodeId, cbSuccess); }, nodeId);
@@ -371,6 +371,7 @@ namespace StepDirController
 
     void MoveControllerBase::zeroInitialize_AfterFirstWriteTo_0x6040(uint8_t nodeId, bool success)
     {
+        addDataToOutQueue("Step 3 + " + String(nodeId) + " " + String(success));
         // Step 1
         canOpen->setControlWordWriteStatusCallback_0x6040(nullptr, nodeId);
         // Step 2

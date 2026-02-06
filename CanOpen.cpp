@@ -315,6 +315,7 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     {
         addDataToOutQueue("CAN send failed for ID: " + String(id, HEX));
     }
+    delay(1);
     return ok;
 }
 
@@ -358,7 +359,9 @@ bool CanOpen::read()
             }
         }
         else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE)
-        { // SDO READ/WRITE RESPONSE
+        { 
+            //addDataToOutQueue("SDO: " + String((data[0] & 0xE0) >> 5, HEX) + " from node " + String(nodeId) + " ");
+            // SDO READ/WRITE RESPONSE
             // addDataToOutQueue("SDO Response from node " + String(nodeId));
 
             // Accept 4-byte write acks and 8-byte read responses

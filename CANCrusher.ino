@@ -157,6 +157,11 @@ void handleCommand()
             addDataToOutQueue("RPP COMMAND FAILED");
         }
     }
+    else if (function.equals("RST")) 
+    {   
+        moveController.resetInitStatus();
+        addDataToOutQueue("Initialization status reset for all axes.");
+    }
     else
     {
         addDataToOutQueue("INVALID COMMAND");
@@ -344,25 +349,20 @@ int stringToNodeId(String command)
 
     String idStr = command.substring(RobotConstants::COMMANDS::COMMAND_LEN);
     bool isValidInteger = true;
-    if (idStr.length() == 0)
+
+    for (size_t i = 0; i < idStr.length(); ++i)
     {
-        return -1;
-    }
-    else
-    {
-        for (size_t i = 0; i < idStr.length(); ++i)
+        if (!isDigit(idStr.charAt(i)))
         {
-            if (!isDigit(idStr.charAt(i)))
-            {
-                isValidInteger = false;
-                break;
-            }
+            isValidInteger = false;
+            break;
         }
     }
 
+
     if (!isValidInteger)
     {
-        return -1;
+        return -2;
     }
     else
     {
@@ -459,16 +459,31 @@ bool handleZeroInitialize(ZEIParams params)
 
 bool handleRequestPosition(int parsedId)
 {
-    if (parsedId == -1)
+    if (parsedId == -2)
     {
         addDataToOutQueue("RPP COMMAND: INVALID PARAMETERS");
         return false;
     }
+    else if (parsedId == -1) {
+        bool ok = true;
+        for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXIS_COUNT; ++nodeId)
+        {
+            if (!canOpen.sendSDORead(nodeId, RobotConstants::ODIndices::POSITION_ACTUAL_VALUE, 0))
+            {
+                addDataToOutQueue("RPP COMMAND: SDO SEND FAILED FOR NODE " + String(nodeId));
+                ok = false;
+            }
+            //addDataToOutQueue("RPP COMMAND: SDO SEND SUCCESS FOR NODE " + String(nodeId));
+        }    
+        return ok;
+    }
+
     if (parsedId < 1 || RobotConstants::Robot::AXIS_COUNT < parsedId)
     {
         addDataToOutQueue("RPP COMMAND: NODE ID IS INVALID: " + String(parsedId));
         return false;
     }
+
     uint8_t nodeId = static_cast<uint8_t>(parsedId);
 
     if (!canOpen.sendSDORead(nodeId, RobotConstants::ODIndices::POSITION_ACTUAL_VALUE, 0))
@@ -476,6 +491,6 @@ bool handleRequestPosition(int parsedId)
         addDataToOutQueue("RPP COMMAND: SDO SEND FAILED");
         return false;
     }
-    addDataToOutQueue("RPP COMMAND: SDO SEND SUCCESS");
+    //addDataToOutQueue("RPP COMMAND: SDO SEND SUCCESS");
     return true;
 }

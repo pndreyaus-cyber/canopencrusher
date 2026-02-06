@@ -15,6 +15,12 @@ namespace StepDirController
     {
     public:
 
+        void resetInitStatus() {
+            for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId) {
+                axes[nodeId].initStatus = RobotConstants::InitStatus::ZEI_NONE;
+            }
+        }
+
         void printStatus() {
             addDataToOutQueue("MoveControllerBase Status: " + String(axes.size()) + " axes configured. " + axesCnt + " axes count."); 
             for(const auto& [nodeId, axis] : axes) {
