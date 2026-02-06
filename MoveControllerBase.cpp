@@ -90,7 +90,7 @@ namespace StepDirController
             // delay(5);
 
             canOpen->send_x6040_controlword(axis.nodeId,
-                                            0x004F);
+                                            0x004F);    
             delay(5);
 
             // canOpen->send_x6040_controlword(axis.nodeId,
@@ -230,25 +230,7 @@ namespace StepDirController
             addDataToOutQueue("Zero initialization already in progress or finished for Axis " + String(nodeId));
             return;
         }
-        axes[nodeId].initStatus = RobotConstants::InitStatus::ZEI_ONGOING;
-        axes[nodeId].statuswordReadAttempts = 0;
-        if (zeroInitializeSingleAxis)
-        {
-            axisToInitialize = nodeId;
-        }
-
-        canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A([this](uint8_t callbackNodeId, bool success)
-                                          { this->zeroInitialize_AfterFirstWriteTo_0x260A(callbackNodeId, success); }, nodeId);
-
-        //addDataToOutQueue("Starting zero initialization for Axis " + String(nodeId));
-        if (!canOpen->send_x260A_electronicGearMolecules(nodeId,
-                                                         0xEA66))
-        {
-            //addDataToOutQueue("Failed to start zero initialization for Axis " + String(nodeId));
-            axes[nodeId].initStatus = RobotConstants::InitStatus::ZEI_FAILED;
-            zeroInitialize_finalResult();
-        }
-        //addDataToOutQueue("Zero initialization command sent for Axis " + String(nodeId));
+        zeroInitialize_start(nodeId);
     }
 
     void MoveControllerBase::setWorkMode(uint8_t nodeId, uint8_t mode)
@@ -313,6 +295,34 @@ namespace StepDirController
 
     In the end of the sequence, you can insert a funneling function, which will track if every axis has finished and report the final result
 */
+
+    void MoveControllerBase::zeroInitialize_start(uint8_t nodeId)
+    {
+        axes[nodeId].initStatus = RobotConstants::InitStatus::ZEI_ONGOING;
+        axes[nodeId].statuswordReadAttempts = 0;
+        if (zeroInitializeSingleAxis)
+        {
+            axisToInitialize = nodeId;
+        }
+
+
+        {
+            //addDataToOutQueue("Failed to start zero initialization for Axis " + String(nodeId));
+            axes[nodeId].initStatus = RobotConstants::InitStatus::ZEI_FAILED;
+            zeroInitialize_finalResult();
+        }
+    }
+
+    void MoveControllerBase::zeroInitialize_AfterFirstWriteTo_0x6040(uint8_t nodeId, bool success)
+    {
+        // Step 5
+        canOpen->setElectronicGearMoleculesWriteStatusCallback_0x260A([this](uint8_t callbackNodeId, bool success)
+                                          { this->zeroInitialize_AfterFirstWriteTo_0x260A(callbackNodeId, success); }, nodeId);
+
+        //addDataToOutQueue("Starting zero initialization for Axis " + String(nodeId));
+        if (!canOpen->send_x260A_electronicGearMolecules(nodeId,
+                                                         0xEA66))
+    }
 
     void MoveControllerBase::zeroInitialize_AfterFirstWriteTo_0x260A(uint8_t nodeId, bool success)
     {

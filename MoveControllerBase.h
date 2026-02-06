@@ -77,14 +77,16 @@ namespace StepDirController
 
         bool checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
         // Callbacks
+        void zeroInitialize_start(uint8_t nodeId);
+        void zeroInitialize_AfterFirstWriteTo_0x6040(uint8_t nodeId, bool success);
         void zeroInitialize_AfterFirstWriteTo_0x260A(uint8_t nodeId, bool success);
         void zeroInitialize_AfterSecondWriteTo_0x260A(uint8_t nodeId, bool success);
-        void zeroInitialize_AfterFirstWriteTo_0x6040(uint8_t nodeId, bool success);
-        void zeroInitialize_AfterWriteTo_0x6060(uint8_t nodeId, bool success);
-        void zeroInitialize_AfterReadPosition_0x6064(uint8_t nodeId, bool success, int32_t position);
         void zeroInitialize_AfterSecondWriteTo_0x6040(uint8_t nodeId, bool success);
-        void zeroInitialize_AfterWriteTo_0x607A(uint8_t nodeId, bool success);
-        void zeroInitialize_AfterReadStatusword_0x6041(uint8_t nodeId, bool success, uint16_t statusWord);
+        // void zeroInitialize_AfterWriteTo_0x6060(uint8_t nodeId, bool success);
+        // void zeroInitialize_AfterReadPosition_0x6064(uint8_t nodeId, bool success, int32_t position);
+        // void zeroInitialize_AfterSecondWriteTo_0x6040(uint8_t nodeId, bool success);
+        // void zeroInitialize_AfterWriteTo_0x607A(uint8_t nodeId, bool success);
+        // void zeroInitialize_AfterReadStatusword_0x6041(uint8_t nodeId, bool success, uint16_t statusWord);
 
         void zeroInitialize_finalResult();
 
