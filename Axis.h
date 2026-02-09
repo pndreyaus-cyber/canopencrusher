@@ -68,7 +68,6 @@ namespace StepDirController
 
         // For zero initialization
         RobotConstants::InitStatus initStatus;
-        uint8_t statuswordReadAttempts = 0;
         uint32_t lastHeartbeatMs = 0;
         bool isAlive = true;
     };

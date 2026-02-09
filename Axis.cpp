@@ -3,6 +3,7 @@
 #include "Arduino.h"
 #include "Axis.h"
 #include "RobotConstants.h"
+#include "Debug.h"
 
 extern void addDataToOutQueue(String data);
 
@@ -29,9 +30,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::setStepsPerRevolution -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setStepsPerRevolution -- Axis not initialized");
             return *this;
         }
         stepsPerRevolution = steps;
@@ -42,9 +41,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::setUnitsPerRevolution -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setUnitsPerRevolution -- Axis not initialized");
             return *this;
         }
         unitsPerRevolution = units;
@@ -55,9 +52,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::setCurrentPositionInUnits -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setCurrentPositionInUnits -- Axis not initialized");
             return *this;
         }
 
@@ -69,9 +64,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::setCurrentPositionInSteps -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setCurrentPositionInSteps -- Axis not initialized");
             return *this;
         }
 
@@ -83,9 +76,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::getCurrentPositionInSteps -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::getCurrentPositionInSteps -- Axis not initialized");
             return -1;
         }
 
@@ -96,9 +87,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::setTargetPositionRelativeInUnits -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setTargetPositionRelativeInUnits -- Axis not initialized");
             return false;
         }
 
@@ -111,9 +100,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::setTargetPositionRelativeInSteps -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setTargetPositionRelativeInSteps -- Axis not initialized");
             return false;
         }
         return setTargetPositionAbsoluteInSteps(steps + params.x6064_positionActualValue); // Проверить
@@ -123,9 +110,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::setTargetPositionAbsoluteInUnits -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setTargetPositionAbsoluteInUnits -- Axis not initialized");
             return false;
         }
 
@@ -137,9 +122,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::setTargetPositionAbsoluteInSteps -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setTargetPositionAbsoluteInSteps -- Axis not initialized");
             return false;
         }
 
@@ -154,9 +137,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::getPositionInUnits -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::getPositionInUnits -- Axis not initialized");
             return -1;
         }
 
@@ -168,9 +149,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::getStepsPerRevolution -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::getStepsPerRevolution -- Axis not initialized");
             return 0;
         }
 
@@ -181,9 +160,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::getUnitsPerRevolution -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::getUnitsPerRevolution -- Axis not initialized");
             return -1;
         }
 
@@ -194,9 +171,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::stepsToUnits -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::stepsToUnits -- Axis not initialized");
             return -1;
         }
 
@@ -212,9 +187,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::unitsToSteps -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::unitsToSteps -- Axis not initialized");
             return 0;
         }
 
@@ -230,9 +203,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::speedUnitsToRevolutionsPerMinute -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::speedUnitsToRevolutionsPerMinute -- Axis not initialized");
             return 0;
         }
 
@@ -248,9 +219,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::revolutionsPerMinuteToSpeedUnits -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::revolutionsPerMinuteToSpeedUnits -- Axis not initialized");
             return 0;
         }
         return (double)rpm / RobotConstants::Math::SECONDS_IN_MINUTE * unitsPerRevolution;
@@ -260,9 +229,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::accelerationUnitsTorpmPerSecond -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::accelerationUnitsTorpmPerSecond -- Axis not initialized");
             return 0;
         }
         if (unitsPerRevolution == 0)
@@ -277,9 +244,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::rpmPerSecondToAccelerationUnits -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::rpmPerSecondToAccelerationUnits -- Axis not initialized");
             return 0;
         }
 
@@ -295,9 +260,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::getNodeId -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::getNodeId -- Axis not initialized");
             return 0;
         }
 
@@ -308,9 +271,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::getMovementUnits -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::getMovementUnits -- Axis not initialized");
             return -1;
         }
         return movementUnits;
@@ -320,9 +281,7 @@ namespace StepDirController
     {
         if (!initialized)
         {
-#ifdef DEBUG
-            addDataToOutQueue("Axis::getTargetPositionAbsolute -- Axis not initialized");
-#endif
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::getTargetPositionAbsolute -- Axis not initialized");
             return -1;
         }
 

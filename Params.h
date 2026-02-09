@@ -33,19 +33,12 @@ struct MoveParams
     // double deceleration;
 };
 
-struct PositionParams
+struct MotorIndices
 {
     ParamsStatus status;
-    int32_t currentPosition;
-    uint8_t nodeId;
-};
-
-struct ZEIParams
-{
-    ParamsStatus status;
-    bool forAllNodes;
-    uint8_t nodeId;
+    std::vector<uint8_t> nodeIds;
     String errorMsg;
+    String errorCode;
 };
 
 #endif

@@ -82,10 +82,6 @@ bool CanOpen::send_x6040_controlword(uint8_t nodeId, uint16_t value)
         &value);
 }
 
-/*
-Modes of operation:
--
-*/
 bool CanOpen::send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value)
 {
     return sendSDOWrite(
@@ -315,6 +311,7 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     {
         addDataToOutQueue("CAN send failed for ID: " + String(id, HEX));
     }
+    delay(1);
     return ok;
 }
 

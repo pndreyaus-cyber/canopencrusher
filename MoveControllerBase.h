@@ -15,12 +15,19 @@ namespace StepDirController
     {
     public:
 
-        void printStatus() {
-            addDataToOutQueue("MoveControllerBase Status: " + String(axes.size()) + " axes configured. " + axesCnt + " axes count."); 
-            for(const auto& [nodeId, axis] : axes) {
-                String status = "Axis " + String(nodeId) + ": " + String(axis.isAlive) + ", Last Heartbeat: " + String(axis.lastHeartbeatMs) + " ms " + String(RobotConstants::initStatusToString(axis.initStatus));
-                addDataToOutQueue(status);
+        void requestStatus(const std::vector<uint8_t>& nodeIds) {
+            String reply = RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Status::OK + " ";
+            if(nodeIds.empty()) {
+                for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId) {
+                    reply += String(nodeId) + ":" + String(axes[nodeId].isAlive) + "," + String(axes[nodeId].initStatus) + "; ";
+                }
+            } else {
+                for(uint8_t nodeId : nodeIds) {
+                    reply += String(nodeId) + ":" + String(axes[nodeId].isAlive) + "," + String(axes[nodeId].initStatus) + "; ";
+                }
             }
+
+            addDataToOutQueue(reply);
         }
 
         bool start(CanOpen *canOpen, uint8_t axesCnt);
@@ -36,8 +43,6 @@ namespace StepDirController
 
         void startZeroInitializationAllAxes();
         void startZeroInitializationSingleAxis(uint8_t nodeId);
-        void setWorkMode(uint8_t nodeId, uint8_t mode);
-        void setControlWord(uint8_t nodeId, uint16_t controlWord);
 
         void move();
 
@@ -50,6 +55,8 @@ namespace StepDirController
         // полученные значения через колбэки сохранять в Axis
 
         // TODO: метод tick должен рассылать запросы по двигателям о их состоянии (напряжение, температура, т.д. - все что есть по протоколу)
+
+        void tick_requestPosition(const std::vector<uint8_t>& nodeIds);
 
     protected:
         void prepareMove();
@@ -73,7 +80,7 @@ namespace StepDirController
 
         void setRegularPositionActualValueCallback(uint8_t nodeId);
 
-        void checkTimeouts();
+        void tick_checkTimeouts();
 
         bool checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
         // Callbacks
@@ -82,11 +89,6 @@ namespace StepDirController
         void zeroInitialize_AfterFirstWriteTo_0x260A(uint8_t nodeId, bool success);
         void zeroInitialize_AfterSecondWriteTo_0x260A(uint8_t nodeId, bool success);
         void zeroInitialize_AfterSecondWriteTo_0x6040(uint8_t nodeId, bool success);
-        // void zeroInitialize_AfterWriteTo_0x6060(uint8_t nodeId, bool success);
-        // void zeroInitialize_AfterReadPosition_0x6064(uint8_t nodeId, bool success, int32_t position);
-        // void zeroInitialize_AfterSecondWriteTo_0x6040(uint8_t nodeId, bool success);
-        // void zeroInitialize_AfterWriteTo_0x607A(uint8_t nodeId, bool success);
-        // void zeroInitialize_AfterReadStatusword_0x6041(uint8_t nodeId, bool success, uint16_t statusWord);
 
         void zeroInitialize_finalResult();
 

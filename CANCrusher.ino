@@ -5,6 +5,7 @@
 #include "CanOpen.h"
 #include "Params.h"
 #include "RobotConstants.h"
+#include "Debug.h"  
 
 const double MAX_SPEED = 360;
 const double MAX_ACCELERATION = 7864.20;
@@ -20,14 +21,13 @@ std::vector<String> outData; // очередь сообщений на отпр�
 
 // Forward declarations
 MoveParams<RobotConstants::Robot::AXIS_COUNT> stringToMoveParams(String command);
-PositionParams stringToPositionParams(String command);
-ZEIParams stringToZEIParams(String command);
-int stringToNodeId(String command);
-bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove);
-bool handleSetCurrentPositionInSteps(PositionParams params);
-bool handleSetCurrentPositionInUnits(PositionParams params);
-bool handleZeroInitialize(ZEIParams params);
-bool handleRequestPosition(int parsedId);
+MotorIndices stringToMotorIndices(String command);
+
+void handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove);
+void handleZeroInitialize(MotorIndices motorIndices);
+void handleRequestPosition(MotorIndices motorIndices);
+void handleMotorStatus(MotorIndices motorIndices);
+
 
 void setup()
 {
@@ -94,72 +94,40 @@ void handleCommand()
 
     if (inData.length() < 3)
     {
+        addDataToOutQueue(inData + " " + RobotConstants::Status::INCORRECT_COMMAND);
         inData = "";
-        addDataToOutQueue("INVALID COMMAND: TOO SHORT");
         return;
     }
 
     String function = inData.substring(0, 3);
-    if (function.equals(RobotConstants::COMMANDS::MOVE_ABSOLUTE))
+    if (function.equals(RobotConstants::Commands::MOVE_ABSOLUTE))
     {
-        if (handleMove(stringToMoveParams(inData), true))
-        {
-            addDataToOutQueue("MAJ COMMAND COMPLETED");
-        }
-        else
-        {
-            addDataToOutQueue("MAJ COMMAND FAILED");
-        }
+        handleMove(stringToMoveParams(inData), true);
     }
 
-    else if (function.equals(RobotConstants::COMMANDS::MOVE_RELATIVE))
+    else if (function.equals(RobotConstants::Commands::MOVE_RELATIVE))
     {
-        if (handleMove(stringToMoveParams(inData), false))
-        {
-            addDataToOutQueue("MRJ COMMAND COMPLETED");
-        }
-        else
-        {
-            addDataToOutQueue("MRJ COMMAND FAILED");
-        }
+        handleMove(stringToMoveParams(inData), false);
     }
-    else if (function.equals(RobotConstants::COMMANDS::ECHO))
+    else if (function.equals(RobotConstants::Commands::ECHO))
     {
         addDataToOutQueue(inData.substring(4));
     }
-    else if (function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_STEPS))
+    else if (function.equals(RobotConstants::Commands::MOTOR_STATUS))
     {
-        handleSetCurrentPositionInSteps(stringToPositionParams(inData));
+        handleMotorStatus(stringToMotorIndices(inData));
     }
-    else if (function.equals(RobotConstants::COMMANDS::SET_CURRENT_POSITION_IN_UNITS))
+    else if (function.equals(RobotConstants::Commands::ZERO_INITIALIZE))
     {
-        if (handleSetCurrentPositionInUnits(stringToPositionParams(inData)))
-        {
-            addDataToOutQueue("SCU COMMAND COMPLETED");
-        }
-        else
-        {
-            addDataToOutQueue("SCU COMMAND FAILED");
-        }
+        handleZeroInitialize(stringToMotorIndices(inData));
     }
-    else if (function.equals(RobotConstants::COMMANDS::ZERO_INITIALIZE))
+    else if (function.equals(RobotConstants::Commands::REQUEST_POSITION))
     {
-        handleZeroInitialize(stringToZEIParams(inData));
-    }
-    else if (function.equals(RobotConstants::COMMANDS::REQUEST_POSITION))
-    {
-        if (handleRequestPosition(stringToNodeId(inData)))
-        {
-            addDataToOutQueue("RPP COMMAND COMPLETED");
-        }
-        else
-        {
-            addDataToOutQueue("RPP COMMAND FAILED");
-        }
+        handleRequestPosition(stringToMotorIndices(inData));
     }
     else
     {
-        addDataToOutQueue("INVALID COMMAND");
+        addDataToOutQueue(function + " " + RobotConstants::Status::INCORRECT_COMMAND);
     }
     inData = "";
 }
@@ -236,154 +204,69 @@ MoveParams<RobotConstants::Robot::AXIS_COUNT> stringToMoveParams(String command)
     return params;
 }
 
-PositionParams stringToPositionParams(String command)
+
+MotorIndices stringToMotorIndices(String command) 
 {
-    PositionParams params;
-
-    int positionIndex = command.indexOf("POS");
-    int idIndex = command.indexOf("ID");
-
-    if ((positionIndex == -1) || (idIndex == -1))
+    String params = command.substring(3); // Only parameters, without command and space
+    MotorIndices motorIndices;
+    motorIndices.status = ParamsStatus::OK;
+    if (params.length() == 0)
     {
-        params.status = ParamsStatus::INCORRECT_COMMAND;
-        return params;
+        return motorIndices;
     }
 
-    params.currentPosition = command.substring(positionIndex + 3, idIndex).toInt();
-    params.nodeId = command.substring(idIndex + 2).toInt();
-
-    if ((params.nodeId <= 0) || (params.nodeId > RobotConstants::Robot::AXIS_COUNT))
+    int i = 0;
+    bool isOk = true;
+    while (i < params.length() - 1)
     {
-        params.status = ParamsStatus::INVALID_PARAMS;
-        return params;
-    }
-
-    params.status = ParamsStatus::OK;
-    return params;
-}
-
-// Right now we support either ZEI for all nodes or only for 1 node specified by its ID.
-ZEIParams stringToZEIParams(String command)
-{
-    if (command.equals(RobotConstants::COMMANDS::ZERO_INITIALIZE))
-    {
-        ZEIParams params;
-        params.status = ParamsStatus::OK;
-        params.forAllNodes = true;
-        params.errorMsg = "";
-        return params;
-    }
-
-    ZEIParams params;
-    params.status = ParamsStatus::INVALID_PARAMS;
-    params.forAllNodes = false;
-    params.errorMsg = "INVALID PARAMS FOR ZEI";
-
-    auto fail = [&](const String &msg)
-    {
-        params.status = ParamsStatus::INVALID_PARAMS;
-        params.forAllNodes = false;
-        params.nodeId = 0;
-        params.errorMsg = msg;
-        return params;
-    };
-
-    int idStartIndex = RobotConstants::COMMANDS::COMMAND_LEN;
-    if (command.charAt(idStartIndex) != 'J')
-    {
-        return fail("INVALID PARAMETERS FOR ZEI. EXPECTED 'J' AT INDEX " + String(idStartIndex));
-    }
-    if (command.length() <= idStartIndex + 1)
-    {
-        return fail("INVALID PARAMETERS FOR ZEI. NO NODE IDS PROVIDED.");
-    }
-    char nodeName = command.charAt(idStartIndex + 1);
-    uint8_t nodeId = 0;
-    switch (nodeName)
-    {
-    case 'A':
-        nodeId = 1;
-        break;
-    case 'B':
-        nodeId = 2;
-        break;
-    case 'C':
-        nodeId = 3;
-        break;
-    case 'D':
-        nodeId = 4;
-        break;
-    case 'E':
-        nodeId = 5;
-        break;
-    case 'F':
-        nodeId = 6;
-        break;
-    default:
-        return fail("INVALID PARAMETERS FOR ZEI. EXPECTED NODE ID AFTER 'J' AT INDEX " + String(idStartIndex));
-    }
-
-    if (idStartIndex + 2 != command.length())
-    {
-        return fail("INVALID PARAMETERS FOR ZEI. ONLY SINGLE NODE ID SUPPORTED CURRENTLY.");
-    }
-
-    params.nodeId = nodeId;
-    params.status = ParamsStatus::OK;
-    params.forAllNodes = false;
-    params.errorMsg = "";
-    return params;
-}
-
-int stringToNodeId(String command)
-{ // RPP 1
-    if (command.equals(RobotConstants::COMMANDS::REQUEST_POSITION))
-    {
-        return -1;
-    }
-
-    String idStr = command.substring(RobotConstants::COMMANDS::COMMAND_LEN);
-    bool isValidInteger = true;
-    if (idStr.length() == 0)
-    {
-        return -1;
-    }
-    else
-    {
-        for (size_t i = 0; i < idStr.length(); ++i)
+        if (params.charAt(i) == 'J')
         {
-            if (!isDigit(idStr.charAt(i)))
+            char motorChar = params.charAt(i + 1);
+            if (motorChar >= 'A' && motorChar <= 'F')
             {
-                isValidInteger = false;
+                motorIndices.nodeIds.push_back(motorChar - 'A' + 1); // Convert 'A'-'F' to 1-6
+                i += 2;                                              // Skip the motor identifier
+            }
+            else
+            {
+                isOk = false;
+                motorIndices.errorMsg = "Invalid motor identifier: " + String(motorChar);
                 break;
             }
         }
+        else
+        {
+            isOk = false;
+            motorIndices.errorMsg = "Motor identifiers should start with 'J' followed by a letter";
+            break;
+        }
     }
 
-    if (!isValidInteger)
+    if (!isOk)
     {
-        return -1;
+        motorIndices.status = ParamsStatus::INVALID_PARAMS;
+        motorIndices.errorCode = RobotConstants::Status::INVALID_PARAMS;
     }
-    else
-    {
-        return idStr.toInt();
-    }
+    return motorIndices;
 }
 
-bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove)
+void handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbsoluteMove)
 {
     if (params.status != ParamsStatus::OK)
     {
         if (params.status == ParamsStatus::INVALID_PARAMS)
-            addDataToOutQueue("INVALID PARAMS");
+        {
+            addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Status::INVALID_PARAMS);
+        }
         else if (params.status == ParamsStatus::INCORRECT_COMMAND)
-            addDataToOutQueue("INCORRECT COMMAND");
-        return false;
+        {
+            addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Status::INCORRECT_COMMAND);
+        }
+        return;
     }
 
     for (uint8_t nodeId = 1; nodeId <= moveController.getAxesCount(); ++nodeId)
     {
-
         if (isAbsoluteMove)
             moveController.getAxis(nodeId).setTargetPositionAbsoluteInUnits(params.movementUnits[nodeId - 1]);
         else
@@ -394,88 +277,48 @@ bool handleMove(MoveParams<RobotConstants::Robot::AXIS_COUNT> params, bool isAbs
     moveController.setAccelerationUnits(params.acceleration);
 
     moveController.move();
-    return true;
 }
 
-bool handleSetCurrentPositionInSteps(PositionParams params)
+void handleMotorStatus(MotorIndices motorIndices)
 {
-    /*
-    if (params.nodeId < 1 || RobotConstants::Robot::AXIS_COUNT < params.nodeId )
+    if(motorIndices.status != ParamsStatus::OK)
     {
-        addDataToOutQueue("INVALID NODE ID: " + String(params.nodeId));
-        return false;
+        addDataToOutQueue(RobotConstants::Commands::MOTOR_STATUS + " " + motorIndices.errorCode + " " + motorIndices.errorMsg);
+        return;
     }
-
-    addDataToOutQueue("(S)Setting current position for " + String(params.nodeId) + " to " + String(params.currentPosition));
-    addDataToOutQueue(String(params.currentPosition, HEX));
-    addDataToOutQueue(String(params.currentPosition, BIN));
-
-    //moveController.getAxis(params.nodeId).setCurrentPositionInSteps(params.currentPosition);
-    addDataToOutQueue("(S)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
-    */
-    moveController.printStatus();
-    return false;
+    moveController.requestStatus(motorIndices.nodeIds);
 }
 
-bool handleSetCurrentPositionInUnits(PositionParams params)
+void handleZeroInitialize(MotorIndices motorIndices)
 {
-    if (params.nodeId < 1 || params.nodeId > moveController.getAxesCount())
+    if (motorIndices.status != ParamsStatus::OK)
     {
-        addDataToOutQueue("INVALID NODE ID: " + String(params.nodeId));
-        return false;
-    }
-    moveController.getAxis(params.nodeId).setCurrentPositionInUnits(params.currentPosition);
-    addDataToOutQueue("(U)New current position for " + String(params.nodeId) + ": " + String(moveController.getAxis(params.nodeId).getCurrentPositionInSteps()));
-    return true;
-}
-
-bool handleZeroInitialize(ZEIParams params)
-{
-    if (params.status != ParamsStatus::OK)
-    {
-        if (params.errorMsg.length() > 0)
-        {
-            addDataToOutQueue(params.errorMsg);
-        }
-        else
-        {
-            addDataToOutQueue("INVALID PARAMS FOR ZEI");
-        }
-        return false;
+        addDataToOutQueue(RobotConstants::Commands::ZERO_INITIALIZE + " " + RobotConstants::Status::INVALID_PARAMS);
+        return;
     }
 
-    if (params.forAllNodes)
+    if (motorIndices.nodeIds.size() == 0)
     {
-        addDataToOutQueue("START ZEI FOR ALL NODES");
+        DBG_VERBOSE(DBG_GROUP_ZEI, "Starting Zero Initialization for all nodes");
         moveController.startZeroInitializationAllAxes();
+    }
+    else if (motorIndices.nodeIds.size() == 1)
+    {
+        DBG_VERBOSE(DBG_GROUP_ZEI, "Starting Zero Initialization for node " + String(motorIndices.nodeIds[0]));
+        moveController.startZeroInitializationSingleAxis(motorIndices.nodeIds[0]);
     }
     else
     {
-        addDataToOutQueue("START ZEI FOR NODE " + String(params.nodeId));
-        moveController.startZeroInitializationSingleAxis(params.nodeId);
+        DBG_VERBOSE(DBG_GROUP_ZEI, "ZEI cupports only single axis initialization or all axes initialization");
+        addDataToOutQueue(RobotConstants::Commands::ZERO_INITIALIZE + " " + RobotConstants::Status::INVALID_PARAMS);
     }
-    return true;
 }
 
-bool handleRequestPosition(int parsedId)
-{
-    if (parsedId == -1)
+void handleRequestPosition(MotorIndices motorIndices) {
+    if (motorIndices.status != ParamsStatus::OK)
     {
-        addDataToOutQueue("RPP COMMAND: INVALID PARAMETERS");
-        return false;
+        addDataToOutQueue(RobotConstants::Commands::REQUEST_POSITION + " " + motorIndices.errorCode + " " + motorIndices.errorMsg);
+        return;
     }
-    if (parsedId < 1 || RobotConstants::Robot::AXIS_COUNT < parsedId)
-    {
-        addDataToOutQueue("RPP COMMAND: NODE ID IS INVALID: " + String(parsedId));
-        return false;
-    }
-    uint8_t nodeId = static_cast<uint8_t>(parsedId);
-
-    if (!canOpen.sendSDORead(nodeId, RobotConstants::ODIndices::POSITION_ACTUAL_VALUE, 0))
-    {
-        addDataToOutQueue("RPP COMMAND: SDO SEND FAILED");
-        return false;
-    }
-    addDataToOutQueue("RPP COMMAND: SDO SEND SUCCESS");
-    return true;
+    moveController.tick_requestPosition(motorIndices.nodeIds);
 }

@@ -6,8 +6,6 @@
 #include <array>
 #include <functional>
 
-#define DEBUG
-
 using callback_x6064_positionActualValue = std::function<void(uint8_t, bool, int32_t)>;
 using callback_x260A_electronicGearMolecules = std::function<void(uint8_t, bool)>;
 using callback_x6040_controlword = std::function<void(uint8_t, bool)>;
@@ -51,15 +49,14 @@ namespace RobotConstants
     }
 
     // Command identifiers sent to the robot controller
-    namespace COMMANDS
+    namespace Commands
     {
-        constexpr const char *MOVE_ABSOLUTE = "MAJ";
-        constexpr const char *MOVE_RELATIVE = "MRJ";
-        constexpr const char *ECHO = "ECH";
-        constexpr const char *SET_CURRENT_POSITION_IN_STEPS = "SCS";
-        constexpr const char *SET_CURRENT_POSITION_IN_UNITS = "SCU";
-        constexpr const char *ZERO_INITIALIZE = "ZEI";
-        constexpr const char *REQUEST_POSITION = "RPP";
+        const String MOVE_ABSOLUTE = "MAJ";
+        const String MOVE_RELATIVE = "MRJ";
+        const String ECHO = "ECH";
+        const String MOTOR_STATUS = "RMS";
+        const String ZERO_INITIALIZE = "ZEI";
+        const String REQUEST_POSITION = "RPP";
         constexpr int COMMAND_LEN = 3;
     }
 
@@ -72,7 +69,6 @@ namespace RobotConstants
         constexpr uint32_t CAN_BAUD_RATE = 1000000; // 1 Mbps
         constexpr uint32_t HEARTBEAT_INTERVAL_MS = 1000;
         constexpr uint32_t HEARTBEAT_TIMEOUT_MS = static_cast<uint32_t>(HEARTBEAT_INTERVAL_MS * 5);
-        constexpr uint8_t ZEI_MAX_STATUSWORD_READ_ATTEMPTS = 1;
     }
 
     // CANopen communication constants
@@ -138,6 +134,9 @@ namespace RobotConstants
         constexpr uint16_t ELECTRONIC_GEAR_MOLECULES = 0x260A;
         constexpr uint16_t ELECTRONIC_GEAR_DENOMINATOR = 0x260B;
         constexpr uint16_t DEVICE_ADDRESS = 0x2615;
+
+        // Default subindex
+        constexpr uint8_t DEFAULT_SUBINDEX = 0x00;
     }
 
     // Control parameters
@@ -179,14 +178,15 @@ namespace RobotConstants
         constexpr size_t MAX_AXIS_COUNT = 6;
     }
 
-    // Error codes
-    namespace Errors
+    // Status codes
+    namespace Status
     {
-        constexpr int8_t OK = 0;
-        constexpr int8_t INCORRECT_COMMAND = -1;
-        constexpr int8_t INVALID_PARAMS = -2;
-        constexpr int8_t TIMEOUT = -3;
-        constexpr int8_t COMM_ERROR = -4;
+        const String OK = "OK";
+        const String COMMAND_FULL_FAIL = "FF";
+        const String COMMAND_PARTIAL_FAIL = "PF";
+        const String INCORRECT_COMMAND = "IC";
+        const String INVALID_PARAMS = "IP";
+        const String UNKNOWN_ERROR = "UE";
     }
 
 } // namespace RobotConstants
