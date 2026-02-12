@@ -71,7 +71,7 @@
 * Zero initialization stopped working (in both -- my program and by hand). Figured out that the problem is with the 1-st bit of the controlword. 
 Problem: The program with zero initialization worked from time to time
 After searching for the error, I found out this:
-If the controlword has the 1-st (0-index) bit ("output voltage") set, sending EA66 and EA70 to 0x260A does not zero out position (On the contrary, it just sets somee strage value to it -- at first sight, I did not find out the relation of this number to the prevoius position). If it is set to 0, zeroing out works
+If the controlword has the 1-st (0-index) bit ("output voltage") set, sending EA66 and EA70 to 0x260A does not zero out position (On the contrary, it just sets some strange value to it -- at first sight, I did not find out the relation of this number to the prevoius position). If it is set to 0, zeroing out works
 
 The 1-st bit ("output voltage") is used to enable power to the motor. If
 0 -- power is disabled and the motor does not hold the position; If it
@@ -92,3 +92,9 @@ And there is also a feuatre, when the master also  needs to send heartbeat to th
 * Fix zero initialization sequence (insert the first command, of setting the 1-st bit to 0)
 * Clean code (delete unsude functions, delete unusude files, change numbers into constants with names, set better names to functions and variables, some comments)
 * Figure out how to move the motor
+
+
+
+
+## Ideas
+* Make, so that heartbeat time is not , when the package is being processed, but when the package was received. But maybe it is also wrong. I will compare that time with the time of processing and will say, that there is timout, even though there is another heartbeat package only waiting to be processed

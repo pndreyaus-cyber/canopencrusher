@@ -13,6 +13,7 @@
 #define DBG_GROUP_COMMAND (1u << 3)
 #define DBG_GROUP_HEARTBEAT (1u << 4)
 #define DBG_GROUP_ZEI (1u << 5)
+#define DBG_GROUP_SERIAL (1u << 6)
 #define DBG_GROUP_ALL 0xFFFFu
 
 #define DBG_LEVEL_SHIFT 16u
@@ -36,17 +37,34 @@ inline uint32_t dbgConfigGroups(uint32_t config)
     return (config & DBG_GROUP_MASK);
 }
 
+inline const char *dbgLevelTag(uint32_t level)
+{
+    switch (level)
+    {
+    case DBG_LEVEL_ERROR:
+        return "ERROR";
+    case DBG_LEVEL_WARN:
+        return "WARN";
+    case DBG_LEVEL_INFO:
+        return "INFO";
+    case DBG_LEVEL_VERBOSE:
+        return "VERBOSE";
+    default:
+        return "DBG";
+    }
+}
+
 extern void addDataToOutQueue(String data);
 
 #define DBG_ENABLED(level, group) ((dbgConfigLevel(DEBUG_CONFIG) >= (level)) && ((dbgConfigGroups(DEBUG_CONFIG) & (group)) != 0u))
 
-#define DBG_LOG(level, group, msg) \
-    do                               \
-    {                                \
+#define DBG_LOG(level, group, msg)     \
+    do                                 \
+    {                                  \
         if (DBG_ENABLED(level, group)) \
-        {                            \
-            addDataToOutQueue(msg);  \
-        }                            \
+        {                              \
+            addDataToOutQueue(String("[") + dbgLevelTag(level) + "] " + String(msg)); \
+        }                              \
     } while (0)
 
 #define DBG_ERROR(group, msg) DBG_LOG(DBG_LEVEL_ERROR, group, msg)

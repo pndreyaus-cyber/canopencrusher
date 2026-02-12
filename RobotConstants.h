@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <array>
 #include <functional>
+#include <Arduino.h>
 
 using callback_x6064_positionActualValue = std::function<void(uint8_t, bool, int32_t)>;
 using callback_x260A_electronicGearMolecules = std::function<void(uint8_t, bool)>;
@@ -58,13 +59,20 @@ namespace RobotConstants
         const String ZERO_INITIALIZE = "ZEI";
         const String REQUEST_POSITION = "RPP";
         constexpr int COMMAND_LEN = 3;
+        const float MIN_SPEED_UNITS = 0.0f;
+        const float MAX_SPEED_UNITS = 100.0f;
+        const float MIN_ACCELERATION_UNITS = 0.0f;
+        const float MAX_ACCELERATION_UNITS = 100.0f;
     }
 
     // Robot specifications
     namespace Robot
     {
-        constexpr uint8_t AXIS_COUNT = 5;
-        constexpr uint8_t MAX_NODE_ID = 127;
+        constexpr uint8_t AXES_COUNT = 5;
+        constexpr uint8_t MAX_AXES_COUNT = 6;
+        constexpr uint8_t MIN_NODE_ID = 'A';
+        constexpr uint8_t MAX_NODE_ID = MIN_NODE_ID + AXES_COUNT;
+        constexpr uint8_t AXIS_IDENTIFIER_CHAR = 'J';
         constexpr uint32_t CONTROL_LOOP_HZ = 1000;
         constexpr uint32_t CAN_BAUD_RATE = 1000000; // 1 Mbps
         constexpr uint32_t HEARTBEAT_INTERVAL_MS = 1000;
@@ -162,20 +170,11 @@ namespace RobotConstants
         constexpr bool DEFAULT_USE_LIMITS = false;
     }
 
-    // Communication timeouts
-    namespace Timeouts
-    {
-        constexpr uint32_t SDO_TIMEOUT_MS = 1000;
-        constexpr uint32_t HEARTBEAT_TIMEOUT_MS = 3000;
-        constexpr uint32_t SYNC_TIMEOUT_MS = 100;
-    }
-
     // Buffer sizes
     namespace Buffers
     {
         constexpr size_t CAN_FRAME_SIZE = 8;
         constexpr size_t MAX_CAN_MESSAGE_LEN = 8;
-        constexpr size_t MAX_AXIS_COUNT = 6;
     }
 
     // Status codes
@@ -187,6 +186,7 @@ namespace RobotConstants
         const String INCORRECT_COMMAND = "IC";
         const String INVALID_PARAMS = "IP";
         const String UNKNOWN_ERROR = "UE";
+        const String INVALID_NODE_ID = "IN";
     }
 
 } // namespace RobotConstants

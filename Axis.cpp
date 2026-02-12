@@ -10,7 +10,8 @@ extern void addDataToOutQueue(String data);
 namespace StepDirController
 {
 
-    Axis::Axis() : nodeId(kInvalidNodeId) {
+    Axis::Axis() : nodeId(kInvalidNodeId)
+    {
         initialized = false;
         initStatus = RobotConstants::InitStatus::ZEI_NONE;
     }

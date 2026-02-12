@@ -3,7 +3,7 @@
 #define PARAMS_H
 
 #include <cstddef>
-#include <unordered_set>
+#include <vector>
 #include <Arduino.h>
 
 enum struct ParamsStatus
@@ -27,6 +27,7 @@ template <std::size_t N>
 struct MoveParams
 {
     ParamsStatus status;
+    String errorMsg;
     double movementUnits[N];
     double speed;
     double acceleration;

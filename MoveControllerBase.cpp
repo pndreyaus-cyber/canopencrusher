@@ -117,12 +117,12 @@ namespace StepDirController
     {
         if (axesCnt == 0)
         {
-            addDataToOutQueue("MoveControllerBase.cpp start -- axesCnt is zero");
+            addDataToOutQueue("MoveControllerBase start with 0 axes. This is not allowed");
             return false;
         }
         if (canOpen == nullptr)
         {
-            addDataToOutQueue("MoveControllerBase.cpp start -- canOpen is nullptr");
+            addDataToOutQueue("MoveControllerBase start with nullptr canOpen. This is not allowed");
             return false;
         }
 
@@ -142,32 +142,8 @@ namespace StepDirController
                                       { this->regularHeartbeatCallback(nodeId, status); });
 
         initialized = true;
-        Serial2.println("MoveControllerBase initialized with " + String(axesCnt) + " axes." + String(axes.size()));
+        Serial2.println("MoveControllerBase initialized with " + String(axesCnt) + " axes");
         return true;
-    }
-
-    void MoveControllerBase::tick()
-    {
-        if (!initialized)
-        {
-            return;
-        }
-        tick_checkTimeouts();
-
-        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
-        {
-            Axis &axis = axes[nodeId];
-            if (axis.initStatus == RobotConstants::InitStatus::ZEI_ONGOING && !axis.isAlive)
-            {
-                DBG_WARN(DBG_GROUP_ZEI, "Zero Initialization failed for Axis " + String(nodeId) + ": Heartbeat timeout");
-                if (nodeId == 2)
-                {
-                    axis.initStatus = RobotConstants::InitStatus::ZEI_FAILED;
-                }
-                // axis.initStatus = RobotConstants::InitStatus::ZEI_FAILED;
-                //  zeroInitialize_finalResult();
-            }
-        }
     }
 
     void MoveControllerBase::move()
@@ -176,7 +152,7 @@ namespace StepDirController
 
         if (!initialized)
         {
-            addDataToOutQueue("MoveControllerBase.cpp move -- MoveControllerBase not initialized");
+            DBG_VERBOSE(DBG_GROUP_MOVE, "MoveControllerBase::move failed. Not initialized");
             return;
         }
         prepareMove();
@@ -185,8 +161,10 @@ namespace StepDirController
 
     void MoveControllerBase::tick_requestPosition(const std::vector<uint8_t> &nodeIds)
     {
-        if(nodeIds.empty()) {
-            for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId) {
+        if (nodeIds.empty())
+        {
+            for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+            {
                 canOpen->sendSDORead(nodeId,
                                      RobotConstants::ODIndices::POSITION_ACTUAL_VALUE,
                                      RobotConstants::ODIndices::DEFAULT_SUBINDEX);
@@ -204,7 +182,7 @@ namespace StepDirController
 
     void MoveControllerBase::positionUpdate(uint8_t nodeId, int32_t position)
     {
-        DBG_INFO(DBG_GROUP_CANOPEN, "Position update from node " + String(nodeId) + ": " + String(position));
+        DBG_WARN(DBG_GROUP_CANOPEN, "Position update from node " + String(nodeId) + ": " + String(position));
         auto it = axes.find(nodeId);
         if (it != axes.end())
         {
@@ -227,7 +205,7 @@ namespace StepDirController
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             startZeroInitializationSingleAxis(nodeId);
-            //delay(1000);
+            // delay(1000);
         }
     }
 
@@ -480,6 +458,18 @@ namespace StepDirController
         axes[nodeId].lastHeartbeatMs = millis();
     }
 
+    void MoveControllerBase::tick()
+    {
+        if (!initialized)
+        {
+            return;
+        }
+        tick_checkTimeouts();
+        tick_checkZEITimeouts();
+        //tick_requestPosition();
+        
+    }
+
     void MoveControllerBase::tick_checkTimeouts()
     {
         const uint32_t now = millis();
@@ -497,6 +487,20 @@ namespace StepDirController
             {
                 DBG_WARN(DBG_GROUP_HEARTBEAT, "==== Heartbeat restored for Axis " + String(nodeId) + " ====");
                 axis.isAlive = true;
+            }
+        }
+    }
+
+    void MoveControllerBase::tick_checkZEITimeouts()
+    {
+        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+        {
+            Axis &axis = axes[nodeId];
+            if (axis.initStatus == RobotConstants::InitStatus::ZEI_ONGOING && !axis.isAlive)
+            {
+                DBG_WARN(DBG_GROUP_ZEI, "Zero Initialization failed for Axis " + String(nodeId) + ": Heartbeat timeout");
+                axis.initStatus = RobotConstants::InitStatus::ZEI_FAILED;
+                zeroInitialize_finalResult();
             }
         }
     }

@@ -1,36 +1,7 @@
 #include <cstring> // for memcpy
 #include "CanOpen.h"
 #include "RobotConstants.h"
-
-bool CanOpen::send_zeroInitialize(uint8_t nodeId, int commandNum)
-{
-    /*
-    STATUS: IN CONSTRUCTION. DO NOT USE YET.
-    According to the device documentation,
-    zero initialization involves writing two specific values to an Electronic Gear Molecule register (with address 0x260A)
-
-    The first value is 0xEA66 (60006 in decimal)
-    The second value is 0xEA70 (60016 in decimal)
-
-    The CAN package uses little-endian format, so we need to reverse the byte order when sending
-    */
-    uint8_t data1[2] = {0x66, 0xEA};
-    uint8_t data2[2] = {0x70, 0xEA};
-
-    if (nodeId > RobotConstants::Robot::MAX_NODE_ID)
-    {
-        addDataToOutQueue("Invalid nodeId for zero initialization");
-        return false;
-    }
-
-    if (commandNum != 1 && commandNum != 2)
-    {
-        addDataToOutQueue("Invalid commandNum for zero initialization");
-        return false;
-    }
-
-    return send_x260A_electronicGearMolecules(nodeId, (commandNum == 1) ? 0xEA66 : 0xEA70);
-}
+#include "Debug.h"
 
 bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, uint16_t value)
 {
@@ -115,10 +86,7 @@ bool CanOpen::sendSDOWrite(uint8_t nodeId, uint8_t dataLenBytes, uint16_t index,
         cs = 0x2F;
         break;
     case 2:
-        cs = 0x23; // CHANGE THAT!!!
-        break;
-    case 3:
-        cs = 0x27;
+        cs = 0x2B;
         break;
     case 4:
         cs = 0x23;
@@ -152,7 +120,7 @@ bool CanOpen::sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex)
     return send(
         0x600 + nodeId,
         msgBuf,
-        4);
+        8);
 }
 
 bool CanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute)
@@ -164,7 +132,7 @@ bool CanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPosition
 
 bool CanOpen::sendSYNC()
 {
-    addDataToOutQueue("Sending SYNC");
+    DBG_VERBOSE(DBG_GROUP_CANOPEN, "Sending SYNC");
     return send(0x80, nullptr, 0);
 }
 
@@ -188,7 +156,7 @@ bool CanOpen::startCan(uint32_t baudRate)
         Can.begin();
         Can.setBaudRate(canBaudRate);
         can_initialized = true;
-        addDataToOutQueue("CAN initialized with baud rate: " + String(canBaudRate));
+        DBG_INFO(DBG_GROUP_CANOPEN, "CAN initialized with baud rate: " + String(canBaudRate));
         return true;
     }
     return false; // already initialized
@@ -221,7 +189,7 @@ bool CanOpen::loopbackTest()
     }
     else
     {
-        addDataToOutQueue("Test message queued for transmission");
+        DBG_INFO(DBG_GROUP_CANOPEN, "Test message queued for loopback transmission");
     }
 
     delay(100); // Wait for message to loop back
@@ -238,12 +206,7 @@ bool CanOpen::loopbackTest()
         return false;
     }
 
-    addDataToOutQueue("Received loopback message with ID: " + String(receivedMsg.id, HEX));
-    for (int i = 0; i < receivedMsg.len; ++i)
-    {
-        Serial2.print(receivedMsg.buf[i], HEX);
-        Serial2.print(" ");
-    }
+    DBG_INFO(DBG_GROUP_CANOPEN, "Received loopback message with ID: " + String(receivedMsg.id, HEX) + " and length: " + String(receivedMsg.len));
 
     if (got && receivedMsg.id == testMsg.id && receivedMsg.len == testMsg.len)
     {
@@ -279,20 +242,20 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     // Check for null data pointer
     if (msgData == nullptr && msgDataLen > 0)
     {
-        addDataToOutQueue("Error: Null data pointer in CAN send");
+        DBG_ERROR(DBG_GROUP_CANOPEN, "Null data pointer in CAN send with non-zero length");
         return false;
     }
 
     // Check for invalid length (CAN frame can have max 8 bytes of data)
     if (msgDataLen > 8)
     {
-        addDataToOutQueue("Error: Invalid data length in CAN send");
+        DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid data length in CAN send: " + String(msgDataLen));
         return false;
     }
 
     CAN_TX_msg.id = id;
     CAN_TX_msg.flags.extended = 0;
-    CAN_TX_msg.len = msgDataLen;
+    CAN_TX_msg.len = RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN;
 
     // Copy data to CAN message buffer
     for (int i = 0; i < msgDataLen; ++i)
@@ -309,7 +272,7 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     bool ok = Can.write(CAN_TX_msg);
     if (!ok)
     {
-        addDataToOutQueue("CAN send failed for ID: " + String(id, HEX));
+        DBG_ERROR(DBG_GROUP_CANOPEN, "CAN send failed for ID: " + String(id, HEX));
     }
     delay(1);
     return ok;
@@ -338,13 +301,13 @@ bool CanOpen::read()
 
     if (receive(id, data, len))
     {
-        uint16_t nodeId = id & 0x7F;         // Extract node ID from COB-ID
-        if (nodeId <= 0 || RobotConstants::Robot::MAX_NODE_ID < nodeId)
+        uint16_t nodeId = id & 0x7F; // Extract node ID from COB-ID
+        if (nodeId <= 0 || RobotConstants::Robot::AXES_COUNT < nodeId)
         {
-            addDataToOutQueue("Received message from invalid node ID: " + String(nodeId));
+            DBG_ERROR(DBG_GROUP_CANOPEN, "Received message from invalid node ID: " + String(nodeId));
             return false;
         }
-        
+
         uint16_t function_code = id & 0x780; // Extract base COB-ID
 
         if (function_code == RobotConstants::CANOpen::COB_ID_HEARTBEAT_BASE)
@@ -356,12 +319,12 @@ bool CanOpen::read()
         }
         else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE)
         { // SDO READ/WRITE RESPONSE
-            // addDataToOutQueue("SDO Response from node " + String(nodeId));
+            DBG_VERBOSE(DBG_GROUP_CANOPEN, "SDO Response from node " + String(nodeId));
 
             // Accept 4-byte write acks and 8-byte read responses
             if (len < 4)
             {
-                addDataToOutQueue("Invalid SDO response length from node " + String(nodeId) + ": " + String(len));
+                DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid SDO response length from node " + String(nodeId) + ": " + String(len));
                 return false;
             }
 

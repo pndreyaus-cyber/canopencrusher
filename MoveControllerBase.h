@@ -14,16 +14,20 @@ namespace StepDirController
     class MoveControllerBase
     {
     public:
-
-        void requestStatus(const std::vector<uint8_t>& nodeIds) {
+        void requestStatus(const std::vector<uint8_t> &nodeIds)
+        {
             String reply = RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Status::OK + " ";
-            if(nodeIds.empty()) {
-                for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId) {
-                    reply += String(nodeId) + ":" + String(axes[nodeId].isAlive) + "," + String(axes[nodeId].initStatus) + "; ";
+            for (uint8_t nodeId : nodeIds)
+            {
+                // Validate requested node ID to avoid accidental insertion and out-of-range access.
+                if (nodeId == 0 || nodeId > axesCnt)
+                {
+                    reply += String(nodeId) + ":" + RobotConstants::Status::INVALID_NODE_ID + "; ";
                 }
-            } else {
-                for(uint8_t nodeId : nodeIds) {
-                    reply += String(nodeId) + ":" + String(axes[nodeId].isAlive) + "," + String(axes[nodeId].initStatus) + "; ";
+                else
+                {
+                    Axis &axis = axes.at(nodeId);
+                    reply += String(nodeId) + ":" + String(axis.isAlive) + "," + String(axis.initStatus) + "; ";
                 }
             }
 
@@ -56,7 +60,7 @@ namespace StepDirController
 
         // TODO: метод tick должен рассылать запросы по двигателям о их состоянии (напряжение, температура, т.д. - все что есть по протоколу)
 
-        void tick_requestPosition(const std::vector<uint8_t>& nodeIds);
+        void tick_requestPosition(const std::vector<uint8_t> &nodeIds);
 
     protected:
         void prepareMove();
@@ -81,6 +85,7 @@ namespace StepDirController
         void setRegularPositionActualValueCallback(uint8_t nodeId);
 
         void tick_checkTimeouts();
+        void tick_checkZEITimeouts();
 
         bool checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
         // Callbacks

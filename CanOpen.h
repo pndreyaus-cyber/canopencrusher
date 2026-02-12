@@ -27,19 +27,18 @@ private:
     bool send(uint32_t id, const uint8_t *data, uint8_t len);
     bool receive(uint16_t &cob_id, uint8_t *data, uint8_t &len);
 
-    callback_x6064_positionActualValue positionReadCallbacks_6064[RobotConstants::Robot::AXIS_COUNT + 1] = {nullptr};                // index 0 is unused
-    callback_x260A_electronicGearMolecules electronicGearMoleculesCallbacks_260A[RobotConstants::Robot::AXIS_COUNT + 1] = {nullptr}; // index 0 is unused
-    callback_x6040_controlword controlWordCallbacks_6040[RobotConstants::Robot::AXIS_COUNT + 1] = {nullptr};                         // index 0 is unused
-    callback_x6060_modesOfOperation modesOfOperationCallbacks_6060[RobotConstants::Robot::AXIS_COUNT + 1] = {nullptr};               // index 0 is unused
-    callback_x607A_targetPosition targetPositionCallbacks_607A[RobotConstants::Robot::AXIS_COUNT + 1] = {nullptr};                   // index 0 is unused
-    callback_x6041_statusword statusWordCallbacks_6041[RobotConstants::Robot::AXIS_COUNT + 1] = {nullptr};                           // index 0 is unused
+    callback_x6064_positionActualValue positionReadCallbacks_6064[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                // index 0 is unused
+    callback_x260A_electronicGearMolecules electronicGearMoleculesCallbacks_260A[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr}; // index 0 is unused
+    callback_x6040_controlword controlWordCallbacks_6040[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                         // index 0 is unused
+    callback_x6060_modesOfOperation modesOfOperationCallbacks_6060[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};               // index 0 is unused
+    callback_x607A_targetPosition targetPositionCallbacks_607A[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                   // index 0 is unused
+    callback_x6041_statusword statusWordCallbacks_6041[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                           // index 0 is unused
     callback_heartbeat heartbeatCallback = nullptr;
 
 public:
     CanOpen() : Can(PA11, PA12, RX_SIZE_128, TX_SIZE_128) {};
     bool startCan(uint32_t baudRate);
 
-    bool send_zeroInitialize(uint8_t nodeId, int commandNum);
     bool send_x260A_electronicGearMolecules(uint8_t nodeId, uint16_t value);
     bool send_x60FF_targetVelocity(uint8_t nodeId, int32_t value);
     bool send_x6083_profileAcceleration(uint8_t nodeId, uint32_t value);
