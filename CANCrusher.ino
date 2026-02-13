@@ -32,7 +32,7 @@ void sendData();
 
 bool isFloat(String str);
 
-uint32_t lastTickTime_50 = 0;
+uint32_t lastTickTime_100 = 0;
 uint32_t lastTickTime_500 = 0;
 
 void setup()
@@ -78,16 +78,16 @@ void loop()
 
     sendData();
     canOpen.read();
-    // if (millis() - lastTickTime_50 >= 50) {
-    //     lastTickTime_50 = millis();
-    // }
-    
-    if (millis() - lastTickTime_500 >= 500) {
-        lastTickTime_500 = millis();
-        moveController.tick_50();
-        moveController.tick_500();
+    if (millis() - lastTickTime_100 >= 100) {
+        lastTickTime_100 = millis();
+        moveController.tick_100();
     }
 
+    if (millis() - lastTickTime_500 >= 500)
+    {
+        lastTickTime_500 = millis();
+        moveController.tick_500();
+    }
 }
 
 bool receiveCommand()
@@ -206,15 +206,14 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command)
     }
 
     int i = 0;
-    int nodeCnt = 0;
     bool invalidParams = false;
-    while (i < paramsStr.length() && nodeCnt < RobotConstants::Robot::AXES_COUNT && !invalidParams)
+    int nodeCnt = 0;
+    while (i < paramsStr.length() && !invalidParams && paramsStr.charAt(i) == (char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) // Parse movement parameters until we reach speed parameter (starting with 'S')
     {
-        String axisIdentifier = String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeCnt));
-
-        if (!paramsStr.substring(i, i + 2).equals(axisIdentifier))
+        char axisIdChar = paramsStr.charAt(i + 1);
+        if (axisIdChar < RobotConstants::Robot::MIN_NODE_ID || RobotConstants::Robot::MAX_NODE_ID < axisIdChar)
         {
-            params.errorMsg = "Expected " + axisIdentifier + " at position " + String(i);
+            params.errorMsg = "Invalid axis identifier: " + String(axisIdChar);
             invalidParams = true;
             break;
         }
@@ -231,7 +230,7 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command)
             {
                 if (decimalPointFound)
                 {
-                    params.errorMsg = "Multiple decimal points in parameter for " + axisIdentifier;
+                    params.errorMsg = "Multiple decimal points in parameter for axis " + String(axisIdChar);
                     invalidParams = true;
                     break;
                 }
@@ -245,7 +244,7 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command)
         }
         if (j == i + 2)
         {
-            params.errorMsg = "No numeric value provided for " + axisIdentifier;
+            params.errorMsg = "No numeric value provided for axis " + String(axisIdChar);
             invalidParams = true;
         }
 
@@ -255,10 +254,9 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command)
         }
 
         float movementUnits = paramsStr.substring(i + 2, j).toFloat();
-        params.movementUnits[nodeCnt] = movementUnits;
-
-        i = j;
+        params.movementUnits[axisIdChar - RobotConstants::Robot::MIN_NODE_ID] = movementUnits; // Convert 'A'-'F' to 0-5 and store movement units
         nodeCnt++;
+        i = j;
     }
 
     if (invalidParams)
@@ -267,10 +265,10 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command)
         return params;
     }
 
-    if (nodeCnt < RobotConstants::Robot::AXES_COUNT)
+    if (nodeCnt == 0)
     {
         params.status = ParamsStatus::INCORRECT_COMMAND;
-        params.errorMsg = "Expected parameters for " + String(RobotConstants::Robot::AXES_COUNT) + " axes, but got " + String(nodeCnt);
+        params.errorMsg = "No movement parameters provided";
         return params;
     }
 
@@ -388,34 +386,30 @@ void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbs
 {
     if (params.status != ParamsStatus::OK)
     {
-        DBG_ERROR(DBG_GROUP_MOVE, params.errorMsg);
+        DBG_ERROR(DBG_GROUP_COMMAND, params.errorMsg);
         addDataToOutQueue((isAbsoluteMove ? RobotConstants::Commands::MOVE_ABSOLUTE : RobotConstants::Commands::MOVE_RELATIVE) + " " + RobotConstants::Status::INVALID_PARAMS);
         return;
     }
 
-    DBG_VERBOSE(DBG_GROUP_MOVE, String(isAbsoluteMove ? "Handling absolute move command with parameters: " : "Handling relative move command with parameters: ") +
-                                    "movementUnits=[" + String(params.movementUnits[0]) + ", " + String(params.movementUnits[1]) + ", " + String(params.movementUnits[2]) + ", " + String(params.movementUnits[3]) + ", " + String(params.movementUnits[4]) + "], " +
-                                    "speed=" + String(params.speed) + ", acceleration=" + String(params.acceleration));
+    DBG_VERBOSE(DBG_GROUP_COMMAND, String(isAbsoluteMove ? "Handling absolute move command with parameters: " : "Handling relative move command with parameters: ") +
+                                       "movements=" + String(RobotConstants::Robot::AXES_COUNT) + " nodes, " +
+                                       "speed=" + String(params.speed) + ", acceleration=" + String(params.acceleration));
+    // for(const auto& movement : params.movements) {
+    //     DBG_VERBOSE(DBG_GROUP_COMMAND, "Node " + String(movement.first) + ": " + String(movement.second));
+    // }
 
-    for (uint8_t nodeId = 1; nodeId <= moveController.getAxesCount(); ++nodeId)
+    if(!moveController.move(params))
     {
-        if (isAbsoluteMove)
-            moveController.getAxis(nodeId).setTargetPositionAbsoluteInUnits(params.movementUnits[nodeId - 1]);
-        else
-            moveController.getAxis(nodeId).setTargetPositionRelativeInUnits(params.movementUnits[nodeId - 1]);
+        addDataToOutQueue((isAbsoluteMove ? RobotConstants::Commands::MOVE_ABSOLUTE : RobotConstants::Commands::MOVE_RELATIVE) + " " + RobotConstants::Status::LOGIC_ERROR  );
     }
-
-    moveController.setRegularSpeedUnits(params.speed);
-    moveController.setAccelerationUnits(params.acceleration);
-
-    moveController.move();
 }
 
 void handleMotorStatus(String command)
 {
-    if(command != RobotConstants::Commands::MOTOR_STATUS) {
+    if (command != RobotConstants::Commands::MOTOR_STATUS)
+    {
         DBG_VERBOSE(DBG_GROUP_COMMAND, RobotConstants::Commands::MOTOR_STATUS + " does not take any parameters");
-        addDataToOutQueue(RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Status::INVALID_PARAMS); 
+        addDataToOutQueue(RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Status::INVALID_PARAMS);
         return;
     }
     moveController.requestStatus();
@@ -455,7 +449,8 @@ void handleRequestPosition(MotorIndices motorIndices)
         return;
     }
     String reply = RobotConstants::Commands::REQUEST_POSITION + " " + RobotConstants::Status::OK + " ";
-    for(uint8_t nodeId : motorIndices.nodeIds) {
+    for (uint8_t nodeId : motorIndices.nodeIds)
+    {
         reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId)) + " ";
     }
     addDataToOutQueue(reply);

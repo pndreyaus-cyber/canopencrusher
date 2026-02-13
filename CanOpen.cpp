@@ -104,15 +104,15 @@ bool CanOpen::sendSDOWrite(uint8_t nodeId, uint8_t dataLenBytes, uint16_t index,
     memcpy(&msgBuf[4], data, dataLenBytes);
 
     // Pad with zeroes
-    for(int i = 4 + dataLenBytes; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i) {
+    for (int i = 4 + dataLenBytes; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i)
+    {
         msgBuf[i] = 0;
     }
 
-    return send(0x600 + nodeId, 
-                msgBuf, 
+    return send(0x600 + nodeId,
+                msgBuf,
                 RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN);
-
-            }
+}
 // Example: Sending SDO request to read position: "40 64 60 00"
 bool CanOpen::sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex)
 {
@@ -125,28 +125,54 @@ bool CanOpen::sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex)
     msgBuf[3] = subindex;
 
     // Pad with zeroes
-    for(int i = 4; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i) {
+    for (int i = 4; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i)
+    {
         msgBuf[i] = 0;
     }
 
     return send(
-        0x600 + nodeId,
+        RobotConstants::CANOpen::COB_ID_SDO_SERVER_BASE + nodeId,
         msgBuf,
         RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN);
 }
 
-bool CanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute)
+bool CanOpen::send_RPDO1(uint8_t nodeId, uint16_t controlWord, int8_t workMode, int32_t targetPosition)
 {
-    uint8_t msgBuf[4] = {0};
-    memcpy(msgBuf, &targetPositionAbsolute, 4);
-    return send(0x500 + nodeId, msgBuf, 4);
+    uint8_t msgBuf[RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN] = {0};
+    // Control word (2 bytes, little-endian)
+    msgBuf[0] = static_cast<uint8_t>(controlWord & 0xFF);
+    msgBuf[1] = static_cast<uint8_t>((controlWord >> 8) & 0xFF);
+    // Work mode (1 byte)
+    msgBuf[2] = static_cast<uint8_t>(workMode);
+    // Target position (4 bytes, little-endian)
+    msgBuf[3] = static_cast<uint8_t>(targetPosition & 0xFF);
+    msgBuf[4] = static_cast<uint8_t>((targetPosition >> 8) & 0xFF);
+    msgBuf[5] = static_cast<uint8_t>((targetPosition >> 16) & 0xFF);
+    msgBuf[6] = static_cast<uint8_t>((targetPosition >> 24) & 0xFF);
+
+    // Pad with zeroes
+    for (int i = 7; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i)
+    {
+        msgBuf[i] = 0;
+    }
+
+    return send(RobotConstants::CANOpen::COB_ID_RPDO1_BASE + nodeId,
+                msgBuf,
+                RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN);
 }
 
-bool CanOpen::sendSYNC()
-{
-    DBG_VERBOSE(DBG_GROUP_CANOPEN, "Sending SYNC");
-    return send(0x80, nullptr, 0);
-}
+// bool CanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute)
+// {
+//     uint8_t msgBuf[4] = {0};
+//     memcpy(msgBuf, &targetPositionAbsolute, 4);
+//     return send(0x500 + nodeId, msgBuf, 4);
+// }
+
+// bool CanOpen::sendSYNC()
+// {
+//     DBG_VERBOSE(DBG_GROUP_CANOPEN, "Sending SYNC");
+//     return send(0x80, nullptr, 0);
+// }
 
 bool CanOpen::startCan(uint32_t baudRate)
 {
@@ -364,6 +390,20 @@ bool CanOpen::read()
                     callbacks_x607A_targetPosition[nodeId](nodeId, (data[0] == 0x60));
                 }
             }
+            else if (registerAddress == RobotConstants::ODIndices::PROFILE_VELOCITY)
+            { // 0x6081
+                if (callbacks_x6081_profileVelocity[nodeId] != nullptr)
+                {
+                    callbacks_x6081_profileVelocity[nodeId](nodeId, (data[0] == 0x60));
+                }
+            }
+            else if (registerAddress == RobotConstants::ODIndices::PROFILE_ACCELERATION)
+            { // 0x6083
+                if (callbacks_x6083_profileAcceleration[nodeId] != nullptr)
+                {
+                    callbacks_x6083_profileAcceleration[nodeId](nodeId, (data[0] == 0x60));
+                }
+            }
             else if (registerAddress == RobotConstants::ODIndices::POSITION_ACTUAL_VALUE)
             { // 0x6064
                 bool success = (data[0] != 0x80);
@@ -399,6 +439,20 @@ bool CanOpen::read()
                 }
             }
             return true;
+        } else if (function_code == RobotConstants::CANOpen::COB_ID_TPDO1_BASE)
+        {
+            DBG_VERBOSE(DBG_GROUP_CANOPEN, "TPDO1 from node " + String(nodeId));
+            int32_t actualPosition = (static_cast<int32_t>(data[3]) << 24) |
+                                 (static_cast<int32_t>(data[2]) << 16) |
+                                 (static_cast<int32_t>(data[1]) << 8) |
+                                 (static_cast<int32_t>(data[0]));
+            uint16_t statusWordValue = static_cast<uint16_t>(data[5]) | (static_cast<uint16_t>(data[6]) << 8);
+            
+            if(callbacks_TPDO1[nodeId] != nullptr)
+            {
+                callbacks_TPDO1[nodeId](nodeId, actualPosition, statusWordValue);
+            }
+
         }
         return true;
     }

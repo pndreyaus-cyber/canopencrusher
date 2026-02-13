@@ -13,8 +13,13 @@ using callback_x6040_controlword = std::function<void(uint8_t, bool)>;
 using callback_x6060_modesOfOperation = std::function<void(uint8_t, bool)>;
 using callback_x607A_targetPosition = std::function<void(uint8_t, bool)>;
 using callback_x6041_statusword = std::function<void(uint8_t, bool, uint16_t)>;
+using callback_x6081_profileVelocity = std::function<void(uint8_t, bool)>;
+using callback_x6083_profileAcceleration = std::function<void(uint8_t, bool)>;
+using callback_TPDO1 = std::function<void(uint8_t, int32_t, uint16_t)>;
 
 using callback_heartbeat = std::function<void(uint8_t, uint8_t)>;
+
+using callback_read_x6041_statusword = std::function<void(uint8_t, bool, uint16_t)>;
 
 namespace RobotConstants
 {
@@ -24,6 +29,18 @@ namespace RobotConstants
         ZEI_FAILED = 1,
         ZEI_ONGOING = 2,
         ZEI_FINISHED = 3
+    };
+
+    enum AxisStatus : uint8_t
+    {
+        PRE_OPERATIONAL,
+        OPERATIONAL,
+        STOPPED,
+        FAILED,
+        PREPARED_FOR_MOVE,
+        MOVING,
+        MOVE_FINISHED,
+        MOVE_FAILED,
     };
 
     inline const char *initStatusToString(InitStatus status)
@@ -87,7 +104,8 @@ namespace RobotConstants
         constexpr uint32_t COB_ID_HEARTBEAT_BASE = 0x700;
         constexpr uint32_t COB_ID_SDO_SERVER_BASE = 0x600;
         constexpr uint32_t COB_ID_SDO_CLIENT_BASE = 0x580;
-        constexpr uint32_t COB_ID_PDO_BASE = 0x180;
+        constexpr uint32_t COB_ID_TPDO1_BASE = 0x180;
+        constexpr uint32_t COB_ID_RPDO1_BASE = 0x200;
 
         // PDO mapping
         constexpr uint8_t PDO_COUNT = 4;
@@ -163,11 +181,10 @@ namespace RobotConstants
     // Axis configuration
     namespace Axis
     {
-        constexpr uint32_t DEFAULT_STEPS_PER_REVOLUTION = 32768;
-        constexpr double DEFAULT_UNITS_PER_REVOLUTION = 7.2; //
-        constexpr double DEFAULT_MIN_LIMIT = -1000.0;
-        constexpr double DEFAULT_MAX_LIMIT = 1000.0;
-        constexpr bool DEFAULT_USE_LIMITS = false;
+        constexpr int32_t STEPS_PER_MOTOR_REV = 32768;
+        constexpr double UNITS_PER_OUTPUT_SHAFT_REV = 360; // 1 revolution of output shaft corresponds to 360 degrees
+        constexpr int GEAR_RATIO = 50;
+        constexpr double UNITS_PER_MOTOR_REV = UNITS_PER_OUTPUT_SHAFT_REV / GEAR_RATIO; // 1 revolution of motor corresponds to UNITS_PER_MOTOR_REV degrees
     }
 
     // Buffer sizes
@@ -187,6 +204,7 @@ namespace RobotConstants
         const String INVALID_PARAMS = "IP";
         const String UNKNOWN_ERROR = "UE";
         const String INVALID_NODE_ID = "IN";
+        const String LOGIC_ERROR = "LE";
     }
 
 } // namespace RobotConstants
