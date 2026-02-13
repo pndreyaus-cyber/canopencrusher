@@ -1,148 +1,138 @@
 #include <cstring> // for memcpy
 #include "CanOpen.h"
 #include "RobotConstants.h"
+#include "Debug.h"
 
-bool CanOpen::send_zeroInitialize(uint8_t nodeId)
+bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, uint16_t value)
 {
-    /*
-    STATUS: IN CONSTRUCTION. DO NOT USE YET.
-    According to the device documentation, 
-    zero initialization involves writing two specific values to an Electronic Gear Molecule register (with address 0x260A)  
-    
-    The first value is 0xEA66 (60006 in decimal)
-    The second value is 0xEA70 (60016 in decimal)
-
-    The CAN package uses little-endian format, so we need to reverse the byte order when sending
-    */
-    uint8_t data1[2] = {0x66, 0xEA};
-
-    if (nodeId > RobotConstants::Robot::MAX_NODE_ID) {
-        Serial2.println("Invalid nodeId for zero initialization");
-        return false;
-    }
-
-    // if (zeroInitState[nodeId] != ZERO_INIT_NONE) {
-    //     Serial2.println("Zero initialization already in progress for node " + String(nodeId));
-    //     return false;
-    // }
-
-    bool ok = sendSDO(
+    return sendSDOWrite(
         nodeId,
         2,
         RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES,
-        0x00,
-        data1
-    );
-
-    if (!ok) {
-        Serial2.println("Failed to send first part of zero initialization");
-        return false;
-    }
-
-    // zeroInitState[nodeId] = ZERO_INIT_WAIT_FIRST;
-    return true;
-}
-
-bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, int32_t value)
-{
-    return sendSDO(
-        nodeId,
-        4,
-        RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES,
         _ElectronicGearMolecules_ElectronicGearMolecules_sIdx,
-        &value
-    );
+        &value);
 }
 
 bool CanOpen::send_x60FF_targetVelocity(uint8_t nodeId, int32_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
         4,
-        _Target_velocity_Idx,
+        RobotConstants::ODIndices::TARGET_VELOCITY,
         _Target_velocity_Target_velocity_sIdx,
-        &value
-    );
+        &value);
 }
 
 bool CanOpen::send_x6083_profileAcceleration(uint8_t nodeId, uint32_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
         4,
-        _Profile_acceleration_Idx,
+        RobotConstants::ODIndices::PROFILE_ACCELERATION,
         _Profile_acceleration_Profile_acceleration_sIdx,
-        &value
-    );
+        &value);
 }
 
 bool CanOpen::send_x6081_profileVelocity(uint8_t nodeId, uint32_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
         4,
-        _Profile_velocity_Idx,
+        RobotConstants::ODIndices::PROFILE_VELOCITY,
         _Profile_velocity_Profile_velocity_sIdx,
-        &value
-    );
+        &value);
 }
 
 bool CanOpen::send_x6040_controlword(uint8_t nodeId, uint16_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
         2,
-        _Controlword_Idx,
+        RobotConstants::ODIndices::CONTROLWORD,
         _Controlword_Controlword_sIdx,
-        &value
-    );
+        &value);
 }
 
 bool CanOpen::send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value)
 {
-    return sendSDO(
+    return sendSDOWrite(
         nodeId,
         1,
-        _Modes_of_operation_Idx,
+        RobotConstants::ODIndices::MODES_OF_OPERATION,
         _Modes_of_operation_Modes_of_operation_sIdx,
-        &value
-    );    
+        &value);
 }
 
-bool CanOpen::sendSDO(uint8_t nodeId, uint8_t dataLen, uint16_t index, uint8_t subindex, void *data)
+bool CanOpen::send_x607A_targetPosition(uint8_t nodeId, int32_t value)
 {
-    uint8_t msgBuf[8] = {0};
-    
+    return sendSDOWrite(
+        nodeId,
+        4,
+        RobotConstants::ODIndices::TARGET_POSITION,
+        _Target_position_Target_position_sIdx,
+        &value);
+}
+
+bool CanOpen::sendSDOWrite(uint8_t nodeId, uint8_t dataLenBytes, uint16_t index, uint8_t subindex, const void *data)
+{
+    uint8_t msgBuf[RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN] = {0}; // 8 bytes of CAN message data
+
     // SDO expedited write (1-4 bytes, command specifier по размеру данных)
     uint8_t cs;
-    switch (dataLen) {
-        case 1: cs = 0x2F; break;
-        case 2: cs = 0x2B; break;
-        case 3: cs = 0x27; break;
-        case 4: cs = 0x23; break;
-        default: return false; // error
+    switch (dataLenBytes)
+    {
+    case 1:
+        cs = 0x2F;
+        break;
+    case 2:
+        cs = 0x2B;
+        break;
+    case 4:
+        cs = 0x23;
+        break;
+    default:
+        return false; // error
     }
+    // Set function code
     msgBuf[0] = cs;
-    memcpy(&msgBuf[1], &index, 2);
+    // Change index to little-endian format
+    msgBuf[1] = static_cast<uint8_t>(index & 0xFF);
+    msgBuf[2] = static_cast<uint8_t>((index >> 8) & 0xFF);
+    // Set subindex
     msgBuf[3] = subindex;
-    memcpy(&msgBuf[4], data, dataLen);
+    // Copy data in reverse order for little-endian format
+    memcpy(&msgBuf[4], data, dataLenBytes);
 
-    // Отправляем (если ваша библиотека использует CAN.write или queue)
-    return send(0x600 + nodeId, msgBuf, dataLen + 4);
-}
-//Example: Sending SDO request to read position: "40 64 60 00 00 00 00 00"
-bool CanOpen::sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex) {
-    uint8_t msgBuf[8] = {0x40,
-                         static_cast<uint8_t>(index & 0xFF),
-                         static_cast<uint8_t>((index >> 8) & 0xFF),
-                         subindex,
-                         0, 0, 0, 0};
+    // Pad with zeroes
+    for(int i = 4 + dataLenBytes; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i) {
+        msgBuf[i] = 0;
+    }
+
+    return send(0x600 + nodeId, 
+                msgBuf, 
+                RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN);
+
+            }
+// Example: Sending SDO request to read position: "40 64 60 00"
+bool CanOpen::sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex)
+{
+    uint8_t msgBuf[RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN] = {0};
+    msgBuf[0] = 0x40; // SDO read command specifier
+    // Change index to little-endian format
+    msgBuf[1] = static_cast<uint8_t>(index & 0xFF);
+    msgBuf[2] = static_cast<uint8_t>((index >> 8) & 0xFF);
+    // Set subindex
+    msgBuf[3] = subindex;
+
+    // Pad with zeroes
+    for(int i = 4; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i) {
+        msgBuf[i] = 0;
+    }
 
     return send(
         0x600 + nodeId,
         msgBuf,
-        8
-    );
+        RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN);
 }
 
 bool CanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute)
@@ -154,28 +144,21 @@ bool CanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPosition
 
 bool CanOpen::sendSYNC()
 {
-    Serial2.println("Sending SYNC");
+    DBG_VERBOSE(DBG_GROUP_CANOPEN, "Sending SYNC");
     return send(0x80, nullptr, 0);
 }
 
-void CanOpen::writeReversedToBuf(const void* data, size_t size, uint8_t* bufStart) {
-    const uint8_t* src_bytes = static_cast<const uint8_t*>(data);
-    
-    for (size_t i = 0; i < size; ++i) {
-        bufStart[i] = src_bytes[size - 1 - i];  // Reverse copy
-    }
-}
-
-
 bool CanOpen::startCan(uint32_t baudRate)
 {
-    if(!can_initialized){
+    if (!can_initialized)
+    {
         this->canBaudRate = baudRate;
         Can.setAutoRetransmission(true);
 
         // Loopback test
-        if(!loopbackTest()){
-            Serial2.println("CAN loopback test failed during start");
+        if (!loopbackTest())
+        {
+            addDataToOutQueue("CAN loopback test failed during start");
             return false;
         }
         Can.end();
@@ -185,13 +168,14 @@ bool CanOpen::startCan(uint32_t baudRate)
         Can.begin();
         Can.setBaudRate(canBaudRate);
         can_initialized = true;
-        Serial2.println("CAN initialized with baud rate: " + String(canBaudRate));
+        DBG_INFO(DBG_GROUP_CANOPEN, "CAN initialized with baud rate: " + String(canBaudRate));
         return true;
     }
     return false; // already initialized
 }
 
-bool CanOpen::loopbackTest(){
+bool CanOpen::loopbackTest()
+{
     Can.enableLoopBack(true);
     Can.begin();
     Can.setBaudRate(canBaudRate);
@@ -210,94 +194,104 @@ bool CanOpen::loopbackTest(){
     testMsg.buf[7] = 0x22;
 
     bool queued = Can.write(testMsg);
-    if (!queued) {
-        Serial2.println("Failed to queue test message for transmission");
+    if (!queued)
+    {
+        addDataToOutQueue("Failed to queue test message for transmission");
         return false;
-    } else {
-        Serial2.println("Test message queued for transmission");
+    }
+    else
+    {
+        DBG_INFO(DBG_GROUP_CANOPEN, "Test message queued for loopback transmission");
     }
 
     delay(100); // Wait for message to loop back
 
     CAN_message_t receivedMsg;
     bool got = false;
-    if (Can.read(receivedMsg)) {
+    if (Can.read(receivedMsg))
+    {
         got = true;
-    } else {
-        Serial2.println("Failed to receive loopback message");
+    }
+    else
+    {
+        addDataToOutQueue("Failed to receive loopback message");
         return false;
     }
 
-    Serial2.println("Received loopback message with ID: " + String(receivedMsg.id, HEX));
-    for (int i = 0; i < receivedMsg.len; ++i) {
-        Serial2.print(receivedMsg.buf[i], HEX);
-        Serial2.print(" ");
-    }
+    DBG_INFO(DBG_GROUP_CANOPEN, "Received loopback message with ID: " + String(receivedMsg.id, HEX) + " and length: " + String(receivedMsg.len));
 
-    if (got && receivedMsg.id == testMsg.id && receivedMsg.len == testMsg.len) {
+    if (got && receivedMsg.id == testMsg.id && receivedMsg.len == testMsg.len)
+    {
         bool dataMatch = true;
-        for (int i = 0; i < testMsg.len; ++i) {
-            if (receivedMsg.buf[i] != testMsg.buf[i]) {
+        for (int i = 0; i < testMsg.len; ++i)
+        {
+            if (receivedMsg.buf[i] != testMsg.buf[i])
+            {
                 dataMatch = false;
                 break;
             }
         }
-        if (dataMatch) {
-            Serial2.println("\nLoopback test successful");
+        if (dataMatch)
+        {
+            addDataToOutQueue("\nLoopback test successful");
             return true;
-        } else {
-            Serial2.println("\nData mismatch in loopback test");
+        }
+        else
+        {
+            addDataToOutQueue("\nData mismatch in loopback test");
             return false;
         }
-    } else {
-        Serial2.println("\nLoopback test failed: ID or length mismatch");
+    }
+    else
+    {
+        addDataToOutQueue("\nLoopback test failed: ID or length mismatch");
         return false;
     }
 }
 
-
-bool CanOpen::send(uint32_t id, const uint8_t *data, uint8_t len)
+bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // data contains not only data but also SDO command specifier, index, subindex etc.
 {
     // Check for null data pointer
-    if(data == nullptr && len > 0) {
-        Serial2.println("Error: Null data pointer in CAN send");
+    if (msgData == nullptr && msgDataLen > 0)
+    {
+        DBG_ERROR(DBG_GROUP_CANOPEN, "Null data pointer in CAN send with non-zero length");
         return false;
     }
-    
+
     // Check for invalid length (CAN frame can have max 8 bytes of data)
-    if(len > 8) {
-        Serial2.println("Error: Invalid data length in CAN send");
+    if (msgDataLen > 8)
+    {
+        DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid data length in CAN send: " + String(msgDataLen));
         return false;
     }
-    
+
     CAN_TX_msg.id = id;
     CAN_TX_msg.flags.extended = 0;
-    CAN_TX_msg.len = len;
-    
+    CAN_TX_msg.len = msgDataLen;
+
     // Copy data to CAN message buffer
-    for(int i = 0; i < len; ++i){
-        CAN_TX_msg.buf[i] = data[i];
+    for (int i = 0; i < msgDataLen; ++i)
+    {
+        CAN_TX_msg.buf[i] = msgData[i];
     }
-    
-    // Zero out unused bytes in the buffer
-    for(int i = len; i < 8; ++i){
-        CAN_TX_msg.buf[i] = 0;
+
+    bool ok = Can.write(CAN_TX_msg);
+    if (!ok)
+    {
+        DBG_ERROR(DBG_GROUP_CANOPEN, "CAN send failed for ID: " + String(id, HEX));
     }
-    
-    // Send the message and check if it was successful
-    if(Can.write(CAN_TX_msg)) {
-        return true;
-    } else {
-        return false;
-    }
+    delay(1);
+    return ok;
 }
 
 bool CanOpen::receive(uint16_t &cob_id, uint8_t *data, uint8_t &len)
 {
-    if(Can.read(CAN_RX_msg)) {
+    if (Can.read(CAN_RX_msg))
+    {
         cob_id = CAN_RX_msg.id;
         len = CAN_RX_msg.len;
-        for(int i = 0; i < CAN_RX_msg.len; ++i){
+        for (int i = 0; i < CAN_RX_msg.len; ++i)
+        {
             data[i] = CAN_RX_msg.buf[i];
         }
         return true;
@@ -305,88 +299,108 @@ bool CanOpen::receive(uint16_t &cob_id, uint8_t *data, uint8_t &len)
     return false;
 }
 
-bool CanOpen::read() 
+bool CanOpen::read()
 {
     uint16_t id;
     uint8_t data[8];
     uint8_t len;
 
-    if (receive(id, data, len)) {
-        uint16_t node = id & 0x7F; // Extract node ID from COB-ID
+    if (receive(id, data, len))
+    {
+        uint16_t nodeId = id & 0x7F; // Extract node ID from COB-ID
+        if (nodeId <= 0 || RobotConstants::Robot::AXES_COUNT < nodeId)
+        {
+            DBG_ERROR(DBG_GROUP_CANOPEN, "Received message from invalid node ID: " + String(nodeId));
+            return false;
+        }
+
         uint16_t function_code = id & 0x780; // Extract base COB-ID
 
-        if (function_code == RobotConstants::CANOpen::COB_ID_HEARTBEAT_BASE) {
-            String status;
-            switch (data[0]) {
-                case 0x05:
-                    status = "operational";
-                    break;
-                case 0x04:
-                    status = "alarm";
-                    break;
-                case 0x7F:
-                    status = "pre-operational";
-                    break;
-                case 0x00:
-                    status = "boot-up";
-                    break;
-                default:
-                    status = "unknown";
-                    break;
-            }
-
-            Serial2.println("Heartbeat " + String(node) + ": " + status);
-            return true;
-        } else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE) {
-            Serial2.println("SDO Response from node " + String(node));
-            
-            // Validate length: SDO responses we handle here are expected to be 8 bytes
-            if (len < 8) {
-                Serial2.println("Invalid SDO response length from node " + String(node) + ": " + String(len));
-                return false;
-            }
-
-            if (data[0] == 0x80) {
-                Serial2.println("SDO Error response from node " + String(node));
-                return false;
-            }
-
-            uint8_t registerSize;
-            switch (data[0] & 0xF) {
-                case 3: registerSize = 4; break;
-                case 11: registerSize = 2; break;
-                case 15: registerSize = 1; break;
-                default: registerSize = 0; break; // error
-            }
-
-            // constexpr uint16_t POSITION_ACTUAL_VALUE = 0x6064;
-            uint16_t registerAddress = data[1] | (data[2] << 8);
-
-            Serial2.print("Register address: ");
-            Serial2.println(registerAddress, HEX);
-
-            if (registerAddress == RobotConstants::ODIndices::POSITION_ACTUAL_VALUE) {
-                if (registerSize != 4) {
-                    Serial2.println("Unexpected register size for Position Actual Value");
-                    return false;
-                }
-
-                int32_t positionValue = (static_cast<int32_t>(data[7]) << 24) |
-                                        (static_cast<int32_t>(data[6]) << 16) |
-                                        (static_cast<int32_t>(data[5]) << 8)  |
-                                        (static_cast<int32_t>(data[4]));
-
-                Serial2.print("Position Actual Value from node ");
-                Serial2.print(node);
-                Serial2.print(": ");
-                Serial2.println(positionValue, HEX);
-                if (sdoReadPositionCallback) {
-                    sdoReadPositionCallback(node, positionValue);
-                }
-                return true;
+        if (function_code == RobotConstants::CANOpen::COB_ID_HEARTBEAT_BASE)
+        {
+            if (callbacks_heartbeat != nullptr)
+            {
+                callbacks_heartbeat(nodeId, data[0]);
             }
         }
-        return false;
+        else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE)
+        { // SDO READ/WRITE RESPONSE
+            DBG_VERBOSE(DBG_GROUP_CANOPEN, "SDO Response from node " + String(nodeId));
+
+            // Accept 4-byte write acks and 8-byte read responses
+            if (len < 4)
+            {
+                DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid SDO response length from node " + String(nodeId) + ": " + String(len));
+                return false;
+            }
+
+            uint16_t registerAddress = data[1] | (data[2] << 8);
+
+            if (registerAddress == RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES)
+            { // 0x260A
+                if (callbacks_x260A_electronicGearMolecules[nodeId] != nullptr)
+                {
+                    callbacks_x260A_electronicGearMolecules[nodeId](nodeId, (data[0] == 0x60));
+                }
+            }
+            else if (registerAddress == RobotConstants::ODIndices::CONTROLWORD)
+            { // 0x6040
+                if (callbacks_x6040_controlword[nodeId] != nullptr)
+                {
+                    callbacks_x6040_controlword[nodeId](nodeId, (data[0] == 0x60));
+                }
+            }
+            else if (registerAddress == RobotConstants::ODIndices::MODES_OF_OPERATION)
+            { // 0x6060
+                if (callbacks_x6060_modesOfOperation[nodeId] != nullptr)
+                {
+                    callbacks_x6060_modesOfOperation[nodeId](nodeId, (data[0] == 0x60));
+                }
+            }
+            else if (registerAddress == RobotConstants::ODIndices::TARGET_POSITION)
+            { // 0x607A
+                if (callbacks_x607A_targetPosition[nodeId] != nullptr)
+                {
+                    callbacks_x607A_targetPosition[nodeId](nodeId, (data[0] == 0x60));
+                }
+            }
+            else if (registerAddress == RobotConstants::ODIndices::POSITION_ACTUAL_VALUE)
+            { // 0x6064
+                bool success = (data[0] != 0x80);
+                int32_t positionValue = 0;
+                if (success)
+                {
+                    if (len < 8)
+                    {
+                        DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid SDO read response length for position value from node " + String(nodeId) + ": " + String(len));
+                        return false;
+                    }
+                    positionValue = (static_cast<int32_t>(data[7]) << 24) |
+                                    (static_cast<int32_t>(data[6]) << 16) |
+                                    (static_cast<int32_t>(data[5]) << 8) |
+                                    (static_cast<int32_t>(data[4]));
+                }
+                if (callbacks_x6064_positionActualValue[nodeId] != nullptr)
+                {
+                    callbacks_x6064_positionActualValue[nodeId](nodeId, success, positionValue);
+                }
+            }
+            else if (registerAddress == RobotConstants::ODIndices::STATUSWORD)
+            { // 0x6041
+                if (callbacks_x6041_statusword[nodeId] != nullptr)
+                {
+                    bool success = (data[0] != 0x80);
+                    uint16_t statusWordValue = 0;
+                    if (success)
+                    {
+                        statusWordValue = static_cast<uint16_t>(data[4]) | (static_cast<uint16_t>(data[5]) << 8);
+                    }
+                    callbacks_x6041_statusword[nodeId](nodeId, success, statusWordValue);
+                }
+            }
+            return true;
+        }
+        return true;
     }
-    return false;   
+    return false;
 }

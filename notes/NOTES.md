@@ -62,6 +62,37 @@
 * Fix zero initialization function (so that the sequence is send - acknowledge - send - acknowledge)
 * At the start of the program aks all the motors for the current position
 
+# 05.02
+* Moved all the hardware to a perfboard. So that the connection between different components is secure and it helps to reject the idea, that the problem is caused by the loose wire
+* Checked the zero initialization. Looked good))).... 
+
+# 06.02
+## Results
+* Zero initialization stopped working (in both -- my program and by hand). Figured out that the problem is with the 1-st bit of the controlword. 
+Problem: The program with zero initialization worked from time to time
+After searching for the error, I found out this:
+If the controlword has the 1-st (0-index) bit ("output voltage") set, sending EA66 and EA70 to 0x260A does not zero out position (On the contrary, it just sets some strange value to it -- at first sight, I did not find out the relation of this number to the prevoius position). If it is set to 0, zeroing out works
+
+The 1-st bit ("output voltage") is used to enable power to the motor. If
+0 -- power is disabled and the motor does not hold the position; If it
+is set to 1 -- the motor does hold the position
+
+So the correct zero initialization sequence:
+1. Set the 1-st bit of the control word (0x6040) to 0
+2. Send EA66 to 0x260A
+3. Send EA70 to 0x260A
+4. Set the 1-st bit of the control word (0x6040) to 1
+
+* Used USB_CAN TOOL to get acquainted with NMT function. It can be used to reset/reload connection with the motor. 
+Problem was with the 3-rd motor. It does not respond to these NMTs (It constantly shows 0x05 -- operational). Could not figure out the problem
+
+And there is also a feature, when the master also  needs to send heartbeat to the nodes. And if it times out, the motors stop their operation. Fun fact: 3-rd motor does respond to master's timeout (it goes to 0x04 -- error)
+
+## What to do tomorrow
+* Fix zero initialization sequence (insert the first command, of setting the 1-st bit to 0)
+* Clean code (delete unused functions, delete unused files, change numbers into constants with names, set better names to functions and variables, some comments)
+* Figure out how to move the motor
+
 
 # 11.02
 ## Results
@@ -103,3 +134,32 @@ In the old russian manual there is not even a section about this automatic callb
     - Setting velocity and acceleration using SDO
     - Send each motor RPDO1 with the value 2F 00 01 (target position absolute)
     - Poll status word in the timer-loop. When the next motor has reached its target call the funnel function (just like in ZEI)
+
+
+
+## Ideas
+* Make, so that heartbeat time is not , when the package is being processed, but when the package was received. But maybe it is also wrong. I will compare that time with the time of processing and will say, that there is timeout, even though there is another heartbeat package only waiting to be processed
+
+
+
+# How to structure callback dialogue
+Acknowldegement callbacks should have this structure:
+1) Set the current callback to either nullptr or to the regular callback (if applicable)
+2) Check the response status using checkResponseStatus(). If it fails, return from the function
+3) Set the next callback
+4) Send the next command
+5) Pass status of sending to checkResponseStatus()
+6) If sending fails, set the next callback to nullptr or regular callback (if applicable)
+
+Read response callbacks should have this structure:
+1) Set the current callback to either nullptr or to the regular callback (if applicable
+2) Check the response status using checkResponseStatus(). If it fails, return from the function
+3) Process received data
+4) Set the next callback
+5) Send the next command
+6) Pass status of sending to checkResponseStatus()
+7) If sending fails, set the next callback to nullptr or regular callback (if applicable)
+
+So read response callbacks differ from acknowldegement callbacks by steps 3 (process data) only.
+In the end of the sequence, you can insert a funneling function, which will track if every axis has finished and report the final result
+
