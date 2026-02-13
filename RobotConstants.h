@@ -71,12 +71,12 @@ namespace RobotConstants
         constexpr uint8_t AXES_COUNT = 5;
         constexpr uint8_t MAX_AXES_COUNT = 6;
         constexpr uint8_t MIN_NODE_ID = 'A';
-        constexpr uint8_t MAX_NODE_ID = MIN_NODE_ID + AXES_COUNT;
+        constexpr uint8_t MAX_NODE_ID = (AXES_COUNT == 0) ? MIN_NODE_ID : static_cast<uint8_t>(MIN_NODE_ID + AXES_COUNT - 1);
         constexpr uint8_t AXIS_IDENTIFIER_CHAR = 'J';
         constexpr uint32_t CONTROL_LOOP_HZ = 1000;
         constexpr uint32_t CAN_BAUD_RATE = 1000000; // 1 Mbps
         constexpr uint32_t HEARTBEAT_INTERVAL_MS = 1000;
-        constexpr uint32_t HEARTBEAT_TIMEOUT_MS = static_cast<uint32_t>(HEARTBEAT_INTERVAL_MS * 5);
+        constexpr uint32_t HEARTBEAT_TIMEOUT_MS = static_cast<uint32_t>(HEARTBEAT_INTERVAL_MS * 2);
     }
 
     // CANopen communication constants

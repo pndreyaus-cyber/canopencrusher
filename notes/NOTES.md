@@ -86,15 +86,38 @@ So the correct zero initialization sequence:
 * Used USB_CAN TOOL to get acquainted with NMT function. It can be used to reset/reload connection with the motor. 
 Problem was with the 3-rd motor. It does not respond to these NMTs (It constantly shows 0x05 -- operational). Could not figure out the problem
 
-And there is also a feuatre, when the master also  needs to send heartbeat to the nodes. And if it times out, the motors stop their operation. Fun fact: 3-rd motor does respond to master's timeout (it goes to 0x04 -- error)
+And there is also a feature, when the master also  needs to send heartbeat to the nodes. And if it times out, the motors stop their operation. Fun fact: 3-rd motor does respond to master's timeout (it goes to 0x04 -- error)
 
 ## What to do tomorrow
 * Fix zero initialization sequence (insert the first command, of setting the 1-st bit to 0)
-* Clean code (delete unsude functions, delete unusude files, change numbers into constants with names, set better names to functions and variables, some comments)
+* Clean code (delete unused functions, delete unused files, change numbers into constants with names, set better names to functions and variables, some comments)
 * Figure out how to move the motor
 
 
 
 
 ## Ideas
-* Make, so that heartbeat time is not , when the package is being processed, but when the package was received. But maybe it is also wrong. I will compare that time with the time of processing and will say, that there is timout, even though there is another heartbeat package only waiting to be processed
+* Make, so that heartbeat time is not , when the package is being processed, but when the package was received. But maybe it is also wrong. I will compare that time with the time of processing and will say, that there is timeout, even though there is another heartbeat package only waiting to be processed
+
+
+
+# How to structure callback dialogue
+Acknowldegement callbacks should have this structure:
+1) Set the current callback to either nullptr or to the regular callback (if applicable)
+2) Check the response status using checkResponseStatus(). If it fails, return from the function
+3) Set the next callback
+4) Send the next command
+5) Pass status of sending to checkResponseStatus()
+6) If sending fails, set the next callback to nullptr or regular callback (if applicable)
+
+Read response callbacks should have this structure:
+1) Set the current callback to either nullptr or to the regular callback (if applicable
+2) Check the response status using checkResponseStatus(). If it fails, return from the function
+3) Process received data
+4) Set the next callback
+5) Send the next command
+6) Pass status of sending to checkResponseStatus()
+7) If sending fails, set the next callback to nullptr or regular callback (if applicable)
+
+So read response callbacks differ from acknowldegement callbacks by steps 3 (process data) only.
+In the end of the sequence, you can insert a funneling function, which will track if every axis has finished and report the final result

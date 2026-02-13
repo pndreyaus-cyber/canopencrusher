@@ -23,7 +23,17 @@ MotorIndices stringToMotorIndices(String command);
 void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove);
 void handleZeroInitialize(MotorIndices motorIndices);
 void handleRequestPosition(MotorIndices motorIndices);
-void handleMotorStatus(MotorIndices motorIndices);
+void handleMotorStatus(String command);
+
+bool receiveCommand();
+void handleCommand();
+void addDataToOutQueue(String data);
+void sendData();
+
+bool isFloat(String str);
+
+uint32_t lastTickTime_50 = 0;
+uint32_t lastTickTime_500 = 0;
 
 void setup()
 {
@@ -68,7 +78,15 @@ void loop()
 
     sendData();
     canOpen.read();
-    moveController.tick();
+    if (millis() - lastTickTime_50 >= 50) {
+        lastTickTime_50 = millis();
+        moveController.tick_50();
+    }
+     if (millis() - lastTickTime_500 >= 500) {
+        lastTickTime_500 = millis();
+        moveController.tick_500();
+    }
+
 }
 
 bool receiveCommand()
@@ -111,7 +129,7 @@ void handleCommand()
     }
     else if (function.equals(RobotConstants::Commands::MOTOR_STATUS))
     {
-        handleMotorStatus(stringToMotorIndices(inData));
+        handleMotorStatus(inData);
     }
     else if (function.equals(RobotConstants::Commands::ZERO_INITIALIZE))
     {
@@ -351,6 +369,12 @@ MotorIndices stringToMotorIndices(String command)
         i += 2;                                 // Skip the motor identifier
     }
 
+    if (isOk && i != params.length())
+    {
+        isOk = false;
+        motorIndices.errorMsg = "Incomplete motor identifier at end of parameters";
+    }
+
     if (!isOk)
     {
         motorIndices.status = ParamsStatus::INVALID_PARAMS;
@@ -386,15 +410,14 @@ void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbs
     moveController.move();
 }
 
-void handleMotorStatus(MotorIndices motorIndices)
+void handleMotorStatus(String command)
 {
-    if (motorIndices.status != ParamsStatus::OK)
-    {
-        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::MOTOR_STATUS + " " + motorIndices.errorMsg);
-        addDataToOutQueue(RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Status::INVALID_PARAMS);
+    if(command != RobotConstants::Commands::MOTOR_STATUS) {
+        DBG_VERBOSE(DBG_GROUP_COMMAND, RobotConstants::Commands::MOTOR_STATUS + " does not take any parameters");
+        addDataToOutQueue(RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Status::INVALID_PARAMS); 
         return;
     }
-    moveController.requestStatus(motorIndices.nodeIds);
+    moveController.requestStatus();
 }
 
 void handleZeroInitialize(MotorIndices motorIndices)
@@ -430,5 +453,9 @@ void handleRequestPosition(MotorIndices motorIndices)
         addDataToOutQueue(RobotConstants::Commands::REQUEST_POSITION + " " + RobotConstants::Status::INVALID_PARAMS);
         return;
     }
-    moveController.tick_requestPosition(motorIndices.nodeIds);
+    String reply = RobotConstants::Commands::REQUEST_POSITION + " " + RobotConstants::Status::OK + " ";
+    for(uint8_t nodeId : motorIndices.nodeIds) {
+        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId)) + " ";
+    }
+    addDataToOutQueue(reply);
 }

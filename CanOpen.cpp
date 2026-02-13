@@ -75,8 +75,7 @@ bool CanOpen::send_x607A_targetPosition(uint8_t nodeId, int32_t value)
 
 bool CanOpen::sendSDOWrite(uint8_t nodeId, uint8_t dataLenBytes, uint16_t index, uint8_t subindex, const void *data)
 {
-    uint8_t msgBuf[RobotConstants::CANOpen::HEADER_SIZE +
-                   RobotConstants::CANOpen::MAX_SDO_WRITE_DATA_SIZE] = {0}; // 8 bytes of CAN message data
+    uint8_t msgBuf[RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN] = {0}; // 8 bytes of CAN message data
 
     // SDO expedited write (1-4 bytes, command specifier по размеру данных)
     uint8_t cs;
@@ -104,12 +103,20 @@ bool CanOpen::sendSDOWrite(uint8_t nodeId, uint8_t dataLenBytes, uint16_t index,
     // Copy data in reverse order for little-endian format
     memcpy(&msgBuf[4], data, dataLenBytes);
 
-    return send(0x600 + nodeId, msgBuf, dataLenBytes + 4);
-}
+    // Pad with zeroes
+    for(int i = 4 + dataLenBytes; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i) {
+        msgBuf[i] = 0;
+    }
+
+    return send(0x600 + nodeId, 
+                msgBuf, 
+                RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN);
+
+            }
 // Example: Sending SDO request to read position: "40 64 60 00"
 bool CanOpen::sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex)
 {
-    uint8_t msgBuf[4] = {0};
+    uint8_t msgBuf[RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN] = {0};
     msgBuf[0] = 0x40; // SDO read command specifier
     // Change index to little-endian format
     msgBuf[1] = static_cast<uint8_t>(index & 0xFF);
@@ -117,10 +124,15 @@ bool CanOpen::sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex)
     // Set subindex
     msgBuf[3] = subindex;
 
+    // Pad with zeroes
+    for(int i = 4; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i) {
+        msgBuf[i] = 0;
+    }
+
     return send(
         0x600 + nodeId,
         msgBuf,
-        8);
+        RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN);
 }
 
 bool CanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute)
@@ -255,18 +267,12 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
 
     CAN_TX_msg.id = id;
     CAN_TX_msg.flags.extended = 0;
-    CAN_TX_msg.len = RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN;
+    CAN_TX_msg.len = msgDataLen;
 
     // Copy data to CAN message buffer
     for (int i = 0; i < msgDataLen; ++i)
     {
         CAN_TX_msg.buf[i] = msgData[i];
-    }
-
-    // Zero out unused bytes in the buffer. Necessary, because the buffer may contain old data
-    for (int i = msgDataLen; i < 8; ++i)
-    {
-        CAN_TX_msg.buf[i] = 0;
     }
 
     bool ok = Can.write(CAN_TX_msg);
@@ -312,9 +318,9 @@ bool CanOpen::read()
 
         if (function_code == RobotConstants::CANOpen::COB_ID_HEARTBEAT_BASE)
         {
-            if (heartbeatCallback != nullptr)
+            if (callbacks_heartbeat != nullptr)
             {
-                heartbeatCallback(nodeId, data[0]);
+                callbacks_heartbeat(nodeId, data[0]);
             }
         }
         else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE)
@@ -332,30 +338,30 @@ bool CanOpen::read()
 
             if (registerAddress == RobotConstants::ODIndices::ELECTRONIC_GEAR_MOLECULES)
             { // 0x260A
-                if (electronicGearMoleculesCallbacks_260A[nodeId] != nullptr)
+                if (callbacks_x260A_electronicGearMolecules[nodeId] != nullptr)
                 {
-                    electronicGearMoleculesCallbacks_260A[nodeId](nodeId, (data[0] == 0x60));
+                    callbacks_x260A_electronicGearMolecules[nodeId](nodeId, (data[0] == 0x60));
                 }
             }
             else if (registerAddress == RobotConstants::ODIndices::CONTROLWORD)
             { // 0x6040
-                if (controlWordCallbacks_6040[nodeId] != nullptr)
+                if (callbacks_x6040_controlword[nodeId] != nullptr)
                 {
-                    controlWordCallbacks_6040[nodeId](nodeId, (data[0] == 0x60));
+                    callbacks_x6040_controlword[nodeId](nodeId, (data[0] == 0x60));
                 }
             }
             else if (registerAddress == RobotConstants::ODIndices::MODES_OF_OPERATION)
             { // 0x6060
-                if (modesOfOperationCallbacks_6060[nodeId] != nullptr)
+                if (callbacks_x6060_modesOfOperation[nodeId] != nullptr)
                 {
-                    modesOfOperationCallbacks_6060[nodeId](nodeId, (data[0] == 0x60));
+                    callbacks_x6060_modesOfOperation[nodeId](nodeId, (data[0] == 0x60));
                 }
             }
             else if (registerAddress == RobotConstants::ODIndices::TARGET_POSITION)
             { // 0x607A
-                if (targetPositionCallbacks_607A[nodeId] != nullptr)
+                if (callbacks_x607A_targetPosition[nodeId] != nullptr)
                 {
-                    targetPositionCallbacks_607A[nodeId](nodeId, (data[0] == 0x60));
+                    callbacks_x607A_targetPosition[nodeId](nodeId, (data[0] == 0x60));
                 }
             }
             else if (registerAddress == RobotConstants::ODIndices::POSITION_ACTUAL_VALUE)
@@ -364,19 +370,24 @@ bool CanOpen::read()
                 int32_t positionValue = 0;
                 if (success)
                 {
+                    if (len < 8)
+                    {
+                        DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid SDO read response length for position value from node " + String(nodeId) + ": " + String(len));
+                        return false;
+                    }
                     positionValue = (static_cast<int32_t>(data[7]) << 24) |
                                     (static_cast<int32_t>(data[6]) << 16) |
                                     (static_cast<int32_t>(data[5]) << 8) |
                                     (static_cast<int32_t>(data[4]));
                 }
-                if (positionReadCallbacks_6064[nodeId] != nullptr)
+                if (callbacks_x6064_positionActualValue[nodeId] != nullptr)
                 {
-                    positionReadCallbacks_6064[nodeId](nodeId, success, positionValue);
+                    callbacks_x6064_positionActualValue[nodeId](nodeId, success, positionValue);
                 }
             }
             else if (registerAddress == RobotConstants::ODIndices::STATUSWORD)
             { // 0x6041
-                if (statusWordCallbacks_6041[nodeId] != nullptr)
+                if (callbacks_x6041_statusword[nodeId] != nullptr)
                 {
                     bool success = (data[0] != 0x80);
                     uint16_t statusWordValue = 0;
@@ -384,10 +395,10 @@ bool CanOpen::read()
                     {
                         statusWordValue = static_cast<uint16_t>(data[4]) | (static_cast<uint16_t>(data[5]) << 8);
                     }
-                    statusWordCallbacks_6041[nodeId](nodeId, success, statusWordValue);
+                    callbacks_x6041_statusword[nodeId](nodeId, success, statusWordValue);
                 }
             }
-            return false;
+            return true;
         }
         return true;
     }
