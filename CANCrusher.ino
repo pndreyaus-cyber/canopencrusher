@@ -78,12 +78,13 @@ void loop()
 
     sendData();
     canOpen.read();
-    if (millis() - lastTickTime_50 >= 50) {
-        lastTickTime_50 = millis();
-        moveController.tick_50();
-    }
-     if (millis() - lastTickTime_500 >= 500) {
+    // if (millis() - lastTickTime_50 >= 50) {
+    //     lastTickTime_50 = millis();
+    // }
+    
+    if (millis() - lastTickTime_500 >= 500) {
         lastTickTime_500 = millis();
+        moveController.tick_50();
         moveController.tick_500();
     }
 
