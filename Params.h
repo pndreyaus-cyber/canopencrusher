@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <vector>
+#include <unordered_map>
 #include <Arduino.h>
 
 enum struct ParamsStatus
@@ -13,7 +14,7 @@ enum struct ParamsStatus
     INVALID_PARAMS,
 };
 
-template <std::size_t N>
+template<std::size_t N>
 struct MoveParams
 {
     ParamsStatus status;

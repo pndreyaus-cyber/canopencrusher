@@ -18,58 +18,63 @@ namespace StepDirController
         Axis();
         Axis(uint8_t nodeId);
 
-        Axis &setStepsPerRevolution(uint32_t steps); // +
-        Axis &setUnitsPerRevolution(double units);   // +
+        // ============================= Setters of target position, profile velocity and acceleration =============================
+        bool setTargetPositionInUnits(double units);
+        bool setTargetPositionInSteps(int32_t steps);
 
-        Axis &setCurrentPositionInUnits(double units);  // +
-        Axis &setCurrentPositionInSteps(int32_t steps); // +
+        bool setProfileVelocityInUnitsPerSec(double velocityUnits);
+        bool setProfileVelocityInRPM(uint32_t rpm);
 
-        bool setTargetPositionAbsoluteInUnits(double units);
-        bool setTargetPositionAbsoluteInSteps(int32_t steps);
-        bool setTargetPositionRelativeInUnits(double units);
-        bool setTargetPositionRelativeInSteps(int32_t steps);
+        bool setProfileAccelerationInUnitsPerSec2(double accelerationUnits);
+        bool setProfileAccelerationInRPMPerSec(uint32_t rpmPerSec);
+        // ============================= Setters of target position, profile velocity and acceleration end =============================
 
-        double getMovementUnits() const;
-        int32_t getTargetPositionAbsolute() const;
-
-        double getPositionInUnits() const;
-
-        uint32_t getStepsPerRevolution() const;
-        double getUnitsPerRevolution() const;
-
-        double stepsToUnits(int32_t steps) const; // Перевести шаги в градусы
-        int32_t unitsToSteps(double units) const; // Перевести градусы в шаги
-
-        uint32_t speedUnitsToRevolutionsPerMinute(double speedUnits) const; // Перевести градусы/сек в об/мин
-        double revolutionsPerMinuteToSpeedUnits(uint32_t rpm) const;        // Перевести из об/мин в градусы/сек
-
-        uint32_t accelerationUnitsTorpmPerSecond(double accelearionUnits) const; // Перевести градусы/сек^2 в об/(мин*сек)
-        double rpmPerSecondToAccelerationUnits(double rpmPerSecond) const;       // Перевести об/(мин*сек) в градусы/сек^2
-
+        // ============================= Getters =============================
         uint8_t getNodeId() const;
-
         int32_t getCurrentPositionInSteps() const;
+        int32_t getRelativeMovementInSteps() const;
+        int32_t getTargetPositionInSteps() const;
+        uint32_t getProfileVelocityInRPM() const;
+        uint32_t getProfileAccelerationInRPMPerSec() const;
+        // ============================= Getters end =============================
+
+        // ============================= Static methods =============================
+        static double stepsToUnits(int32_t steps); // Convert steps to units (degrees)
+        static int32_t unitsToSteps(double units); // Convert units (degrees) to steps
+
+        static uint32_t speedUnitsToMotorRPM(double speedUnits); // Convert degrees/sec to RPM
+        static double motorRPMToSpeedUnits(uint32_t rpm); // Convert RPM to degrees/sec
+
+        static uint32_t stepsPerSecToMotorRPM(double stepsPerSec); // Convert steps/sec to RPM
+
+        static uint32_t accelerationUnitsToRPMPS(double accelearionUnits); // Convert degrees/sec^2 to RPM/sec
+        static double RPMPSToAccelerationUnits(uint32_t rpmPerSecond);     // Convert RPM/sec to degrees/sec^2
+
+        static double stepsToMotorRevs(int32_t steps);
+        // ============================= Static methods end =============================
 
     protected:
         bool initialized = false;
         uint8_t nodeId;
         OD_RAM_t params;
 
-        uint32_t stepsPerRevolution = 0; // количество шагов на оборот
-        double unitsPerRevolution = 0;   // количество единиц измерения на оборот
-
-        double movementUnits;            // относительное перемещение в единицах измерения; используется для расчета синхронизации осей
-        volatile uint32_t movementSteps; // относительное перемещение в шагах;
+        int32_t relativeMovementSteps;
 
         double regularSpeed; // крейсерская скорость в шагах/сек
         double acceleration; // ускорение в шагах/сек^2
 
         friend class MoveControllerBase;
 
-        // For zero initialization
+        // For ZEI
         RobotConstants::InitStatus initStatus;
+        RobotConstants::AxisStatus status;
         uint32_t lastHeartbeatMs = 0;
         bool isAlive = true;
+
+        // For MAJ
+        uint32_t lastRequestedStatusWord = 0;;
+
+        void setCurrentPositionInSteps(int32_t steps);
     };
 }
 

@@ -22,35 +22,24 @@ namespace StepDirController
         uint8_t getAxesCount() const { return axesCnt; }
         Axis &getAxis(uint8_t nodeId) { return axes.at(nodeId); }
 
-        void setRegularSpeedUnits(double speed);        // настройка крейсерской скорости в единицах измерения в секунду (градусы в секунду)
-        void setAccelerationUnits(double acceleration); // настройка ускорения в единицах измерения в секунду^2 (градусы в секунду^2)
-
-        // double getRegularSpeedUnits() const;
-        // double getAccelerationUnits() const;
-
         void startZeroInitializationAllAxes();
         void startZeroInitializationSingleAxis(uint8_t nodeId);
 
-        void move();
+        bool move(MoveParams<RobotConstants::Robot::AXES_COUNT> params);
 
         // Call this regularly from the main loop to check timeouts.
-        void tick_50();
+        void tick_100();
         void tick_500();
 
-
     protected:
-        void prepareMove();
+        bool prepareMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params);
 
+        // void prepareMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params);
     private:
         CanOpen *canOpen;
         std::unordered_map<uint8_t, Axis> axes;
         uint8_t axesCnt = 0;
         bool initialized = false;
-
-        double regularSpeedUnits = 1.0f; // The speed of the maximum moving axis in percent of full speed (1.0 = 100%)
-        double accelerationUnits = 1.0f; // The acceleration of the maximum moving axis in percent of full acceleration (1.0 = 100%)
-
-        void sendMove();
 
         void positionUpdate(uint8_t nodeId, int32_t position);
 
@@ -61,9 +50,10 @@ namespace StepDirController
         void tick_checkTimeouts();
         void tick_checkZEITimeouts();
         void tick_requestPosition();
+        void tick_checkMAJStatusWord();
         // ======== Timer functions end ========
 
-        // ======== ZEI Sequence ======== 
+        // ======== ZEI Sequence ========
         bool zeroInitializeSingleAxis = true;
         uint8_t axisToInitialize = 0;
 
@@ -76,6 +66,19 @@ namespace StepDirController
 
         bool ZEI_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
         // ======== ZEI Sequence End ========
+
+        // ======== MAJ Sequence ========
+        void MAJ_start(uint8_t nodeId);
+        void MAJ_afterWriteTo_0x6081(uint8_t nodeId, bool success);
+        void MAJ_afterWriteTo_0x6040(uint8_t nodeId, bool success);
+        void MAJ_afterWriteTo_0x6083(uint8_t nodeId, bool success);
+        void MAJ_TPDO1(uint8_t nodeId, int32_t actualLocation, uint16_t statusWord);
+        void MAJ_statusWordCallback(uint8_t nodeId, bool success, uint16_t statusWord);
+        void MAJ_finalResult();
+
+        bool MAJ_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
+        bool MAJ_checkTargetPositionReached(uint16_t statusWord);
+        // ======== MAJ Sequence End ========
 
         // ======== Regular callbacks ========
         void regularHeartbeatCallback(uint8_t nodeId, uint8_t status);
