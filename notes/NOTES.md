@@ -94,6 +94,47 @@ And there is also a feature, when the master also  needs to send heartbeat to th
 * Figure out how to move the motor
 
 
+# 11.02
+## Results
+* Figured out 4 ways to move the motor using only sdo:
+
+1. Relative + "Go immediately"
+It means you write the number of steps you want the motor to make from the current position into a "target position" register (0x607A);
+And as soon as you write a new value (it can be the same as the prevoious value, but you need to rewrite it), the motor starts moving;
+You can check whether the motor has reached its target, by polling the status word and checking its 10-th bit ("target reached");
+
+2. Relative + "Go on signal"
+Write the number of steps you want the motor to make from the current position into a "target position" register. Then set the 4th bit of the control word to 0. When you want the motor to start moving, you set this bit to 1;
+You can also check, whether a motor has reached its target by checking the 10th bit of the status word;
+Do not forget to set the 4-th bit back to 0;
+
+3. Absolute + "Go immediately"
+The same as 1, but in the "target position" register you write the position, you want your motor to move to;
+
+4. Absolute + "Go on signal"
+The same as 2, but in the "target position" register you write the position, you want your motor to move to;
+
+* Moving using PDO
+RPDO1 lets me send 3 "SDO commands" in 1 command and without checking acknowledge status.
+You send control word, operation mode and target position in 1 command. And in return you get 1 TPDO1 packet. It contains
+the current value of actual location (0x6064) and status word (0x6041)
+
+**Problem**
+Ideally we want to send RPDO1 to all the motors and get back TPDO1s after each of the motor finish their movement.
+So I searched how can I change the setting of, when the TPDO1s are sent. Results are:
+- You cannot set the setting of TPDO1, so that it is sent on target reached
+- You cannot set the setting of TPDO1 in polling mode (so you get TPDO1 every once in 100ms, for example)
+
+In the eds file there is 0x1800:05 register, which contains the value of an event timer. The manual gave an example, that you should write the period of TPDOs. But it did not work for me.
+In the old russian manual there is not even a section about this automatic callback period setting. And also both manuals only describe the first 3 subindices of the 0x1800 register. I think, that if they do not say anything about 0x1800:05, then the motors' firmware does not support this function
+
+## What to do next
+* Fix PR for zero initialization
+* Implement moving strategy as following:
+    - Setting velocity and acceleration using SDO
+    - Send each motor RPDO1 with the value 2F 00 01 (target position absolute)
+    - Poll status word in the timer-loop. When the next motor has reached its target call the funnel function (just like in ZEI)
+
 
 
 ## Ideas
@@ -121,3 +162,4 @@ Read response callbacks should have this structure:
 
 So read response callbacks differ from acknowldegement callbacks by steps 3 (process data) only.
 In the end of the sequence, you can insert a funneling function, which will track if every axis has finished and report the final result
+
