@@ -163,3 +163,12 @@ Read response callbacks should have this structure:
 So read response callbacks differ from acknowldegement callbacks by steps 3 (process data) only.
 In the end of the sequence, you can insert a funneling function, which will track if every axis has finished and report the final result
 
+# 16.02
+Finished the latest version of a moving sequence. Seems to be working. But needs testing, because it seems, that there are cases when the program runs into a loop and does not respond to next commands after multiple runs 
+
+Tomorrow
+- Check many times different movements
+- Add a move command, where speed and acceleration are specified as a percent of the maximum value
+- Check whether motor 6 is working
+- Test with different speed/acceleration to see, when the motor is shaking (PID not working properly)
+- In the future: find better values for PID
