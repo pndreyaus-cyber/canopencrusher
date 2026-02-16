@@ -69,10 +69,14 @@ namespace StepDirController
 
         // ======== MAJ Sequence ========
         void MAJ_start(uint8_t nodeId);
-        void MAJ_afterWriteTo_0x6081(uint8_t nodeId, bool success);
+        void MAJ_afterRequestOf_0x6040(uint8_t nodeId, bool success, uint16_t controlWord);
         void MAJ_afterWriteTo_0x6040(uint8_t nodeId, bool success);
+        void MAJ_setTargetVelocity(uint8_t nodeId);
+        void MAJ_afterWriteTo_0x6081(uint8_t nodeId, bool success);
         void MAJ_afterWriteTo_0x6083(uint8_t nodeId, bool success);
-        void MAJ_TPDO1(uint8_t nodeId, int32_t actualLocation, uint16_t statusWord);
+        void MAJ_TPDO4(uint8_t nodeId, int32_t actualLocation, uint16_t statusWord);
+        void MAJ_SYNCFunnel();
+        void MAJ_requestStatusWord(uint8_t nodeId);
         void MAJ_statusWordCallback(uint8_t nodeId, bool success, uint16_t statusWord);
         void MAJ_finalResult();
 

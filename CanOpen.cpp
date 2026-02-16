@@ -161,18 +161,26 @@ bool CanOpen::send_RPDO1(uint8_t nodeId, uint16_t controlWord, int8_t workMode, 
                 RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN);
 }
 
-// bool CanOpen::sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute)
-// {
-//     uint8_t msgBuf[4] = {0};
-//     memcpy(msgBuf, &targetPositionAbsolute, 4);
-//     return send(0x500 + nodeId, msgBuf, 4);
-// }
+bool CanOpen::send_RPDO4(uint8_t nodeId, int32_t targetPositionAbsolute)
+{
+    uint8_t msgBuf[RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN] = {0};
+    msgBuf[0] = static_cast<uint8_t>(targetPositionAbsolute & 0xFF);
+    msgBuf[1] = static_cast<uint8_t>((targetPositionAbsolute >> 8) & 0xFF);
+    msgBuf[2] = static_cast<uint8_t>((targetPositionAbsolute >> 16) & 0xFF);
+    msgBuf[3] = static_cast<uint8_t>((targetPositionAbsolute >> 24) & 0xFF);
 
-// bool CanOpen::sendSYNC()
-// {
-//     DBG_VERBOSE(DBG_GROUP_CANOPEN, "Sending SYNC");
-//     return send(0x80, nullptr, 0);
-// }
+    for(int i = 4; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i) // Pad remaining bytes with zeroes
+    {
+        msgBuf[i] = 0;
+    }
+
+    return send(RobotConstants::CANOpen::COB_ID_RPDO4_BASE + nodeId, msgBuf, RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN);
+}
+
+bool CanOpen::sendSYNC()
+{
+    return send(RobotConstants::CANOpen::COB_ID_SYNC, nullptr, 0);
+}
 
 bool CanOpen::startCan(uint32_t baudRate)
 {
@@ -300,6 +308,11 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     {
         CAN_TX_msg.buf[i] = msgData[i];
     }
+    
+    for(int i = msgDataLen; i < 8; ++i) // Pad remaining bytes with zeroes
+    {
+        CAN_TX_msg.buf[i] = 0;
+    }
 
     bool ok = Can.write(CAN_TX_msg);
     if (!ok)
@@ -371,9 +384,22 @@ bool CanOpen::read()
             }
             else if (registerAddress == RobotConstants::ODIndices::CONTROLWORD)
             { // 0x6040
-                if (callbacks_x6040_controlword[nodeId] != nullptr)
-                {
-                    callbacks_x6040_controlword[nodeId](nodeId, (data[0] == 0x60));
+                if ((data[0] == 0x60 || data[0] == 0x80)){ // Write to control word ack
+                    if (callbacks_x6040_controlword[nodeId] != nullptr)
+                    {
+                        callbacks_x6040_controlword[nodeId](nodeId, (data[0] == 0x60));
+                    }    
+                } else { // Read control word response  
+                    if (callbacks_read_x6040_controlword[nodeId] != nullptr)
+                    {
+                        bool success = (data[0] != 0x80);
+                        uint16_t controlWordValue = 0;
+                        if (success)
+                        {
+                            controlWordValue = static_cast<uint16_t>(data[4]) | (static_cast<uint16_t>(data[5]) << 8);
+                        }
+                        callbacks_read_x6040_controlword[nodeId](nodeId, success, controlWordValue);
+                    }
                 }
             }
             else if (registerAddress == RobotConstants::ODIndices::MODES_OF_OPERATION)
@@ -427,7 +453,8 @@ bool CanOpen::read()
             }
             else if (registerAddress == RobotConstants::ODIndices::STATUSWORD)
             { // 0x6041
-                if (callbacks_x6041_statusword[nodeId] != nullptr)
+                //DBG_VERBOSE(DBG_GROUP_MOVE, "SDO response for Status Word from node " + String(nodeId) + " " + (callbacks_read_x6041_statusword[nodeId] != nullptr));
+                if (callbacks_read_x6041_statusword[nodeId] != nullptr)
                 {
                     bool success = (data[0] != 0x80);
                     uint16_t statusWordValue = 0;
@@ -435,11 +462,12 @@ bool CanOpen::read()
                     {
                         statusWordValue = static_cast<uint16_t>(data[4]) | (static_cast<uint16_t>(data[5]) << 8);
                     }
-                    callbacks_x6041_statusword[nodeId](nodeId, success, statusWordValue);
+                    callbacks_read_x6041_statusword[nodeId](nodeId, success, statusWordValue);
                 }
             }
             return true;
-        } else if (function_code == RobotConstants::CANOpen::COB_ID_TPDO1_BASE)
+        }
+        else if (function_code == RobotConstants::CANOpen::COB_ID_TPDO1_BASE)
         {
             DBG_VERBOSE(DBG_GROUP_CANOPEN, "TPDO1 from node " + String(nodeId));
             int32_t actualPosition = (static_cast<int32_t>(data[3]) << 24) |
@@ -447,12 +475,25 @@ bool CanOpen::read()
                                  (static_cast<int32_t>(data[1]) << 8) |
                                  (static_cast<int32_t>(data[0]));
             uint16_t statusWordValue = static_cast<uint16_t>(data[5]) | (static_cast<uint16_t>(data[6]) << 8);
-            
+            DBG_INFO(DBG_GROUP_MOVE, "TPDO1 from node " + String(nodeId) + " Actual Position: " + String(actualPosition) + " Status Word: 0x" + String(statusWordValue, HEX));
             if(callbacks_TPDO1[nodeId] != nullptr)
             {
                 callbacks_TPDO1[nodeId](nodeId, actualPosition, statusWordValue);
             }
 
+        }
+        else if (function_code == RobotConstants::CANOpen::COB_ID_TPDO4_BASE)
+        {
+            int32_t actualPosition = (static_cast<int32_t>(data[3]) << 24) |
+                                     (static_cast<int32_t>(data[2]) << 16) |
+                                     (static_cast<int32_t>(data[1]) << 8) |
+                                     (static_cast<int32_t>(data[0]));
+            uint16_t statusWordValue = static_cast<uint16_t>(data[4]) | (static_cast<uint16_t>(data[5]) << 8);
+
+            if (callbacks_TPDO4[nodeId] != nullptr)
+            {
+                callbacks_TPDO4[nodeId](nodeId, actualPosition, statusWordValue);
+            }
         }
         return true;
     }

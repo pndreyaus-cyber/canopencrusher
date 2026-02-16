@@ -67,12 +67,12 @@ namespace StepDirController
 
         // For ZEI
         RobotConstants::InitStatus initStatus;
-        RobotConstants::AxisStatus status;
         uint32_t lastHeartbeatMs = 0;
         bool isAlive = true;
 
         // For MAJ
-        uint32_t lastRequestedStatusWord = 0;;
+        uint32_t lastRequestedStatusWord = 0;
+        RobotConstants::MoveStatus status;
 
         void setCurrentPositionInSteps(int32_t steps);
     };

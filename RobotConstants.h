@@ -12,14 +12,15 @@ using callback_x260A_electronicGearMolecules = std::function<void(uint8_t, bool)
 using callback_x6040_controlword = std::function<void(uint8_t, bool)>;
 using callback_x6060_modesOfOperation = std::function<void(uint8_t, bool)>;
 using callback_x607A_targetPosition = std::function<void(uint8_t, bool)>;
-using callback_x6041_statusword = std::function<void(uint8_t, bool, uint16_t)>;
 using callback_x6081_profileVelocity = std::function<void(uint8_t, bool)>;
 using callback_x6083_profileAcceleration = std::function<void(uint8_t, bool)>;
 using callback_TPDO1 = std::function<void(uint8_t, int32_t, uint16_t)>;
+using callback_TPDO4 = std::function<void(uint8_t, int32_t, uint16_t)>;
 
 using callback_heartbeat = std::function<void(uint8_t, uint8_t)>;
 
 using callback_read_x6041_statusword = std::function<void(uint8_t, bool, uint16_t)>;
+using callback_read_x6040_controlword = std::function<void(uint8_t, bool, uint16_t)>;
 
 namespace RobotConstants
 {
@@ -31,16 +32,17 @@ namespace RobotConstants
         ZEI_FINISHED = 3
     };
 
-    enum AxisStatus : uint8_t
+    enum MoveStatus : uint8_t
     {
-        PRE_OPERATIONAL,
-        OPERATIONAL,
-        STOPPED,
-        FAILED,
-        PREPARED_FOR_MOVE,
-        MOVING,
-        MOVE_FINISHED,
-        MOVE_FAILED,
+        PRE_OPERATIONAL = 0,
+        OPERATIONAL = 1,
+        STOPPED = 2,
+        FAILED = 3,
+        PREPARED_FOR_MOVE = 4,
+        READY_TO_MOVE = 5,
+        MOVING = 6,
+        MOVE_FINISHED = 7,
+        MOVE_FAILED = 8,
     };
 
     inline const char *initStatusToString(InitStatus status)
@@ -106,6 +108,8 @@ namespace RobotConstants
         constexpr uint32_t COB_ID_SDO_CLIENT_BASE = 0x580;
         constexpr uint32_t COB_ID_TPDO1_BASE = 0x180;
         constexpr uint32_t COB_ID_RPDO1_BASE = 0x200;
+        constexpr uint32_t COB_ID_TPDO4_BASE = 0x480;
+        constexpr uint32_t COB_ID_RPDO4_BASE = 0x500;
 
         // PDO mapping
         constexpr uint8_t PDO_COUNT = 4;

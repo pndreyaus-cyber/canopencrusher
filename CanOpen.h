@@ -32,14 +32,15 @@ private:
     callback_x6040_controlword callbacks_x6040_controlword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                         // index 0 is unused
     callback_x6060_modesOfOperation callbacks_x6060_modesOfOperation[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};               // index 0 is unused
     callback_x607A_targetPosition callbacks_x607A_targetPosition[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                   // index 0 is unused
-    callback_x6041_statusword callbacks_x6041_statusword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                           // index 0 is unused
     callback_x6081_profileVelocity callbacks_x6081_profileVelocity[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                 // index 0 is unused
     callback_x6083_profileAcceleration callbacks_x6083_profileAcceleration[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};         // index 0 is unused
     callback_TPDO1 callbacks_TPDO1[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                                                 // index 0 is unused
+    callback_TPDO4 callbacks_TPDO4[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                                                 // index 0 is unused
 
     callback_heartbeat callbacks_heartbeat = nullptr;
 
     callback_read_x6041_statusword callbacks_read_x6041_statusword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr}; // index 0 is unused
+    callback_read_x6040_controlword callbacks_read_x6040_controlword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr}; // index 0 is unused
 
 public:
     CanOpen() : Can(PA11, PA12, RX_SIZE_128, TX_SIZE_128) {};
@@ -53,12 +54,11 @@ public:
     bool send_x6060_modesOfOperation(uint8_t nodeId, uint8_t value);
     bool send_x607A_targetPosition(uint8_t nodeId, int32_t value);
     bool send_RPDO1(uint8_t nodeId, uint16_t controlWord, int8_t workMode, int32_t targetPosition);
+    bool send_RPDO4(uint8_t nodeId, int32_t targetPositionAbsolute);
+    bool sendSYNC();
 
     bool sendSDOWrite(uint8_t nodeId, uint8_t dataLen, uint16_t index, uint8_t subindex, const void *data);
     bool sendSDORead(uint8_t nodeId, uint16_t index, uint8_t subindex);
-    //bool sendPDO4_x607A_SyncMovement(uint8_t nodeId, int32_t targetPositionAbsolute);
-    //bool sendSYNC();
-
     void set_callback_x260A_electronicGearMolecules(callback_x260A_electronicGearMolecules callback, uint8_t nodeId)
     {
         callbacks_x260A_electronicGearMolecules[nodeId] = callback;
@@ -84,9 +84,9 @@ public:
         callbacks_x607A_targetPosition[nodeId] = callback;
     }
 
-    void set_callback_x6041_statusword(callback_x6041_statusword callback, uint8_t nodeId)
+    void set_callback_x6041_statusword(callback_read_x6041_statusword callback, uint8_t nodeId)
     {
-        callbacks_x6041_statusword[nodeId] = callback;
+        callbacks_read_x6041_statusword[nodeId] = callback;
     }
 
     void set_callback_x6081_profileVelocity(callback_x6081_profileVelocity callback, uint8_t nodeId)
@@ -104,6 +104,11 @@ public:
         callbacks_TPDO1[nodeId] = callback;
     }
 
+    void set_callback_TPDO4(callback_TPDO4 callback, uint8_t nodeId)
+    {
+        callbacks_TPDO4[nodeId] = callback;
+    }
+
     void set_callback_heartbeat(callback_heartbeat callback)
     {
         callbacks_heartbeat = callback;
@@ -112,6 +117,11 @@ public:
     void set_callback_read_x6041_statusword(callback_read_x6041_statusword callback, uint8_t nodeId)
     {
         callbacks_read_x6041_statusword[nodeId] = callback;
+    }
+
+    void set_callback_read_x6040_controlword(callback_read_x6040_controlword callback, uint8_t nodeId)
+    {
+        callbacks_read_x6040_controlword[nodeId] = callback;
     }
 
     bool read();
