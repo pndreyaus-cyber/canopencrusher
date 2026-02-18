@@ -1,11 +1,13 @@
 #include <unordered_set>
-
+//#include <queue>
+#include <vector>
 #include "STM32_CAN.h"
 #include "CanOpenController.h"
 #include "CanOpen.h"
 #include "Params.h"
 #include "RobotConstants.h"
 #include "Debug.h"
+
 
 HardwareSerial Serial2(PA3, PA2);
 
@@ -17,13 +19,15 @@ uint8_t bufIndex = 0;        // хранилище данных с послед�
 std::vector<String> outData; // очередь сообщений на отправку
 
 // Forward declarations
-MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command);
+void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConstants::Robot::AXES_COUNT> &params, RobotConstants::MoveUnits moveUnits);
+MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command, RobotConstants::MoveUnits moveUnits);
 MotorIndices stringToMotorIndices(String command);
 
 void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove);
 void handleZeroInitialize(MotorIndices motorIndices);
 void handleRequestPosition(MotorIndices motorIndices);
 void handleMotorStatus(String command);
+void handlePrepareMoveMathTest(String command);
 
 bool receiveCommand();
 void handleCommand();
@@ -37,6 +41,12 @@ uint32_t lastTickTime_500 = 0;
 
 void setup()
 {
+    inData.reserve(RobotConstants::Buffers::SERIAL_MESSAGE_CAPACITY);
+    outData.reserve(RobotConstants::Buffers::SERIAL_OUT_QUEUE_CAPACITY);
+    for(int i = 0; i < RobotConstants::Buffers::SERIAL_OUT_QUEUE_CAPACITY; ++i){
+        outData[i].reserve(RobotConstants::Buffers::SERIAL_MESSAGE_CAPACITY);
+    }
+
     Serial2.setRx(PA3);
     Serial2.setTx(PA2);
 
@@ -50,7 +60,9 @@ void setup()
     {
         Serial2.println("Failed to initialize CAN bus");
         while (1)
-            ;
+        {
+
+        }
     }
     else
     {
@@ -67,18 +79,20 @@ void setup()
     {
         Serial2.println("MoveController initialized successfully");
     }
-    inData.reserve(128);
-    outData.reserve(128);
+
 }
 
 void loop()
 {
     if (receiveCommand())
+    {
         handleCommand();
+    }
 
     sendData();
     canOpen.read();
-    if (millis() - lastTickTime_100 >= 100) {
+    if (millis() - lastTickTime_100 >= 100)
+    {
         lastTickTime_100 = millis();
         moveController.tick_100();
     }
@@ -103,6 +117,7 @@ bool receiveCommand()
 
 void handleCommand()
 {
+    return;
     inData.replace(" ", "");
     inData.replace("\n", "");
     inData.replace("\r", "");
@@ -117,12 +132,12 @@ void handleCommand()
     String function = inData.substring(0, 3);
     if (function.equals(RobotConstants::Commands::MOVE_ABSOLUTE))
     {
-        handleMove(stringToMoveParams(inData), true);
+        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), true);
     }
 
     else if (function.equals(RobotConstants::Commands::MOVE_RELATIVE))
     {
-        handleMove(stringToMoveParams(inData), false);
+        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), false);
     }
     else if (function.equals(RobotConstants::Commands::ECHO))
     {
@@ -140,6 +155,14 @@ void handleCommand()
     {
         handleRequestPosition(stringToMotorIndices(inData));
     }
+    else if (function.equals(RobotConstants::Commands::PREPAREMOVE_MATH_TEST))
+    {
+        handlePrepareMoveMathTest(inData);
+    }
+    else if (function.equals(RobotConstants::Commands::MOVE_ABSOLUTE_PERCENT))
+    {
+        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_PERCENT), true); // For now, treat MAP the same as MAJ. The move controller will need to be updated to handle percentage-based moves.
+    }
     else
     {
         addDataToOutQueue(function + " " + RobotConstants::Status::INCORRECT_COMMAND);
@@ -154,9 +177,10 @@ void addDataToOutQueue(String data) // добавление сообщений �
     interrupts();
 }
 
+
 void sendData() // отправка сообщений на компьютер
 {
-    if (outData.size() == 0)
+    if (outData.empty())
         return;
 
     noInterrupts();
@@ -192,9 +216,84 @@ bool isFloat(String str)
     return true; // String is a valid float
 }
 
-MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command)
+void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConstants::Robot::AXES_COUNT> &params, RobotConstants::MoveUnits moveUnits)
+{
+    int indexOfAC = paramsSubStr.indexOf("AC");
+    if (indexOfAC == -1)
+    {
+        params.status = ParamsStatus::INCORRECT_COMMAND;
+        params.errorMsg = "Expected acceleration parameter 'AC' after speed parameter";
+        return;
+    }
+
+    String velocityStr = paramsSubStr.substring(2, indexOfAC);
+    if (!isFloat(velocityStr))
+    {
+        params.status = ParamsStatus::INVALID_PARAMS;
+        params.errorMsg = "Invalid speed value: " + velocityStr;
+        return;
+    }
+
+    float velocity = velocityStr.toFloat();
+
+    // params.speed = velocityStr.toFloat();
+    // if (params.speed <= RobotConstants::Commands::MIN_SPEED_UNITS || RobotConstants::Commands::MAX_SPEED_UNITS < params.speed)
+    // {
+    //     params.status = ParamsStatus::INVALID_PARAMS;
+    //     params.errorMsg = "Speed must be in the range (" + String(RobotConstants::Commands::MIN_SPEED_UNITS) + ", " + String(RobotConstants::Commands::MAX_SPEED_UNITS) + "]: " + String(params.speed);
+    //     return;
+    // }
+
+    String accelerationStr = paramsSubStr.substring(indexOfAC + 2);
+    if (!isFloat(accelerationStr))
+    {
+        params.status = ParamsStatus::INVALID_PARAMS;
+        params.errorMsg = "Invalid acceleration value: " + accelerationStr;
+        return;
+    }
+    float acceleration = accelerationStr.toFloat();
+
+    // params.acceleration = accelerationStr.toFloat();
+    // if (params.acceleration <= RobotConstants::Commands::MIN_ACCELERATION_UNITS || RobotConstants::Commands::MAX_ACCELERATION_UNITS < params.acceleration)
+    // {
+    //     params.status = ParamsStatus::INVALID_PARAMS;
+    //     params.errorMsg = "Acceleration must be in the range (" + String(RobotConstants::Commands::MIN_ACCELERATION_UNITS) + ", " + String(RobotConstants::Commands::MAX_ACCELERATION_UNITS) + "]: " + String(params.acceleration);
+    //     return;
+    // }
+
+    if (moveUnits == RobotConstants::MoveUnits::UNITS_PERCENT)
+    {
+        if (velocity < 0.0f || velocity > 100.0f || acceleration < 0.0f || acceleration > 100.0f)
+        {
+            params.status = ParamsStatus::INVALID_PARAMS;
+            params.errorMsg = "For percentage-based moves, speed and acceleration must be in the range [0, 100]: speed: " + String(velocity) + ", acceleration: " + String(acceleration);
+            return;
+        }
+        params.speed = static_cast<uint32_t>(velocity / 100.0f * RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
+        params.acceleration = static_cast<uint32_t>(acceleration / 100.0f * RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S);
+    }
+    else if (moveUnits == RobotConstants::MoveUnits::UNITS_DEG)
+    {
+        if(velocity < 0.0f || velocity > RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S || acceleration < 0.0f || acceleration > RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2)
+        {
+            params.status = ParamsStatus::INVALID_PARAMS;
+            params.errorMsg = "For degree-based moves, speed must be in the range [0, " + String(RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S) + "] and acceleration must be in the range [0, " + String(RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2) + "]: speed: " + String(velocity) + ", acceleration: " + String(acceleration);
+            return;
+        }
+        params.speed = Axis::speedUnitsToMotorRPM(velocity);
+        params.acceleration = Axis::accelerationUnitsToRPMPS(acceleration);
+    }
+    else
+    {
+        params.status = ParamsStatus::INVALID_PARAMS;
+        params.errorMsg = "Invalid move units";
+    }
+}
+
+MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command, RobotConstants::MoveUnits moveUnits)
 {
     MoveParams<RobotConstants::Robot::AXES_COUNT> params;
+    params.status = ParamsStatus::OK;
 
     String paramsStr = command.substring(RobotConstants::Commands::COMMAND_LEN); // Only parameters, without command and space
 
@@ -208,8 +307,9 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command)
     int i = 0;
     bool invalidParams = false;
     int nodeCnt = 0;
+    //addDataToOutQueue("Entering while in parameter parser");
     while (i < paramsStr.length() && !invalidParams && paramsStr.charAt(i) == (char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) // Parse movement parameters until we reach speed parameter (starting with 'S')
-    {
+    {   
         char axisIdChar = paramsStr.charAt(i + 1);
         if (axisIdChar < RobotConstants::Robot::MIN_NODE_ID || RobotConstants::Robot::MAX_NODE_ID < axisIdChar)
         {
@@ -258,6 +358,7 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command)
         nodeCnt++;
         i = j;
     }
+    //addDataToOutQueue("Finished parsing movement parameters, nodeCnt = " + String(nodeCnt) + ", i = " + String(i));
 
     if (invalidParams)
     {
@@ -279,47 +380,51 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command)
         return params;
     }
 
-    int indexOfAC = paramsStr.indexOf("AC", i);
-    if (indexOfAC == -1)
+    // int indexOfAC = paramsStr.indexOf("AC", i);
+    // if (indexOfAC == -1)
+    // {
+    //     params.status = ParamsStatus::INCORRECT_COMMAND;
+    //     params.errorMsg = "Expected acceleration parameter 'AC' after speed parameter";
+    //     return params;
+    // }
+
+    // String velocityStr = paramsStr.substring(i + 2, indexOfAC);
+    // if (!isFloat(velocityStr))
+    // {
+    //     params.status = ParamsStatus::INVALID_PARAMS;
+    //     params.errorMsg = "Invalid speed value: " + velocityStr;
+    //     return params;
+    // }
+
+    // params.speed = velocityStr.toFloat();
+    // if (params.speed <= RobotConstants::Commands::MIN_SPEED_UNITS || RobotConstants::Commands::MAX_SPEED_UNITS < params.speed)
+    // {
+    //     params.status = ParamsStatus::INVALID_PARAMS;
+    //     params.errorMsg = "Speed must be in the range (" + String(RobotConstants::Commands::MIN_SPEED_UNITS) + ", " + String(RobotConstants::Commands::MAX_SPEED_UNITS) + "]: " + String(params.speed);
+    //     return params;
+    // }
+
+    // String accelerationStr = paramsStr.substring(indexOfAC + 2);
+    // if (!isFloat(accelerationStr))
+    // {
+    //     params.status = ParamsStatus::INVALID_PARAMS;
+    //     params.errorMsg = "Invalid acceleration value: " + accelerationStr;
+    //     return params;
+    // }
+
+    // params.acceleration = accelerationStr.toFloat();
+    // if (params.acceleration <= RobotConstants::Commands::MIN_ACCELERATION_UNITS || RobotConstants::Commands::MAX_ACCELERATION_UNITS < params.acceleration)
+    // {
+    //     params.status = ParamsStatus::INVALID_PARAMS;
+    //     params.errorMsg = "Acceleration must be in the range (" + String(RobotConstants::Commands::MIN_ACCELERATION_UNITS) + ", " + String(RobotConstants::Commands::MAX_ACCELERATION_UNITS) + "]: " + String(params.acceleration);
+    //     return params;
+    // }
+
+    stringToVelocityAndAcceleration(paramsStr.substring(i), params, moveUnits);
+    if (params.status != ParamsStatus::OK)
     {
-        params.status = ParamsStatus::INCORRECT_COMMAND;
-        params.errorMsg = "Expected acceleration parameter 'AC' after speed parameter";
         return params;
     }
-
-    String velocityStr = paramsStr.substring(i + 2, indexOfAC);
-    if (!isFloat(velocityStr))
-    {
-        params.status = ParamsStatus::INVALID_PARAMS;
-        params.errorMsg = "Invalid speed value: " + velocityStr;
-        return params;
-    }
-
-    params.speed = velocityStr.toFloat();
-    if (params.speed <= RobotConstants::Commands::MIN_SPEED_UNITS || RobotConstants::Commands::MAX_SPEED_UNITS < params.speed)
-    {
-        params.status = ParamsStatus::INVALID_PARAMS;
-        params.errorMsg = "Speed must be in the range (" + String(RobotConstants::Commands::MIN_SPEED_UNITS) + ", " + String(RobotConstants::Commands::MAX_SPEED_UNITS) + "]: " + String(params.speed);
-        return params;
-    }
-
-    String accelerationStr = paramsStr.substring(indexOfAC + 2);
-    if (!isFloat(accelerationStr))
-    {
-        params.status = ParamsStatus::INVALID_PARAMS;
-        params.errorMsg = "Invalid acceleration value: " + accelerationStr;
-        return params;
-    }
-
-    params.acceleration = accelerationStr.toFloat();
-    if (params.acceleration <= RobotConstants::Commands::MIN_ACCELERATION_UNITS || RobotConstants::Commands::MAX_ACCELERATION_UNITS < params.acceleration)
-    {
-        params.status = ParamsStatus::INVALID_PARAMS;
-        params.errorMsg = "Acceleration must be in the range (" + String(RobotConstants::Commands::MIN_ACCELERATION_UNITS) + ", " + String(RobotConstants::Commands::MAX_ACCELERATION_UNITS) + "]: " + String(params.acceleration);
-        return params;
-    }
-
-    params.status = ParamsStatus::OK;
     return params;
 }
 
@@ -392,15 +497,15 @@ void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbs
     }
 
     DBG_VERBOSE(DBG_GROUP_COMMAND, String(isAbsoluteMove ? "Handling absolute move command with parameters: " : "Handling relative move command with parameters: ") +
-                                       "movements=" + String(RobotConstants::Robot::AXES_COUNT) + " nodes, " +
-                                       "speed=" + String(params.speed) + ", acceleration=" + String(params.acceleration));
+                                       "movements = " + String(RobotConstants::Robot::AXES_COUNT) + " nodes, " +
+                                       "speed (RPM) = " + String(params.speed) + ", acceleration (RPM/s) = " + String(params.acceleration));
     // for(const auto& movement : params.movements) {
     //     DBG_VERBOSE(DBG_GROUP_COMMAND, "Node " + String(movement.first) + ": " + String(movement.second));
     // }
 
-    if(!moveController.move(params))
+    if (!moveController.move(params))
     {
-        addDataToOutQueue((isAbsoluteMove ? RobotConstants::Commands::MOVE_ABSOLUTE : RobotConstants::Commands::MOVE_RELATIVE) + " " + RobotConstants::Status::LOGIC_ERROR  );
+        addDataToOutQueue((isAbsoluteMove ? RobotConstants::Commands::MOVE_ABSOLUTE : RobotConstants::Commands::MOVE_RELATIVE) + " " + RobotConstants::Status::LOGIC_ERROR);
     }
 }
 
@@ -454,4 +559,33 @@ void handleRequestPosition(MotorIndices motorIndices)
         reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId)) + " ";
     }
     addDataToOutQueue(reply);
+}
+
+void handlePrepareMoveMathTest(String command)
+{
+    String params = command.substring(RobotConstants::Commands::COMMAND_LEN);
+    if (params.length() > 0)
+    {
+        if (params.equals("V0"))
+        {
+            moveController.setPrepareMoveTestVerbose(false);
+        }
+        else if (params.equals("V1"))
+        {
+            moveController.setPrepareMoveTestVerbose(true);
+        }
+        else
+        {
+            addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_MATH_TEST + " " + RobotConstants::Status::INVALID_PARAMS + " reason=EXPECTED_V0_OR_V1");
+            return;
+        }
+    }
+
+    bool success = moveController.runPrepareMoveMathTests();
+    if (!success)
+    {
+        addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_MATH_TEST + " " + RobotConstants::Status::LOGIC_ERROR);
+        return;
+    }
+    addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_MATH_TEST + " " + RobotConstants::Status::OK);
 }

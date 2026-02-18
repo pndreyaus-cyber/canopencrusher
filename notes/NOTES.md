@@ -152,7 +152,7 @@ Acknowldegement callbacks should have this structure:
 6) If sending fails, set the next callback to nullptr or regular callback (if applicable)
 
 Read response callbacks should have this structure:
-1) Set the current callback to either nullptr or to the regular callback (if applicable
+1) Set the current callback to either nullptr or to the regular callback (if applicable)
 2) Check the response status using checkResponseStatus(). If it fails, return from the function
 3) Process received data
 4) Set the next callback
@@ -172,3 +172,5 @@ Tomorrow
 - Check whether motor 6 is working
 - Test with different speed/acceleration to see, when the motor is shaking (PID not working properly)
 - In the future: find better values for PID
+
+# 17.02

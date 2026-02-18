@@ -17,12 +17,11 @@ enum struct ParamsStatus
 template<std::size_t N>
 struct MoveParams
 {
-    ParamsStatus status;
+    ParamsStatus status = ParamsStatus::OK;
     String errorMsg;
-    double movementUnits[N];
-    double speed;
-    double acceleration;
-    // double deceleration;
+    double movementUnits[N] = {};
+    uint32_t speed = 0;
+    uint32_t acceleration = 0;
 };
 
 struct MotorIndices

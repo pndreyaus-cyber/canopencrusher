@@ -2,6 +2,7 @@
 
 #define MOVECONTROLLERBASE_H
 
+#include <array>
 #include <string>
 #include <unordered_map>
 #include "CanOpen.h"
@@ -14,6 +15,43 @@ namespace StepDirController
     class MoveControllerBase
     {
     public:
+        enum class PrepareMoveStatus : uint8_t
+        {
+            OK = 0,
+            NO_EFFECTIVE_MOTION = 1,
+            INVALID_SPEED = 2,
+            INVALID_ACCELERATION = 3,
+            INVALID_PROFILE = 4,
+            INVALID_AXIS = 5,
+        };
+
+        struct PrepareMoveAxisResult
+        {
+            bool requestedMovement = false;
+            bool quantizedToZero = false;
+            int32_t targetSteps = 0;
+            int32_t relativeSteps = 0;
+            uint32_t profileVelocityRpm = 0;
+            uint32_t profileAccelerationRpmPerSec = 0;
+            double velocityStepsPerSec = 0.0;
+            double accelerationStepsPerSec2 = 0.0;
+        };
+
+        struct PrepareMoveComputationResult
+        {
+            PrepareMoveStatus status = PrepareMoveStatus::INVALID_PROFILE;
+            String reason;
+            bool isTriangularProfile = false;
+            bool hasQuantizedToZero = false;
+            bool syncModelValid = false;
+            uint8_t maxMovementAxisId = 0;
+            int32_t maxMovementAbsSteps = 0;
+            double accelerationTimeSec = 0.0;
+            double constantVelocityTimeSec = 0.0;
+            double fullMovementTimeSec = 0.0;
+            std::array<PrepareMoveAxisResult, RobotConstants::Robot::AXES_COUNT> axes;
+        };
+
         void requestStatus();
         int32_t axisPosition(uint8_t nodeId) { return axes.at(nodeId).getCurrentPositionInSteps(); }
 
@@ -26,13 +64,20 @@ namespace StepDirController
         void startZeroInitializationSingleAxis(uint8_t nodeId);
 
         bool move(MoveParams<RobotConstants::Robot::AXES_COUNT> params);
+        bool runPrepareMoveMathTests();
+        void setPrepareMoveTestVerbose(bool verbose) { prepareMoveTestVerbose = verbose; }
+        bool isMoveInProgress() const;
+        bool isInitialized() const { return initialized; }
+        PrepareMoveComputationResult computePrepareMoveForTesting(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params) const;
+        static String prepareMoveStatusToString(PrepareMoveStatus status);
 
         // Call this regularly from the main loop to check timeouts.
         void tick_100();
         void tick_500();
 
     protected:
-        bool prepareMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params);
+        PrepareMoveComputationResult prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params);
+        PrepareMoveComputationResult computePrepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params) const;
 
         // void prepareMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params);
     private:
@@ -40,6 +85,7 @@ namespace StepDirController
         std::unordered_map<uint8_t, Axis> axes;
         uint8_t axesCnt = 0;
         bool initialized = false;
+        bool prepareMoveTestVerbose = false;
 
         void positionUpdate(uint8_t nodeId, int32_t position);
 

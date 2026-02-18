@@ -45,6 +45,13 @@ namespace RobotConstants
         MOVE_FAILED = 8,
     };
 
+    enum MoveUnits : uint8_t
+    {
+        UNITS_PERCENT = 0,
+        UNITS_MM = 1,
+        UNITS_DEG = 2,
+    };
+
     inline const char *initStatusToString(InitStatus status)
     {
         switch (status)
@@ -72,11 +79,13 @@ namespace RobotConstants
     namespace Commands
     {
         const String MOVE_ABSOLUTE = "MAJ";
+        const String MOVE_ABSOLUTE_PERCENT = "MAP";
         const String MOVE_RELATIVE = "MRJ";
         const String ECHO = "ECH";
         const String MOTOR_STATUS = "RMS";
         const String ZERO_INITIALIZE = "ZEI";
         const String REQUEST_POSITION = "RPP";
+        const String PREPAREMOVE_MATH_TEST = "PMT";
         constexpr int COMMAND_LEN = 3;
         const float MIN_SPEED_UNITS = 0.0f;
         const float MAX_SPEED_UNITS = 100.0f;
@@ -87,7 +96,7 @@ namespace RobotConstants
     // Robot specifications
     namespace Robot
     {
-        constexpr uint8_t AXES_COUNT = 5;
+        constexpr uint8_t AXES_COUNT = 6;
         constexpr uint8_t MAX_AXES_COUNT = 6;
         constexpr uint8_t MIN_NODE_ID = 'A';
         constexpr uint8_t MAX_NODE_ID = (AXES_COUNT == 0) ? MIN_NODE_ID : static_cast<uint8_t>(MIN_NODE_ID + AXES_COUNT - 1);
@@ -172,14 +181,11 @@ namespace RobotConstants
     // Control parameters
     namespace Control
     {
-        constexpr float DEFAULT_SPEED = 1000.0f;
-        constexpr float DEFAULT_ACCELERATION = 500.0f;
-        constexpr float DEFAULT_DECELERATION = 500.0f;
-        constexpr uint32_t DEFAULT_PROFILE_VELOCITY = 1000;
-        constexpr uint32_t DEFAULT_PROFILE_ACCELERATION = 500;
-        constexpr uint16_t DEFAULT_CONTROLWORD = 0x000F;
-        constexpr uint8_t DEFAULT_MODE_POSITION = 1;
-        constexpr uint8_t DEFAULT_MODE_VELOCITY = 3;
+        constexpr uint32_t MAXIMUM_PROFILE_VELOCITY_IN_RPM = 3000;
+        constexpr uint32_t MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S = 65535;
+        constexpr double MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S = 360;
+        constexpr double MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2 = 7864.2;
+        
     }
 
     // Axis configuration
@@ -196,6 +202,8 @@ namespace RobotConstants
     {
         constexpr size_t CAN_FRAME_SIZE = 8;
         constexpr size_t MAX_CAN_MESSAGE_LEN = 8;
+        constexpr size_t SERIAL_OUT_QUEUE_CAPACITY = 128;
+        constexpr size_t SERIAL_MESSAGE_CAPACITY = 128;
     }
 
     // Status codes

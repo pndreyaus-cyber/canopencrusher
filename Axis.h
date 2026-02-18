@@ -45,7 +45,14 @@ namespace StepDirController
         static uint32_t speedUnitsToMotorRPM(double speedUnits); // Convert degrees/sec to RPM
         static double motorRPMToSpeedUnits(uint32_t rpm); // Convert RPM to degrees/sec
 
+        static double motorRPMToStepsPerSec(uint32_t rpm); // Convert RPM to steps/sec
+        static double motorRPMPSToStepsPerSec2(uint32_t rpmPerSec); // Convert RPM/sec to steps/sec^2
+
         static uint32_t stepsPerSecToMotorRPM(double stepsPerSec); // Convert steps/sec to RPM
+        static uint32_t stepsPerSec2ToRPMPS(double stepsPerSec2); // Convert degrees/sec^2 to RPM/sec
+
+        static double stepsPerSecToMotorRPMDouble(double stepsPerSec); // Convert steps/sec to RPM
+        static double stepsPerSec2ToRPMPSDouble(double stepsPerSec2); // Convert degrees/sec^2 to RPM/sec
 
         static uint32_t accelerationUnitsToRPMPS(double accelearionUnits); // Convert degrees/sec^2 to RPM/sec
         static double RPMPSToAccelerationUnits(uint32_t rpmPerSecond);     // Convert RPM/sec to degrees/sec^2

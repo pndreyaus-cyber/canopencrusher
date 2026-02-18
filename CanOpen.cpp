@@ -188,11 +188,11 @@ bool CanOpen::startCan(uint32_t baudRate)
     {
         this->canBaudRate = baudRate;
         Can.setAutoRetransmission(true);
-
+        //addDataToOutQueue("Starting CAN with baud rate: " + String(baudRate));
         // Loopback test
         if (!loopbackTest())
         {
-            addDataToOutQueue("CAN loopback test failed during start");
+            //addDataToOutQueue("CAN loopback test failed during start");
             return false;
         }
         Can.end();
@@ -202,7 +202,7 @@ bool CanOpen::startCan(uint32_t baudRate)
         Can.begin();
         Can.setBaudRate(canBaudRate);
         can_initialized = true;
-        DBG_INFO(DBG_GROUP_CANOPEN, "CAN initialized with baud rate: " + String(canBaudRate));
+        //DBG_INFO(DBG_GROUP_CANOPEN, "CAN initialized with baud rate: " + String(canBaudRate));
         return true;
     }
     return false; // already initialized
@@ -230,7 +230,7 @@ bool CanOpen::loopbackTest()
     bool queued = Can.write(testMsg);
     if (!queued)
     {
-        addDataToOutQueue("Failed to queue test message for transmission");
+        //addDataToOutQueue("Failed to queue test message for transmission");
         return false;
     }
     else
@@ -248,11 +248,11 @@ bool CanOpen::loopbackTest()
     }
     else
     {
-        addDataToOutQueue("Failed to receive loopback message");
+        //addDataToOutQueue("Failed to receive loopback message");
         return false;
     }
 
-    DBG_INFO(DBG_GROUP_CANOPEN, "Received loopback message with ID: " + String(receivedMsg.id, HEX) + " and length: " + String(receivedMsg.len));
+    //DBG_INFO(DBG_GROUP_CANOPEN, "Received loopback message with ID: " + String(receivedMsg.id, HEX) + " and length: " + String(receivedMsg.len));
 
     if (got && receivedMsg.id == testMsg.id && receivedMsg.len == testMsg.len)
     {
@@ -267,18 +267,18 @@ bool CanOpen::loopbackTest()
         }
         if (dataMatch)
         {
-            addDataToOutQueue("\nLoopback test successful");
+            //addDataToOutQueue("\nLoopback test successful");
             return true;
         }
         else
         {
-            addDataToOutQueue("\nData mismatch in loopback test");
+            //addDataToOutQueue("\nData mismatch in loopback test");
             return false;
         }
     }
     else
     {
-        addDataToOutQueue("\nLoopback test failed: ID or length mismatch");
+        //addDataToOutQueue("\nLoopback test failed: ID or length mismatch");
         return false;
     }
 }
@@ -317,7 +317,7 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     bool ok = Can.write(CAN_TX_msg);
     if (!ok)
     {
-        DBG_ERROR(DBG_GROUP_CANOPEN, "CAN send failed for ID: " + String(id, HEX));
+        //DBG_ERROR(DBG_GROUP_CANOPEN, "CAN send failed for ID: " + String(id, HEX));
     }
     delay(1);
     return ok;

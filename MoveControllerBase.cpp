@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <cmath>
 #include "MoveControllerBase.h"
+#include "PrepareMoveMathTestRunner.h"
 #include "Arduino.h"
 #include "Debug.h"
 
@@ -69,13 +71,19 @@ namespace StepDirController
     bool MoveControllerBase::move(MoveParams<RobotConstants::Robot::AXES_COUNT> params)
     {
         DBG_VERBOSE(DBG_GROUP_MOVE, "MoveControllerBase.cpp move called");
-
         if (!initialized)
         {
             DBG_VERBOSE(DBG_GROUP_MOVE, "MoveControllerBase::move failed. Not initialized");
             return false;
         }
-        if (!prepareMove(params))
+        PrepareMoveComputationResult prepareResult = prepareMove(params);
+        if (prepareResult.status == PrepareMoveStatus::NO_EFFECTIVE_MOTION)
+        {
+            addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Status::OK + "  | ");
+            return true;
+        }
+
+        if (prepareResult.status != PrepareMoveStatus::OK)
         {
             return false;
         }
@@ -86,6 +94,26 @@ namespace StepDirController
         }
 
         return true;
+    }
+
+    bool MoveControllerBase::isMoveInProgress() const
+    {
+        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+        {
+            const Axis &axis = axes.at(nodeId);
+            if (axis.status == RobotConstants::MoveStatus::PREPARED_FOR_MOVE ||
+                axis.status == RobotConstants::MoveStatus::READY_TO_MOVE ||
+                axis.status == RobotConstants::MoveStatus::MOVING)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool MoveControllerBase::runPrepareMoveMathTests()
+    {
+        return runPrepareMoveMathTestSuite(*this, prepareMoveTestVerbose);
     }
 
     void MoveControllerBase::tick_100()
@@ -112,177 +140,255 @@ namespace StepDirController
 
     // ============================ Protected methods =============================
 
-    bool MoveControllerBase::prepareMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params)
+    MoveControllerBase::PrepareMoveComputationResult MoveControllerBase::computePrepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params) const
     {
-        uint8_t maxMovementAbsAxisId = 0;
-        double maxMovementAbs = 0;
-        for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
+        PrepareMoveComputationResult result;
+
+        int32_t maxMovementAbs = 0;
+        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             double movementUnits = params.movementUnits[nodeId - 1];
-            Axis &axis = axes.at(nodeId);
+            const Axis &axis = axes.at(nodeId);
+            PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
 
-            axis.setTargetPositionInUnits(movementUnits);
-            DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": target position (units): " + String(movementUnits) + ", target position (steps): " + String(axis.getTargetPositionInSteps()) + ", current position (steps): " + String(axis.getCurrentPositionInSteps()));
+            const int32_t targetSteps = Axis::unitsToSteps(movementUnits);
+            const int32_t currentSteps = axis.getCurrentPositionInSteps();
+            const int32_t relativeSteps = targetSteps - currentSteps;
 
-            int32_t axisRelativeMovementAbsInSteps = std::abs(axis.getRelativeMovementInSteps());
+            axisResult.requestedMovement = std::abs(movementUnits) > 0.0;
+            axisResult.targetSteps = targetSteps;
+            axisResult.relativeSteps = relativeSteps;
+            axisResult.quantizedToZero = axisResult.requestedMovement && relativeSteps == 0;
+
+            result.hasQuantizedToZero = result.hasQuantizedToZero || axisResult.quantizedToZero;
+
+            int32_t axisRelativeMovementAbsInSteps = std::abs(relativeSteps);
             if (axisRelativeMovementAbsInSteps > maxMovementAbs)
             {
                 maxMovementAbs = axisRelativeMovementAbsInSteps;
-                maxMovementAbsAxisId = nodeId;
+                result.maxMovementAxisId = nodeId;
             }
         }
 
-        Axis &maxMovementAbsAxis = axes.at(maxMovementAbsAxisId);
-        maxMovementAbsAxis.setProfileVelocityInUnitsPerSec(params.speed);
-        DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(maxMovementAbsAxisId) + ": regular speed (units/s): " + String(params.speed) + ", regular speed (RPM): " + String(maxMovementAbsAxis.getProfileVelocityInRPM()));
-        maxMovementAbsAxis.setProfileAccelerationInUnitsPerSec2(params.acceleration);
-        DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(maxMovementAbsAxisId) + ": regular acceleration (units/s^2): " + String(params.acceleration) + ", regular acceleration (RPM/s): " + String(maxMovementAbsAxis.getProfileAccelerationInRPMPerSec()));
-        maxMovementAbsAxis.status = RobotConstants::MoveStatus::PREPARED_FOR_MOVE;
-
-        DBG_INFO(DBG_GROUP_MOVE, "profile velocity (RPM): " + String(maxMovementAbsAxis.getProfileVelocityInRPM()));
-        DBG_INFO(DBG_GROUP_MOVE, "profile acceleration (RPM/s): " + String(maxMovementAbsAxis.getProfileAccelerationInRPMPerSec()));
-        DBG_INFO(DBG_GROUP_MOVE, "max movement in motor revolutions: " + String(Axis::stepsToMotorRevs(maxMovementAbs)));
-        double accelerationTimeSec = static_cast<double>(maxMovementAbsAxis.getProfileVelocityInRPM()) / maxMovementAbsAxis.getProfileAccelerationInRPMPerSec();
-        double fullMovementTimeSec = Axis::stepsToMotorRevs(maxMovementAbs) * RobotConstants::Math::SECONDS_IN_MINUTE / maxMovementAbsAxis.getProfileVelocityInRPM() + accelerationTimeSec;
-        double constantVelocityTimeSec = fullMovementTimeSec - 2 * accelerationTimeSec;
-
-        if (accelerationTimeSec == 0)
+        result.maxMovementAbsSteps = maxMovementAbs;
+        if (maxMovementAbs == 0)
         {
-            maxMovementAbsAxis.status = RobotConstants::MoveStatus::MOVE_FAILED;
-            DBG_ERROR(DBG_GROUP_MOVE, "Acceleration time is zero. This may be a sign of incorrect move parameters (zero speed or zero acceleration).");
-            return false;
+            result.status = PrepareMoveStatus::NO_EFFECTIVE_MOTION;
+            result.reason = result.hasQuantizedToZero ? "NO_EFFECTIVE_MOTION_QUANTIZED" : "NO_EFFECTIVE_MOTION";
+            result.syncModelValid = true;
+            return result;
         }
 
-        if (fullMovementTimeSec == 0)
+        if (params.speed == 0)
         {
-            maxMovementAbsAxis.status = RobotConstants::MoveStatus::MOVE_FAILED;
-            DBG_ERROR(DBG_GROUP_MOVE, "Full movement time is zero. This may be a sign of incorrect move parameters (zero speed or zero acceleration).");
-            return false;
+            result.status = PrepareMoveStatus::INVALID_SPEED;
+            result.reason = "SPEED_IS_ZERO";
+            result.syncModelValid = false;
+            return result;
         }
 
-        if (constantVelocityTimeSec <= 0)
+        if (params.acceleration == 0)
         {
-            maxMovementAbsAxis.status = RobotConstants::MoveStatus::MOVE_FAILED;
-            DBG_WARN(DBG_GROUP_MOVE, "Constant velocity time is non-negative. This may be a sign of incorrect move parameters (zero speed or zero acceleration).");
-            // return false;
+            result.status = PrepareMoveStatus::INVALID_ACCELERATION;
+            result.reason = "ACCELERATION_IS_ZERO";
+            result.syncModelValid = false;
+            return result;
         }
 
-        DBG_INFO(DBG_GROUP_MOVE, "Max movement in steps: " + String(maxMovementAbs) + " for axis " + String(maxMovementAbsAxisId));
-        DBG_INFO(DBG_GROUP_MOVE, "Acceleration time (s): " + String(accelerationTimeSec));
-        DBG_INFO(DBG_GROUP_MOVE, "Constant velocity time (s): " + String(constantVelocityTimeSec));
-        DBG_INFO(DBG_GROUP_MOVE, "Full movement time (s): " + String(fullMovementTimeSec));
-
-        for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
+        const double maxVelocityStepsPerSec = Axis::motorRPMToStepsPerSec(params.speed);
+        const double maxAccelerationStepsPerSec2 = Axis::motorRPMPSToStepsPerSec2(params.acceleration);
+        if (!std::isfinite(maxVelocityStepsPerSec) || !std::isfinite(maxAccelerationStepsPerSec2) || maxVelocityStepsPerSec <= 0.0 || maxAccelerationStepsPerSec2 <= 0.0)
         {
-            Axis &axis = axes.at(nodeId);
+            result.status = PrepareMoveStatus::INVALID_PROFILE;
+            result.reason = "NON_FINITE_PROFILE_INPUT";
+            result.syncModelValid = false;
+            return result;
+        }
 
-            if (nodeId != maxMovementAbsAxisId)
+        const double dAccelForMaxVelocity = (maxVelocityStepsPerSec * maxVelocityStepsPerSec) / maxAccelerationStepsPerSec2;
+        const double maxDistanceSteps = static_cast<double>(maxMovementAbs);
+        if (!std::isfinite(dAccelForMaxVelocity) || !std::isfinite(maxDistanceSteps))
+        {
+            result.status = PrepareMoveStatus::INVALID_PROFILE;
+            result.reason = "PROFILE_DISTANCE_INVALID";
+            result.syncModelValid = false;
+            return result;
+        }
+
+        result.isTriangularProfile = maxDistanceSteps <= dAccelForMaxVelocity;
+        if (result.isTriangularProfile)
+        {
+            result.accelerationTimeSec = std::sqrt(maxDistanceSteps / maxAccelerationStepsPerSec2);
+            result.constantVelocityTimeSec = 0.0;
+            result.fullMovementTimeSec = 2.0 * result.accelerationTimeSec;
+        }
+        else
+        {
+            result.accelerationTimeSec = maxVelocityStepsPerSec / maxAccelerationStepsPerSec2;
+            result.constantVelocityTimeSec = (maxDistanceSteps - dAccelForMaxVelocity) / maxVelocityStepsPerSec;
+            result.fullMovementTimeSec = 2.0 * result.accelerationTimeSec + result.constantVelocityTimeSec;
+        }
+
+        if (!std::isfinite(result.accelerationTimeSec) || result.accelerationTimeSec <= 0.0 ||
+            !std::isfinite(result.constantVelocityTimeSec) || result.constantVelocityTimeSec < 0.0 ||
+            !std::isfinite(result.fullMovementTimeSec) || result.fullMovementTimeSec <= 0.0)
+        {
+            result.status = PrepareMoveStatus::INVALID_PROFILE;
+            result.reason = "PROFILE_TIME_INVALID";
+            result.syncModelValid = false;
+            return result;
+        }
+
+        const double denominator = result.accelerationTimeSec + result.constantVelocityTimeSec;
+        if (!std::isfinite(denominator) || denominator <= 0.0)
+        {
+            result.status = PrepareMoveStatus::INVALID_PROFILE;
+            result.reason = "PROFILE_DENOMINATOR_INVALID";
+            result.syncModelValid = false;
+            return result;
+        }
+
+        bool hasEffectiveMotion = false;
+        bool syncModelValid = true;
+        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+        {
+            PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
+            const double relativeAbsSteps = std::abs(static_cast<double>(axisResult.relativeSteps));
+            if (relativeAbsSteps == 0.0)
             {
-                double velocityInStepsPerSec = std::abs(axes[nodeId].getRelativeMovementInSteps()) / (constantVelocityTimeSec + accelerationTimeSec);
-                DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": velocity in steps/s: " + String(velocityInStepsPerSec));
-                axis.setProfileVelocityInRPM(Axis::stepsPerSecToMotorRPM(velocityInStepsPerSec));
-                axis.setProfileAccelerationInRPMPerSec(axis.getProfileVelocityInRPM() / accelerationTimeSec);
-                DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": velocity (RPM): " + String(axis.getProfileVelocityInRPM()) + ", acceleration (RPM/s): " + String(axis.getProfileAccelerationInRPMPerSec()));
-                if (axis.getProfileVelocityInRPM() == 0)
-                {
-                    DBG_WARN(DBG_GROUP_MOVE, "Axis " + String(nodeId) + " has zero velocity. This may be a sign of incorrect move parameters.");
-                }
-                axis.status = RobotConstants::MoveStatus::PREPARED_FOR_MOVE;
+                continue;
+            }
+
+            hasEffectiveMotion = true;
+            axisResult.velocityStepsPerSec = relativeAbsSteps / denominator;
+            axisResult.accelerationStepsPerSec2 = axisResult.velocityStepsPerSec / result.accelerationTimeSec;
+            if (!std::isfinite(axisResult.velocityStepsPerSec) || axisResult.velocityStepsPerSec <= 0.0 ||
+                !std::isfinite(axisResult.accelerationStepsPerSec2) || axisResult.accelerationStepsPerSec2 <= 0.0)
+            {
+                syncModelValid = false;
+            }
+
+            const double velocityRpmDouble = Axis::stepsPerSecToMotorRPMDouble(axisResult.velocityStepsPerSec);
+            const double accelerationRpmPerSecDouble = Axis::stepsPerSec2ToRPMPSDouble(axisResult.accelerationStepsPerSec2);
+            if (!std::isfinite(velocityRpmDouble) || !std::isfinite(accelerationRpmPerSecDouble))
+            {
+                syncModelValid = false;
+                continue;
+            }
+
+            uint32_t profileVelocityRpm = static_cast<uint32_t>(std::ceil(velocityRpmDouble));
+            uint32_t profileAccelerationRpmPerSec = static_cast<uint32_t>(std::ceil(accelerationRpmPerSecDouble));
+            if (profileVelocityRpm == 0)
+            {
+                profileVelocityRpm = 1;
+            }
+            if (profileAccelerationRpmPerSec == 0)
+            {
+                profileAccelerationRpmPerSec = 1;
+            }
+
+            axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
+            axisResult.profileAccelerationRpmPerSec = std::min(profileAccelerationRpmPerSec, RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S);
+
+            const double axisAccelerationTime = axisResult.velocityStepsPerSec / axisResult.accelerationStepsPerSec2;
+            const double axisConstantTime = (relativeAbsSteps / axisResult.velocityStepsPerSec) - axisAccelerationTime;
+            const double syncTolerance = 1e-6;
+            if (std::abs(axisAccelerationTime - result.accelerationTimeSec) > syncTolerance ||
+                std::abs(axisConstantTime - result.constantVelocityTimeSec) > syncTolerance)
+            {
+                syncModelValid = false;
             }
         }
-        DBG_WARN(DBG_GROUP_MOVE, "Move prepared. Note: if the move failed due to incorrect parameters, some axes may have status MOVE_FAILED. Check logs for details.");
-        return true;
+
+        if (!hasEffectiveMotion)
+        {
+            result.status = PrepareMoveStatus::NO_EFFECTIVE_MOTION;
+            result.reason = result.hasQuantizedToZero ? "NO_EFFECTIVE_MOTION_QUANTIZED" : "NO_EFFECTIVE_MOTION";
+            result.syncModelValid = true;
+            return result;
+        }
+
+        result.syncModelValid = syncModelValid;
+        if (!result.syncModelValid)
+        {
+            result.status = PrepareMoveStatus::INVALID_PROFILE;
+            result.reason = "SYNC_MODEL_INVALID";
+            return result;
+        }
+
+        result.status = PrepareMoveStatus::OK;
+        result.reason = result.hasQuantizedToZero ? "OK_WITH_QUANTIZATION" : "OK";
+        return result;
     }
 
-    // void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe other corner cases
-    //     {
-    //         if (axesCnt == 0 || axes.empty())
-    //         {
-    //             addDataToOutQueue("No axes configured");
-    //             return;
-    //         }
-    //         DBG_VERBOSE(DBG_GROUP_MOVE, "MoveControllerBase.cpp prepareMove called");
-    //         uint8_t maxMovementAxisId = 0;
-    //         bool firstAxis = true;
-    //         double maxMovement = 0;
+    MoveControllerBase::PrepareMoveComputationResult MoveControllerBase::prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params)
+    {
+        PrepareMoveComputationResult result = computePrepareMove(params);
 
-    //         for (auto it = axes.begin(); it != axes.end(); ++it)
-    //         {
-    //             Axis &axis = it->second;
-    //             double axisMovement = std::fabs(axis.getMovementUnits());
-    //             if (firstAxis || axisMovement > maxMovement)
-    //             {
-    //                 maxMovement = axisMovement;
-    //                 maxMovementAxisId = axis.nodeId;
-    //                 firstAxis = false;
-    //             }
-    //         }
+        if (result.status == PrepareMoveStatus::OK || result.status == PrepareMoveStatus::NO_EFFECTIVE_MOTION)
+        {
+            for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+            {
+                Axis &axis = axes.at(nodeId);
+                const PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
 
-    //         if (accelerationUnits == 0)
-    //         { // Right now we do not support zero acceleration. But in the future we can add special handling for this case.
-    //             addDataToOutQueue("MoveControllerBase.cpp zero acceleration is not supported");
-    //             return;
-    //         }
-    //         double tAcceleration = regularSpeedUnits / accelerationUnits; // в секундах
-    //         if (regularSpeedUnits == 0)
-    //         { // Zero speed means no movement at all. It is strange to call move with zero speed
-    //             addDataToOutQueue("MoveControllerBase.cpp zero regularSpeedUnits is not supported (zero speed)");
-    //             return;
-    //         }
-    //         double tCruising = (maxMovement - regularSpeedUnits * regularSpeedUnits / accelerationUnits) / regularSpeedUnits;
-    //         double res = 0;
+                axis.setTargetPositionInSteps(axisResult.targetSteps);
+                axis.setProfileVelocityInRPM(axisResult.profileVelocityRpm);
+                axis.setProfileAccelerationInRPMPerSec(axisResult.profileAccelerationRpmPerSec);
 
-    //         if (maxMovement == 0)
-    //         {
-    //             addDataToOutQueue("MoveControllerBase.cpp maxMovement division by zero. Motors do not need to move.");
-    //             return;
-    //         }
+                if (result.status == PrepareMoveStatus::NO_EFFECTIVE_MOTION)
+                {
+                    axis.status = RobotConstants::MoveStatus::OPERATIONAL;
+                }
+                else
+                {
+                    axis.status = RobotConstants::MoveStatus::PREPARED_FOR_MOVE;
+                }
 
-    //         if (tAcceleration == 0 || (tAcceleration + tCruising == 0))
-    //         {
-    //             addDataToOutQueue("MoveControllerBase.cpp tAcceleration or tAcceleration + tCruising division by zero");
-    //             return;
-    //         }
+                DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": target(steps)=" + String(axisResult.targetSteps) + ", rel(steps)=" + String(axisResult.relativeSteps) + ", vel(rpm)=" + String(axisResult.profileVelocityRpm) + ", acc(rpm/s)=" + String(axisResult.profileAccelerationRpmPerSec));
+            }
 
-    //         for (auto it = axes.begin(); it != axes.end(); ++it)
-    //         {
-    //             Axis &axis = it->second;
+            DBG_INFO(DBG_GROUP_MOVE, "prepareMove status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason + ", triangular=" + String(result.isTriangularProfile) + ", ta=" + String(result.accelerationTimeSec) + ", tc=" + String(result.constantVelocityTimeSec) + ", tt=" + String(result.fullMovementTimeSec));
+            return result;
+        }
 
-    //             double axisMovementUnits = std::fabs(axis.getMovementUnits());
+        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+        {
+            axes[nodeId].status = RobotConstants::MoveStatus::MOVE_FAILED;
+        }
+        DBG_ERROR(DBG_GROUP_MOVE, "prepareMove failed: status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason);
+        return result;
+    }
 
-    //             axis.acceleration = (axisMovementUnits) / (tAcceleration * (tAcceleration + tCruising));
-    //             axis.regularSpeed = axis.acceleration * tAcceleration;
-    //             axis.params.x6083_profileAcceleration = axis.accelerationUnitsTorpmPerSecond(axis.acceleration);
-    //             axis.params.x6081_profileVelocity = axis.speedUnitsToRevolutionsPerMinute(axis.regularSpeed);
-    //         }
-    //     }
+    MoveControllerBase::PrepareMoveComputationResult MoveControllerBase::computePrepareMoveForTesting(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params) const
+    {
+        return computePrepareMove(params);
+    }
+
+    String MoveControllerBase::prepareMoveStatusToString(PrepareMoveStatus status)
+    {
+        switch (status)
+        {
+        case PrepareMoveStatus::OK:
+            return "OK";
+        case PrepareMoveStatus::NO_EFFECTIVE_MOTION:
+            return "NO_EFFECTIVE_MOTION";
+        case PrepareMoveStatus::INVALID_SPEED:
+            return "INVALID_SPEED";
+        case PrepareMoveStatus::INVALID_ACCELERATION:
+            return "INVALID_ACCELERATION";
+        case PrepareMoveStatus::INVALID_PROFILE:
+            return "INVALID_PROFILE";
+        case PrepareMoveStatus::INVALID_AXIS:
+            return "INVALID_AXIS";
+        default:
+            return "UNKNOWN";
+        }
+    }
+
     // ============================ Protected methods end ===========================
 
     // ============================= Private methods =============================
-    // void MoveControllerBase::sendMove()
-    // {
-    //     for (auto it = axes.begin(); it != axes.end(); ++it)
-    //     {
-    //         Axis &axis = it->second;
-    //         canOpen->send_x6081_profileVelocity(axis.nodeId, axis.params.x6081_profileVelocity);
-    //         canOpen->send_x6083_profileAcceleration(axis.nodeId, axis.params.x6083_profileAcceleration);
-
-    //         canOpen->send_x6040_controlword(axis.nodeId,
-    //                                         0x004F);
-
-    //         canOpen->send_x6040_controlword(axis.nodeId,
-    //                                         0x005F);
-
-    //         canOpen->sendPDO4_x607A_SyncMovement(axis.nodeId, axis.getTargetPositionAbsolute());
-
-    //         // Imitation, that the motor reached the target position
-    //         axis.setCurrentPositionInSteps(axis.params.x607A_targetPosition); // WRONG.
-    //         // axis.params.x6064_positionActualValue = axis.params.x607A_targetPosition;
-    //     }
-
-    //     delay(5);
-    //     // canOpen->sendSYNC();
-    // }
 
     void MoveControllerBase::positionUpdate(uint8_t nodeId, int32_t position)
     {
@@ -590,24 +696,7 @@ namespace StepDirController
     // ======== ZEI Sequence End ========
 
     // ======== MAJ Sequence ========
-    // void MoveControllerBase::MAJ_start(uint8_t nodeId)
-    // {
-    //     // Step 3
-    //     canOpen->set_callback_x6081_profileVelocity([this](uint8_t callbackNodeId, bool success)
-    //                                                 { this->MAJ_afterWriteTo_0x6081(callbackNodeId, success); }, nodeId);
 
-    //     // Step 4
-    //     bool successSend = canOpen->send_x6081_profileVelocity(nodeId,
-    //                                                            axes[nodeId].getProfileVelocityInRPM());
-
-    //     // Step 5
-    //     if (!MAJ_checkResponseStatus(nodeId, successSend,
-    //                                  "MAJ: Failed to send profile velocity (0x6081) for Axis " + String(nodeId)))
-    //     {
-    //         // Step 6
-    //         canOpen->set_callback_x6081_profileVelocity(nullptr, nodeId);
-    //     }
-    // }
 
     void MoveControllerBase::MAJ_start(uint8_t nodeId)
     {
@@ -744,38 +833,6 @@ namespace StepDirController
             canOpen->set_callback_TPDO4(nullptr, nodeId);
         }
     }
-
-    // void MoveControllerBase::MAJ_TPDO4(uint8_t nodeId, int32_t actualLocation, uint16_t statusWord)
-    // {
-    //     // Step 1
-    //     canOpen->set_callback_TPDO4(nullptr, nodeId);
-    //     // Step 2
-    //     // if (!MAJ_checkResponseStatus(nodeId, success,
-    //     //                              "MAJ: Failed to set profile acceleration (0x6083) for Axis " + String(nodeId)))
-    //     // {
-    //     //     return;
-    //     // }
-
-    //     // Step 3 (Data processing)
-    //     DBG_WARN(DBG_GROUP_MOVE, "MAJ TPDO4 from node " + String(nodeId) + ": actualLocation=" + String(actualLocation) + ", statusWord=0x" + String(statusWord, HEX));
-    //     axes[nodeId].status = RobotConstants::MoveStatus::MOVING;
-    //     // Step 4
-    //     canOpen->set_callback_read_x6041_statusword([this](uint8_t cbNodeId, bool success, uint16_t statusWord)
-    //                                 { this->MAJ_statusWordCallback(cbNodeId, success, statusWord); }, nodeId);
-    //     // Step 5
-    //     bool successSend = canOpen->sendSDORead(nodeId,
-    //                                             RobotConstants::ODIndices::STATUSWORD,
-    //                                             RobotConstants::ODIndices::DEFAULT_SUBINDEX);
-    //     // Step 6
-    //     if (!MAJ_checkResponseStatus(nodeId, successSend,
-    //                                  "MAJ: Failed to send statusword request for Axis " + String(nodeId)))
-    //     {
-    //         // Step 7
-    //         canOpen->set_callback_read_x6041_statusword(nullptr, nodeId);
-    //     }
-        
-    //     axes[nodeId].lastRequestedStatusWord = millis();
-    // }
 
     void MoveControllerBase::MAJ_TPDO4(uint8_t nodeId, int32_t actualLocation, uint16_t statusWord)
     {

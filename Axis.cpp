@@ -205,16 +205,45 @@ namespace StepDirController
     {
         return static_cast<double>(rpm) * RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV / (RobotConstants::Math::SECONDS_IN_MINUTE * RobotConstants::Axis::GEAR_RATIO);
     }
+
+    double Axis::motorRPMToStepsPerSec(uint32_t rpm)
+    {
+        return static_cast<double>(rpm) * RobotConstants::Axis::STEPS_PER_MOTOR_REV / RobotConstants::Math::SECONDS_IN_MINUTE;
+    }
+
+    double Axis::motorRPMPSToStepsPerSec2(uint32_t rpmPerSec)
+    {
+        return static_cast<double>(rpmPerSec) * RobotConstants::Axis::STEPS_PER_MOTOR_REV / RobotConstants::Math::SECONDS_IN_MINUTE;
+    }
     
     uint32_t Axis::stepsPerSecToMotorRPM(double stepsPerSec) // Convert steps/sec to RPM
     {
+        return static_cast<uint32_t>(std::ceil(Axis::stepsPerSecToMotorRPMDouble(stepsPerSec)));
+    }
+
+    uint32_t Axis::stepsPerSec2ToRPMPS(double stepsPerSec2) // Convert degrees/sec^2 to RPM/sec
+    {
+        return static_cast<uint32_t>(std::ceil(Axis::stepsPerSec2ToRPMPSDouble(stepsPerSec2)));
+    }
+
+    double Axis::stepsPerSecToMotorRPMDouble(double stepsPerSec) // Convert steps/sec to RPM
+    {
         if (stepsPerSec < 0)
         {
-            DBG_WARN(DBG_GROUP_AXIS, "Axis::stepsPerSecToMotorRPM -- negative steps/sec not allowed");
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::stepsPerSecToMotorRPMDouble -- negative steps/sec not allowed");
             return 0;
         }
-
-        return static_cast<uint32_t>(stepsPerSec * RobotConstants::Math::SECONDS_IN_MINUTE / RobotConstants::Axis::STEPS_PER_MOTOR_REV);
+        return stepsPerSec * RobotConstants::Math::SECONDS_IN_MINUTE / RobotConstants::Axis::STEPS_PER_MOTOR_REV;
+    }
+    
+    double Axis::stepsPerSec2ToRPMPSDouble(double stepsPerSec2) // Convert degrees/sec^2 to RPM/sec
+    {
+        if (stepsPerSec2 < 0)
+        {
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::stepsPerSec2ToRPMPSDouble -- negative steps/sec^2 not allowed");
+            return 0;
+        }
+        return stepsPerSec2 * RobotConstants::Math::SECONDS_IN_MINUTE / RobotConstants::Axis::STEPS_PER_MOTOR_REV;
     }
 
     uint32_t Axis::accelerationUnitsToRPMPS(double accelearionUnits) // Перевести градусы/сек^2 в об/(мин*сек)
@@ -226,6 +255,7 @@ namespace StepDirController
         }
         return static_cast<uint32_t>(accelearionUnits * RobotConstants::Math::SECONDS_IN_MINUTE * RobotConstants::Axis::GEAR_RATIO / RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV);
     }
+
 
     double Axis::RPMPSToAccelerationUnits(uint32_t rpmPerSecond)
     {

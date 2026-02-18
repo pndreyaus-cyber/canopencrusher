@@ -1,0 +1,2 @@
+pyserial>=3.5
+openpyxl>=3.1.0
