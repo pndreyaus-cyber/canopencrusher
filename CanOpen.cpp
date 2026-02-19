@@ -235,7 +235,7 @@ bool CanOpen::loopbackTest()
     }
     else
     {
-        DBG_INFO(DBG_GROUP_CANOPEN, "Test message queued for loopback transmission");
+        //DBG_INFO(DBG_GROUP_CANOPEN, "Test message queued for loopback transmission");
     }
 
     delay(100); // Wait for message to loop back
@@ -295,7 +295,7 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     // Check for invalid length (CAN frame can have max 8 bytes of data)
     if (msgDataLen > 8)
     {
-        DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid data length in CAN send: " + String(msgDataLen));
+        //DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid data length in CAN send: " + String(msgDataLen));
         return false;
     }
 

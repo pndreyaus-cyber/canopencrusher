@@ -56,12 +56,14 @@ void setup()
     }
     Serial2.println("Serial connected!");
 
+    pinMode(PC13, OUTPUT);
+    digitalWrite(PC13, HIGH);
+
     if (!canOpen.startCan(1000000))
     {
         Serial2.println("Failed to initialize CAN bus");
         while (1)
         {
-
         }
     }
     else
@@ -89,19 +91,24 @@ void loop()
         handleCommand();
     }
 
-    sendData();
-    canOpen.read();
-    if (millis() - lastTickTime_100 >= 100)
-    {
-        lastTickTime_100 = millis();
-        moveController.tick_100();
-    }
+    digitalWrite(PC13, LOW);
+    delay(1000);
+    digitalWrite(PC13, HIGH);
+    delay(1000);
 
-    if (millis() - lastTickTime_500 >= 500)
-    {
-        lastTickTime_500 = millis();
-        moveController.tick_500();
-    }
+    sendData();
+    // canOpen.read();
+    // if (millis() - lastTickTime_100 >= 100)
+    // {
+    //     lastTickTime_100 = millis();
+    //     moveController.tick_100();
+    // }
+
+    // if (millis() - lastTickTime_500 >= 500)
+    // {
+    //     lastTickTime_500 = millis();
+    //     moveController.tick_500();
+    // }
 }
 
 bool receiveCommand()
