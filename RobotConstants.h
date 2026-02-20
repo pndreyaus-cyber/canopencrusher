@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <array>
 #include <functional>
+#include <cstring>
 #include <Arduino.h>
 
 using callback_x6064_positionActualValue = std::function<void(uint8_t, bool, int32_t)>;
@@ -85,7 +86,7 @@ namespace RobotConstants
         const String MOTOR_STATUS = "RMS";
         const String ZERO_INITIALIZE = "ZEI";
         const String REQUEST_POSITION = "RPP";
-        const String PREPAREMOVE_MATH_TEST = "PMT";
+        const String PREPAREMOVE_TEST = "PMT";
         constexpr int COMMAND_LEN = 3;
         const float MIN_SPEED_UNITS = 0.0f;
         const float MAX_SPEED_UNITS = 100.0f;
@@ -178,16 +179,6 @@ namespace RobotConstants
         constexpr uint8_t DEFAULT_SUBINDEX = 0x00;
     }
 
-    // Control parameters
-    namespace Control
-    {
-        constexpr uint32_t MAXIMUM_PROFILE_VELOCITY_IN_RPM = 3000;
-        constexpr uint32_t MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S = 65535;
-        constexpr double MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S = 360;
-        constexpr double MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2 = 7864.2;
-        
-    }
-
     // Axis configuration
     namespace Axis
     {
@@ -195,6 +186,32 @@ namespace RobotConstants
         constexpr double UNITS_PER_OUTPUT_SHAFT_REV = 360; // 1 revolution of output shaft corresponds to 360 degrees
         constexpr int GEAR_RATIO = 50;
         constexpr double UNITS_PER_MOTOR_REV = UNITS_PER_OUTPUT_SHAFT_REV / GEAR_RATIO; // 1 revolution of motor corresponds to UNITS_PER_MOTOR_REV degrees
+    }
+
+    // Control parameters
+    namespace Control
+    {
+        constexpr uint32_t MAXIMUM_PROFILE_VELOCITY_IN_RPM = 3000;
+        constexpr double MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S = 360;
+        constexpr uint32_t MAXIMUM_PROFILE_VELOCITY_IN_STEPS_PER_SECOND = 1638400; // Corresponds to 3000 RPM for a motor with 32768 steps per revolution
+        constexpr double MAXIMUM_PROFILE_VELOCITY_IN_PERCENT = 1.0;
+
+        constexpr uint32_t MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S = 65535;
+        constexpr double MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2 = 7864.2;
+        constexpr uint32_t MAXIMUM_PROFILE_ACCELERATION_IN_STEPS_PER_SECOND2 = 35790848; // Corresponds to 65535 RPM/s for a motor with 32768 steps per revolution 
+        constexpr double MAXIMUM_PROFILE_ACCELERATION_IN_PERCENT = 1.0;
+
+        constexpr uint32_t MINIMUM_PROFILE_VELOCITY_IN_RPM = 1;
+        constexpr double MINIMUM_PROFILE_VELOCITY_IN_DEG_PER_S = 0.12; // Corresponds to 1 RPM for a motor with 32768 steps per revolution
+        constexpr double MINIMUM_PROFILE_VELOCITY_IN_PERCENT = 0.000333333;
+        constexpr uint32_t MINIMUM_PROFILE_VELOCITY_IN_STEPS_PER_SEC = Axis::STEPS_PER_MOTOR_REV * MINIMUM_PROFILE_VELOCITY_IN_RPM / Math::SECONDS_IN_MINUTE;
+
+        constexpr uint32_t MINIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S = 1;
+        constexpr double MINIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2 = 0.12; // Corresponds to 1 RPM/s for a motor with 32768 steps per revolution
+        constexpr double MINIMUM_PROFILE_ACCELERATION_IN_PERCENT = 0.000015259;
+        constexpr uint32_t MINIMUM_PROFILE_ACCELERATION_IN_STEPS_PER_SEC2 = Axis::STEPS_PER_MOTOR_REV * MINIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S / Math::SECONDS_IN_MINUTE;
+
+        constexpr double MINIMUM_ABSOLUTE_ANGLE = 9.0/40960.0; // 0.0002197265
     }
 
     // Buffer sizes

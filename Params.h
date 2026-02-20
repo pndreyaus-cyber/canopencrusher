@@ -20,8 +20,8 @@ struct MoveParams
     ParamsStatus status = ParamsStatus::OK;
     String errorMsg;
     double movementUnits[N] = {};
-    uint32_t speed = 0;
-    uint32_t acceleration = 0;
+    double speed = 0; // It should be in percent [0, 1]
+    double acceleration = 0; // It should be in percent [0, 1]
 };
 
 struct MotorIndices

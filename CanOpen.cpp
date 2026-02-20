@@ -188,11 +188,10 @@ bool CanOpen::startCan(uint32_t baudRate)
     {
         this->canBaudRate = baudRate;
         Can.setAutoRetransmission(true);
-        //addDataToOutQueue("Starting CAN with baud rate: " + String(baudRate));
         // Loopback test
         if (!loopbackTest())
         {
-            //addDataToOutQueue("CAN loopback test failed during start");
+            Serial2.println("CAN loopback test");
             return false;
         }
         Can.end();
@@ -202,7 +201,6 @@ bool CanOpen::startCan(uint32_t baudRate)
         Can.begin();
         Can.setBaudRate(canBaudRate);
         can_initialized = true;
-        //DBG_INFO(DBG_GROUP_CANOPEN, "CAN initialized with baud rate: " + String(canBaudRate));
         return true;
     }
     return false; // already initialized
@@ -230,14 +228,8 @@ bool CanOpen::loopbackTest()
     bool queued = Can.write(testMsg);
     if (!queued)
     {
-        //addDataToOutQueue("Failed to queue test message for transmission");
         return false;
     }
-    else
-    {
-        //DBG_INFO(DBG_GROUP_CANOPEN, "Test message queued for loopback transmission");
-    }
-
     delay(100); // Wait for message to loop back
 
     CAN_message_t receivedMsg;
@@ -248,11 +240,8 @@ bool CanOpen::loopbackTest()
     }
     else
     {
-        //addDataToOutQueue("Failed to receive loopback message");
         return false;
     }
-
-    //DBG_INFO(DBG_GROUP_CANOPEN, "Received loopback message with ID: " + String(receivedMsg.id, HEX) + " and length: " + String(receivedMsg.len));
 
     if (got && receivedMsg.id == testMsg.id && receivedMsg.len == testMsg.len)
     {
@@ -267,18 +256,15 @@ bool CanOpen::loopbackTest()
         }
         if (dataMatch)
         {
-            //addDataToOutQueue("\nLoopback test successful");
             return true;
         }
         else
         {
-            //addDataToOutQueue("\nData mismatch in loopback test");
             return false;
         }
     }
     else
     {
-        //addDataToOutQueue("\nLoopback test failed: ID or length mismatch");
         return false;
     }
 }
@@ -295,7 +281,7 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     // Check for invalid length (CAN frame can have max 8 bytes of data)
     if (msgDataLen > 8)
     {
-        //DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid data length in CAN send: " + String(msgDataLen));
+        DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid data length in CAN send: " + String(msgDataLen));
         return false;
     }
 
@@ -317,7 +303,7 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     bool ok = Can.write(CAN_TX_msg);
     if (!ok)
     {
-        //DBG_ERROR(DBG_GROUP_CANOPEN, "CAN send failed for ID: " + String(id, HEX));
+        DBG_ERROR(DBG_GROUP_CANOPEN, "CAN send failed for ID: " + String(id, HEX));
     }
     delay(1);
     return ok;
@@ -453,7 +439,6 @@ bool CanOpen::read()
             }
             else if (registerAddress == RobotConstants::ODIndices::STATUSWORD)
             { // 0x6041
-                //DBG_VERBOSE(DBG_GROUP_MOVE, "SDO response for Status Word from node " + String(nodeId) + " " + (callbacks_read_x6041_statusword[nodeId] != nullptr));
                 if (callbacks_read_x6041_statusword[nodeId] != nullptr)
                 {
                     bool success = (data[0] != 0x80);
@@ -469,13 +454,11 @@ bool CanOpen::read()
         }
         else if (function_code == RobotConstants::CANOpen::COB_ID_TPDO1_BASE)
         {
-            DBG_VERBOSE(DBG_GROUP_CANOPEN, "TPDO1 from node " + String(nodeId));
             int32_t actualPosition = (static_cast<int32_t>(data[3]) << 24) |
                                  (static_cast<int32_t>(data[2]) << 16) |
                                  (static_cast<int32_t>(data[1]) << 8) |
                                  (static_cast<int32_t>(data[0]));
             uint16_t statusWordValue = static_cast<uint16_t>(data[5]) | (static_cast<uint16_t>(data[6]) << 8);
-            DBG_INFO(DBG_GROUP_MOVE, "TPDO1 from node " + String(nodeId) + " Actual Position: " + String(actualPosition) + " Status Word: 0x" + String(statusWordValue, HEX));
             if(callbacks_TPDO1[nodeId] != nullptr)
             {
                 callbacks_TPDO1[nodeId](nodeId, actualPosition, statusWordValue);

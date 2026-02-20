@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <cmath>
 #include "MoveControllerBase.h"
-#include "PrepareMoveMathTestRunner.h"
+#include "PrepareMoveTest.h"
 #include "Arduino.h"
 #include "Debug.h"
 
@@ -24,12 +24,12 @@ namespace StepDirController
     {
         if (axesCnt == 0)
         {
-            addDataToOutQueue("MoveControllerBase start with 0 axes. This is not allowed");
+            Serial2.println("MoveControllerBase start with 0 axes. This is not allowed");
             return false;
         }
         if (canOpen == nullptr)
         {
-            addDataToOutQueue("MoveControllerBase start with nullptr canOpen. This is not allowed");
+            Serial2.println("MoveControllerBase start with nullptr canOpen. This is not allowed");
             return false;
         }
 
@@ -111,11 +111,6 @@ namespace StepDirController
         return false;
     }
 
-    bool MoveControllerBase::runPrepareMoveMathTests()
-    {
-        return runPrepareMoveMathTestSuite(*this, prepareMoveTestVerbose);
-    }
-
     void MoveControllerBase::tick_100()
     {
         if (!initialized)
@@ -140,27 +135,39 @@ namespace StepDirController
 
     // ============================ Protected methods =============================
 
-    MoveControllerBase::PrepareMoveComputationResult MoveControllerBase::computePrepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params) const
+    MoveControllerBase::PrepareMoveComputationResult MoveControllerBase::computePrepareMove(MoveInput& input)
     {
         PrepareMoveComputationResult result;
+        if(input.velocity < 0 || RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_PERCENT < input.velocity){
+            result.status = PrepareMoveStatus::INVALID_SPEED;
+            return result;
+        }
+        if(input.acceleration < 0 || RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_PERCENT < input.acceleration){
+            result.status = PrepareMoveStatus::INVALID_ACCELERATION;
+            return result;
+        }
+
+        double velocity = input.velocity;
+        if(0 < velocity && velocity < RobotConstants::Control::MINIMUM_PROFILE_VELOCITY_IN_PERCENT){
+            velocity = RobotConstants::Control::MINIMUM_PROFILE_VELOCITY_IN_PERCENT;
+        }
+
+        double acceleration = input.acceleration;
+        if(0 < acceleration && acceleration < RobotConstants::Control::MINIMUM_PROFILE_ACCELERATION_IN_PERCENT){
+            acceleration = RobotConstants::Control::MINIMUM_PROFILE_ACCELERATION_IN_PERCENT;
+        }
 
         int32_t maxMovementAbs = 0;
-        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+        for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
         {
-            double movementUnits = params.movementUnits[nodeId - 1];
-            const Axis &axis = axes.at(nodeId);
             PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
-
-            const int32_t targetSteps = Axis::unitsToSteps(movementUnits);
-            const int32_t currentSteps = axis.getCurrentPositionInSteps();
-            const int32_t relativeSteps = targetSteps - currentSteps;
-
-            axisResult.requestedMovement = std::abs(movementUnits) > 0.0;
-            axisResult.targetSteps = targetSteps;
-            axisResult.relativeSteps = relativeSteps;
-            axisResult.quantizedToZero = axisResult.requestedMovement && relativeSteps == 0;
-
-            result.hasQuantizedToZero = result.hasQuantizedToZero || axisResult.quantizedToZero;
+            axisResult.requestedMovement = true;
+            if (input.relativeMotions[nodeId - 1] == 0)
+            {
+                axisResult.requestedMovement = false;
+            }
+            const int32_t relativeSteps = input.relativeMotions[nodeId - 1];
+            axisResult.targetSteps = relativeSteps;
 
             int32_t axisRelativeMovementAbsInSteps = std::abs(relativeSteps);
             if (axisRelativeMovementAbsInSteps > maxMovementAbs)
@@ -174,12 +181,12 @@ namespace StepDirController
         if (maxMovementAbs == 0)
         {
             result.status = PrepareMoveStatus::NO_EFFECTIVE_MOTION;
-            result.reason = result.hasQuantizedToZero ? "NO_EFFECTIVE_MOTION_QUANTIZED" : "NO_EFFECTIVE_MOTION";
+            result.reason = "NO_EFFECTIVE_MOTION";
             result.syncModelValid = true;
             return result;
         }
 
-        if (params.speed == 0)
+        if (velocity == 0)
         {
             result.status = PrepareMoveStatus::INVALID_SPEED;
             result.reason = "SPEED_IS_ZERO";
@@ -187,7 +194,7 @@ namespace StepDirController
             return result;
         }
 
-        if (params.acceleration == 0)
+        if (acceleration == 0)
         {
             result.status = PrepareMoveStatus::INVALID_ACCELERATION;
             result.reason = "ACCELERATION_IS_ZERO";
@@ -195,15 +202,8 @@ namespace StepDirController
             return result;
         }
 
-        const double maxVelocityStepsPerSec = Axis::motorRPMToStepsPerSec(params.speed);
-        const double maxAccelerationStepsPerSec2 = Axis::motorRPMPSToStepsPerSec2(params.acceleration);
-        if (!std::isfinite(maxVelocityStepsPerSec) || !std::isfinite(maxAccelerationStepsPerSec2) || maxVelocityStepsPerSec <= 0.0 || maxAccelerationStepsPerSec2 <= 0.0)
-        {
-            result.status = PrepareMoveStatus::INVALID_PROFILE;
-            result.reason = "NON_FINITE_PROFILE_INPUT";
-            result.syncModelValid = false;
-            return result;
-        }
+        const double maxVelocityStepsPerSec = velocity * RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_STEPS_PER_SECOND;
+        const double maxAccelerationStepsPerSec2 = acceleration * RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_STEPS_PER_SECOND2;
 
         const double dAccelForMaxVelocity = (maxVelocityStepsPerSec * maxVelocityStepsPerSec) / maxAccelerationStepsPerSec2;
         const double maxDistanceSteps = static_cast<double>(maxMovementAbs);
@@ -250,10 +250,10 @@ namespace StepDirController
 
         bool hasEffectiveMotion = false;
         bool syncModelValid = true;
-        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+        for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
         {
             PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
-            const double relativeAbsSteps = std::abs(static_cast<double>(axisResult.relativeSteps));
+            const double relativeAbsSteps = std::abs(static_cast<double>(axisResult.targetSteps));
             if (relativeAbsSteps == 0.0)
             {
                 continue;
@@ -261,6 +261,11 @@ namespace StepDirController
 
             hasEffectiveMotion = true;
             axisResult.velocityStepsPerSec = relativeAbsSteps / denominator;
+            // addDataToOutQueue("Axis " + String(nodeId) + 
+            //     ": relativeAbsSteps=" + String(relativeAbsSteps, 6) +
+            //     ", denominator=" + String(denominator, 6) +
+            //     ", velocityStepsPerSec=" + String(axisResult.velocityStepsPerSec, 6));
+            
             axisResult.accelerationStepsPerSec2 = axisResult.velocityStepsPerSec / result.accelerationTimeSec;
             if (!std::isfinite(axisResult.velocityStepsPerSec) || axisResult.velocityStepsPerSec <= 0.0 ||
                 !std::isfinite(axisResult.accelerationStepsPerSec2) || axisResult.accelerationStepsPerSec2 <= 0.0)
@@ -270,21 +275,36 @@ namespace StepDirController
 
             const double velocityRpmDouble = Axis::stepsPerSecToMotorRPMDouble(axisResult.velocityStepsPerSec);
             const double accelerationRpmPerSecDouble = Axis::stepsPerSec2ToRPMPSDouble(axisResult.accelerationStepsPerSec2);
+            // addDataToOutQueue("Axis " + String(nodeId) +
+            //  ": velocity(steps/s)=" + String(axisResult.velocityStepsPerSec, 6) +
+            //  ", acceleration(steps/s^2)=" + String(axisResult.accelerationStepsPerSec2, 6) +
+            //  ", velocity(rpm)=" + String(velocityRpmDouble, 6) +
+            //  ", acceleration(rpm/s)=" + String(accelerationRpmPerSecDouble, 6));
+
             if (!std::isfinite(velocityRpmDouble) || !std::isfinite(accelerationRpmPerSecDouble))
             {
                 syncModelValid = false;
                 continue;
             }
 
-            uint32_t profileVelocityRpm = static_cast<uint32_t>(std::ceil(velocityRpmDouble));
-            uint32_t profileAccelerationRpmPerSec = static_cast<uint32_t>(std::ceil(accelerationRpmPerSecDouble));
-            if (profileVelocityRpm == 0)
+            uint32_t profileVelocityRpm;
+            if (axisResult.velocityStepsPerSec < RobotConstants::Control::MINIMUM_PROFILE_VELOCITY_IN_STEPS_PER_SEC)
             {
-                profileVelocityRpm = 1;
+                profileVelocityRpm = RobotConstants::Control::MINIMUM_PROFILE_VELOCITY_IN_RPM;
             }
-            if (profileAccelerationRpmPerSec == 0)
+            else
             {
-                profileAccelerationRpmPerSec = 1;
+                profileVelocityRpm = static_cast<uint32_t>(std::ceil(velocityRpmDouble));
+            }
+
+            uint32_t profileAccelerationRpmPerSec;
+            if (axisResult.accelerationStepsPerSec2 < RobotConstants::Control::MINIMUM_PROFILE_ACCELERATION_IN_STEPS_PER_SEC2)
+            {
+                profileAccelerationRpmPerSec = RobotConstants::Control::MINIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S;
+            }
+            else
+            {
+                profileAccelerationRpmPerSec = static_cast<uint32_t>(std::ceil(accelerationRpmPerSecDouble));
             }
 
             axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
@@ -303,7 +323,7 @@ namespace StepDirController
         if (!hasEffectiveMotion)
         {
             result.status = PrepareMoveStatus::NO_EFFECTIVE_MOTION;
-            result.reason = result.hasQuantizedToZero ? "NO_EFFECTIVE_MOTION_QUANTIZED" : "NO_EFFECTIVE_MOTION";
+            result.reason ="NO_EFFECTIVE_MOTION";
             result.syncModelValid = true;
             return result;
         }
@@ -317,13 +337,22 @@ namespace StepDirController
         }
 
         result.status = PrepareMoveStatus::OK;
-        result.reason = result.hasQuantizedToZero ? "OK_WITH_QUANTIZATION" : "OK";
+        result.reason = "OK";
         return result;
     }
 
     MoveControllerBase::PrepareMoveComputationResult MoveControllerBase::prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params)
     {
-        PrepareMoveComputationResult result = computePrepareMove(params);
+        MoveInput input;
+        input.velocity = params.speed;
+        input.acceleration = params.acceleration;
+        for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
+        {
+            int32_t targetPositionInSteps = Axis::unitsToSteps(params.movementUnits[nodeId - 1]);
+            input.relativeMotions[nodeId - 1] = targetPositionInSteps - axes[nodeId].getCurrentPositionInSteps();
+        }
+
+        PrepareMoveComputationResult result = computePrepareMove(input);
 
         if (result.status == PrepareMoveStatus::OK || result.status == PrepareMoveStatus::NO_EFFECTIVE_MOTION)
         {
@@ -345,7 +374,7 @@ namespace StepDirController
                     axis.status = RobotConstants::MoveStatus::PREPARED_FOR_MOVE;
                 }
 
-                DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": target(steps)=" + String(axisResult.targetSteps) + ", rel(steps)=" + String(axisResult.relativeSteps) + ", vel(rpm)=" + String(axisResult.profileVelocityRpm) + ", acc(rpm/s)=" + String(axisResult.profileAccelerationRpmPerSec));
+                DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": target(steps)=" + String(axisResult.targetSteps) + ", vel(rpm)=" + String(axisResult.profileVelocityRpm) + ", acc(rpm/s)=" + String(axisResult.profileAccelerationRpmPerSec));
             }
 
             DBG_INFO(DBG_GROUP_MOVE, "prepareMove status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason + ", triangular=" + String(result.isTriangularProfile) + ", ta=" + String(result.accelerationTimeSec) + ", tc=" + String(result.constantVelocityTimeSec) + ", tt=" + String(result.fullMovementTimeSec));
@@ -358,32 +387,6 @@ namespace StepDirController
         }
         DBG_ERROR(DBG_GROUP_MOVE, "prepareMove failed: status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason);
         return result;
-    }
-
-    MoveControllerBase::PrepareMoveComputationResult MoveControllerBase::computePrepareMoveForTesting(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params) const
-    {
-        return computePrepareMove(params);
-    }
-
-    String MoveControllerBase::prepareMoveStatusToString(PrepareMoveStatus status)
-    {
-        switch (status)
-        {
-        case PrepareMoveStatus::OK:
-            return "OK";
-        case PrepareMoveStatus::NO_EFFECTIVE_MOTION:
-            return "NO_EFFECTIVE_MOTION";
-        case PrepareMoveStatus::INVALID_SPEED:
-            return "INVALID_SPEED";
-        case PrepareMoveStatus::INVALID_ACCELERATION:
-            return "INVALID_ACCELERATION";
-        case PrepareMoveStatus::INVALID_PROFILE:
-            return "INVALID_PROFILE";
-        case PrepareMoveStatus::INVALID_AXIS:
-            return "INVALID_AXIS";
-        default:
-            return "UNKNOWN";
-        }
     }
 
     // ============================ Protected methods end ===========================
@@ -996,6 +999,25 @@ namespace StepDirController
         return (statusWord & 0b10000000000) != 0;
     }
     // ======== MAJ Sequence End ========
+
+    String MoveControllerBase::prepareMoveStatusToString(PrepareMoveStatus status)
+    {
+        switch (status)
+        {
+            case PrepareMoveStatus::OK:
+                return "OK";
+            case PrepareMoveStatus::NO_EFFECTIVE_MOTION:
+                return "NO_EFFECTIVE_MOTION";
+            case PrepareMoveStatus::INVALID_SPEED:
+                return "INVALID_SPEED";
+            case PrepareMoveStatus::INVALID_ACCELERATION:
+                return "INVALID_ACCELERATION";
+            case PrepareMoveStatus::INVALID_PROFILE:
+                return "INVALID_PROFILE";
+            default:
+                return "UNKNOWN";
+        }
+    }
 
     // ======== Regular callbacks ========
     void MoveControllerBase::regularHeartbeatCallback(uint8_t nodeId, uint8_t status)
