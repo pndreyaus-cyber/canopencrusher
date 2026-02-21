@@ -35,15 +35,14 @@ namespace RobotConstants
 
     enum MoveStatus : uint8_t
     {
-        PRE_OPERATIONAL = 0,
-        OPERATIONAL = 1,
-        STOPPED = 2,
-        FAILED = 3,
-        PREPARED_FOR_MOVE = 4,
-        READY_TO_MOVE = 5,
-        MOVING = 6,
-        MOVE_FINISHED = 7,
-        MOVE_FAILED = 8,
+        NOT_TASKED_WITH_MOVE = 0,
+        TASKED_WITH_MOVE = 1,
+        MOVE_PREPARATION_FAIL = 2,
+        MOVE_PREPARATION_SUCCESS = 3,
+        READY_TO_MOVE = 4,
+        MOVING = 5,
+        MOVE_FAIL = 6,
+        MOVE_SUCCESS = 7
     };
 
     enum MoveUnits : uint8_t
@@ -234,6 +233,7 @@ namespace RobotConstants
         const String UNKNOWN_ERROR = "UE";
         const String INVALID_NODE_ID = "IN";
         const String LOGIC_ERROR = "LE";
+        const String NOT_IMPLEMENTED = "NI";
     }
 
 } // namespace RobotConstants

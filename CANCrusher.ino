@@ -24,7 +24,7 @@ void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConsta
 MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command, RobotConstants::MoveUnits moveUnits);
 MotorIndices stringToMotorIndices(String command);
 
-void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove);
+void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const String& command, bool isAbsoluteMove);
 void handleZeroInitialize(MotorIndices motorIndices);
 void handleRequestPosition(MotorIndices motorIndices);
 void handleMotorStatus(String command);
@@ -127,12 +127,12 @@ void handleCommand()
     String function = inData.substring(0, 3);
     if (function.equals(RobotConstants::Commands::MOVE_ABSOLUTE))
     {
-        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), true);
+        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), RobotConstants::Commands::MOVE_ABSOLUTE, true);
     }
 
     else if (function.equals(RobotConstants::Commands::MOVE_RELATIVE))
     {
-        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), false);
+        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), RobotConstants::Commands::MOVE_RELATIVE, false);
     }
     else if (function.equals(RobotConstants::Commands::ECHO))
     {
@@ -156,7 +156,7 @@ void handleCommand()
     }
     else if (function.equals(RobotConstants::Commands::MOVE_ABSOLUTE_PERCENT))
     {
-        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_PERCENT), true); // For now, treat MAP the same as MAJ. The move controller will need to be updated to handle percentage-based moves.
+        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_PERCENT), RobotConstants::Commands::MOVE_ABSOLUTE_PERCENT, true); // For now, treat MAP the same as MAJ. The move controller will need to be updated to handle percentage-based moves.
     }
     else
     {
@@ -242,6 +242,7 @@ void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConsta
         params.errorMsg = "Invalid acceleration value: " + accelerationStr;
         return;
     }
+
     float acceleration = accelerationStr.toFloat();
 
     if (moveUnits == RobotConstants::MoveUnits::UNITS_PERCENT)
@@ -428,31 +429,29 @@ MotorIndices stringToMotorIndices(String command)
     return motorIndices;
 }
 
-void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove)
+void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const String& command, bool isAbsoluteMove)
 {
     if (params.status != ParamsStatus::OK)
     {
         DBG_ERROR(DBG_GROUP_COMMAND, params.errorMsg);
-        addDataToOutQueue((isAbsoluteMove ? RobotConstants::Commands::MOVE_ABSOLUTE : RobotConstants::Commands::MOVE_RELATIVE) + " " + RobotConstants::Status::INVALID_PARAMS);
+        addDataToOutQueue(command + " " + RobotConstants::Status::INVALID_PARAMS);
         return;
     }
 
-    DBG_VERBOSE(DBG_GROUP_COMMAND, String(isAbsoluteMove ? "Handling absolute move command with parameters: " : "Handling relative move command with parameters: ") +
-                                       "movements = " + String(RobotConstants::Robot::AXES_COUNT) + " nodes, " +
-                                       "speed (RPM) = " + String(params.speed) + ", acceleration (RPM/s) = " + String(params.acceleration));
-    // for(const auto& movement : params.movements) {
-    //     DBG_VERBOSE(DBG_GROUP_COMMAND, "Node " + String(movement.first) + ": " + String(movement.second));
-    // }
-
-    if (!moveController.move(params))
+    Serial2.println("MAP: velocity=" + String(params.speed) + ", acceleration=" + String(params.acceleration));
+    for(uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
     {
-        addDataToOutQueue((isAbsoluteMove ? RobotConstants::Commands::MOVE_ABSOLUTE : RobotConstants::Commands::MOVE_RELATIVE) + " " + RobotConstants::Status::LOGIC_ERROR);
+        Serial2.println("Axis " + String(nodeId) + ": movementUnits=" + String(params.movementUnits[nodeId - 1]));
+    }
+
+    if (!moveController.move(params, isAbsoluteMove, &command))
+    {
+        addDataToOutQueue(command + " " + RobotConstants::Status::LOGIC_ERROR);
     }
 }
 
 void handleMotorStatus(String command)
 {
-    addDataToOutQueue("HANDLE MOTOR STATUS called");
     if (command != RobotConstants::Commands::MOTOR_STATUS)
     {
         DBG_VERBOSE(DBG_GROUP_COMMAND, RobotConstants::Commands::MOTOR_STATUS + " does not take any parameters");

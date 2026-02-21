@@ -54,7 +54,7 @@ namespace StepDirController
         static double stepsPerSecToMotorRPMDouble(double stepsPerSec); // Convert steps/sec to RPM
         static double stepsPerSec2ToRPMPSDouble(double stepsPerSec2); // Convert degrees/sec^2 to RPM/sec
 
-        static uint32_t accelerationUnitsToRPMPS(double accelearionUnits); // Convert degrees/sec^2 to RPM/sec
+        static uint32_t accelerationUnitsToRPMPS(double accelerationUnits); // Convert degrees/sec^2 to RPM/sec
         static double RPMPSToAccelerationUnits(uint32_t rpmPerSecond);     // Convert RPM/sec to degrees/sec^2
 
         static double stepsToMotorRevs(int32_t steps);
@@ -79,7 +79,7 @@ namespace StepDirController
 
         // For MAJ
         uint32_t lastRequestedStatusWord = 0;
-        RobotConstants::MoveStatus status;
+        RobotConstants::MoveStatus moveStatus;
 
         void setCurrentPositionInSteps(int32_t steps);
     };

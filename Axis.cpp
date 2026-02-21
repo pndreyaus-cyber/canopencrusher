@@ -14,7 +14,7 @@ namespace StepDirController
     {
         initialized = false;
         initStatus = RobotConstants::InitStatus::ZEI_NONE;
-        status = RobotConstants::MoveStatus::OPERATIONAL;
+        moveStatus = RobotConstants::MoveStatus::NOT_TASKED_WITH_MOVE;
     }
 
     Axis::Axis(uint8_t nodeId) : nodeId(nodeId)
@@ -22,7 +22,7 @@ namespace StepDirController
         init_od_ram(&params);
         params.x6064_positionActualValue = 0;
         initStatus = RobotConstants::InitStatus::ZEI_NONE;
-        status = RobotConstants::MoveStatus::OPERATIONAL;
+        moveStatus = RobotConstants::MoveStatus::NOT_TASKED_WITH_MOVE;
         initialized = true;
     }
 
@@ -246,14 +246,14 @@ namespace StepDirController
         return stepsPerSec2 * RobotConstants::Math::SECONDS_IN_MINUTE / RobotConstants::Axis::STEPS_PER_MOTOR_REV;
     }
 
-    uint32_t Axis::accelerationUnitsToRPMPS(double accelearionUnits) // Перевести градусы/сек^2 в об/(мин*сек)
+    uint32_t Axis::accelerationUnitsToRPMPS(double accelerationUnits) // Convert degrees/sec^2 to rev/(min*sec)
     {
-        if (accelearionUnits < 0)
+        if (accelerationUnits < 0)
         {
             DBG_WARN(DBG_GROUP_AXIS, "Axis::accelerationUnitsToRPMPS -- negative acceleration units not allowed");
             return 0;
         }
-        return static_cast<uint32_t>(accelearionUnits * RobotConstants::Math::SECONDS_IN_MINUTE * RobotConstants::Axis::GEAR_RATIO / RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV);
+        return static_cast<uint32_t>(accelerationUnits * RobotConstants::Math::SECONDS_IN_MINUTE * RobotConstants::Axis::GEAR_RATIO / RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV);
     }
 
 

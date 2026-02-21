@@ -15,7 +15,7 @@ namespace StepDirController
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             Axis &axis = axes.at(nodeId);
-            reply += String(nodeId) + ":" + String(axis.isAlive) + "," + String(axis.initStatus) + +"," + String(axis.status) + "; ";
+            reply += String(nodeId) + ":" + String(axis.isAlive) + "," + String(axis.initStatus) + +"," + String(axis.moveStatus) + "; ";
         }
         addDataToOutQueue(reply);
     }
@@ -68,47 +68,53 @@ namespace StepDirController
         ZEI_start(nodeId);
     }
 
-    bool MoveControllerBase::move(MoveParams<RobotConstants::Robot::AXES_COUNT> params)
+    bool MoveControllerBase::move(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove, const String* commandNameForLogging)
     {
-        DBG_VERBOSE(DBG_GROUP_MOVE, "MoveControllerBase.cpp move called");
+        Serial2.println("Move called: " + isAbsoluteMove + ' ' + (commandNameForLogging == nullptr ? "None" : *commandNameForLogging));
         if (!initialized)
         {
             DBG_VERBOSE(DBG_GROUP_MOVE, "MoveControllerBase::move failed. Not initialized");
             return false;
         }
-        PrepareMoveComputationResult prepareResult = prepareMove(params);
+        if(isMAJInProgress)
+        {
+            Serial2.println("Move already in progress. Aborting!");
+            return false;
+        }
+        isMAJInProgress = true;
+        moveCommandName = commandNameForLogging;
+        for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+        {
+            axes[nodeId].moveStatus = RobotConstants::MoveStatus::TASKED_WITH_MOVE;
+        }
+        isMAJInProgress = true;
+
+        PrepareMoveComputationResult prepareResult = prepareMove(params, isAbsoluteMove);
         if (prepareResult.status == PrepareMoveStatus::NO_EFFECTIVE_MOTION)
         {
             addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Status::OK + "  | ");
+            MAJ_clearMoveStatusesAfterMoveCompletion();
+            isMAJInProgress = false;
+            moveCommandName = nullptr;
             return true;
         }
 
         if (prepareResult.status != PrepareMoveStatus::OK)
         {
+            addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Status::INVALID_PARAMS + " " + prepareResult.reason);
+            MAJ_clearMoveStatusesAfterMoveCompletion();
+            isMAJInProgress = false;
+            moveCommandName = nullptr;
             return false;
         }
 
+        Serial2.println("Prepared move successfully. Starting MAJ. isTriangularProfile=" + String(prepareResult.isTriangularProfile) + ", syncModelValid=" + String(prepareResult.syncModelValid) + ", maxMovementAxisId=" + String(prepareResult.maxMovementAxisId) + ", maxMovementAbsSteps=" + String(prepareResult.maxMovementAbsSteps) + ", accelerationTimeSec=" + String(prepareResult.accelerationTimeSec, 4) + ", constantVelocityTimeSec=" + String(prepareResult.constantVelocityTimeSec, 4) + ", fullMovementTimeSec=" + String(prepareResult.fullMovementTimeSec, 4));
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             MAJ_start(nodeId);
         }
 
         return true;
-    }
-
-    bool MoveControllerBase::isMoveInProgress() const
-    {
-        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
-        {
-            const Axis &axis = axes.at(nodeId);
-            if (axis.status == RobotConstants::MoveStatus::PREPARED_FOR_MOVE ||
-                axis.status == RobotConstants::MoveStatus::READY_TO_MOVE ||
-                axis.status == RobotConstants::MoveStatus::MOVING)
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     void MoveControllerBase::tick_100()
@@ -341,21 +347,40 @@ namespace StepDirController
         return result;
     }
 
-    MoveControllerBase::PrepareMoveComputationResult MoveControllerBase::prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params)
+    MoveControllerBase::PrepareMoveComputationResult MoveControllerBase::prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params, bool isAbsoluteMove)
     {
+        Serial2.println("PrepareMove called");
         MoveInput input;
         input.velocity = params.speed;
         input.acceleration = params.acceleration;
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
         {
             int32_t targetPositionInSteps = Axis::unitsToSteps(params.movementUnits[nodeId - 1]);
-            input.relativeMotions[nodeId - 1] = targetPositionInSteps - axes[nodeId].getCurrentPositionInSteps();
+            if (isAbsoluteMove)
+            {
+                input.relativeMotions[nodeId - 1] = targetPositionInSteps - axes[nodeId].getCurrentPositionInSteps();
+            }
+            else
+            {
+                input.relativeMotions[nodeId - 1] = targetPositionInSteps;
+            }
         }
+        Serial2.println("Input: velocity=" + String(input.velocity) + ", acceleration=" + String(input.acceleration));
+        for(uint8_t nodeId = 1; nodeId < axesCnt; ++nodeId) 
+        {
+            Serial2.print(String(input.relativeMotions[nodeId - 1]) + ' ');
+        }
+        Serial2.println();
 
         PrepareMoveComputationResult result = computePrepareMove(input);
-
+        Serial2.println("PrepareMoveComputationResult: status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason + ", syncModelValid=" + String(result.syncModelValid));
         if (result.status == PrepareMoveStatus::OK || result.status == PrepareMoveStatus::NO_EFFECTIVE_MOTION)
         {
+            for(uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId) 
+            {
+                const PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
+                Serial2.println("Axis " + String(nodeId) + ": requestedMovement=" + String(axisResult.requestedMovement) + ", targetSteps=" + String(axisResult.targetSteps) + ", profileVelocityRpm=" + String(axisResult.profileVelocityRpm) + ", profileAccelerationRpmPerSec=" + String(axisResult.profileAccelerationRpmPerSec, 4));
+            }
             for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
             {
                 Axis &axis = axes.at(nodeId);
@@ -365,28 +390,20 @@ namespace StepDirController
                 axis.setProfileVelocityInRPM(axisResult.profileVelocityRpm);
                 axis.setProfileAccelerationInRPMPerSec(axisResult.profileAccelerationRpmPerSec);
 
-                if (result.status == PrepareMoveStatus::NO_EFFECTIVE_MOTION)
-                {
-                    axis.status = RobotConstants::MoveStatus::OPERATIONAL;
-                }
-                else
-                {
-                    axis.status = RobotConstants::MoveStatus::PREPARED_FOR_MOVE;
-                }
-
+                axis.moveStatus = RobotConstants::MoveStatus::MOVE_PREPARATION_SUCCESS;
                 DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": target(steps)=" + String(axisResult.targetSteps) + ", vel(rpm)=" + String(axisResult.profileVelocityRpm) + ", acc(rpm/s)=" + String(axisResult.profileAccelerationRpmPerSec));
             }
 
             DBG_INFO(DBG_GROUP_MOVE, "prepareMove status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason + ", triangular=" + String(result.isTriangularProfile) + ", ta=" + String(result.accelerationTimeSec) + ", tc=" + String(result.constantVelocityTimeSec) + ", tt=" + String(result.fullMovementTimeSec));
             return result;
+        } else {
+            for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+            {
+                axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_PREPARATION_FAIL;
+            }
+            DBG_ERROR(DBG_GROUP_MOVE, "prepareMove failed: status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason);
+            return result;
         }
-
-        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
-        {
-            axes[nodeId].status = RobotConstants::MoveStatus::MOVE_FAILED;
-        }
-        DBG_ERROR(DBG_GROUP_MOVE, "prepareMove failed: status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason);
-        return result;
     }
 
     // ============================ Protected methods end ===========================
@@ -428,13 +445,11 @@ namespace StepDirController
             {
                 DBG_ERROR(DBG_GROUP_HEARTBEAT, "==== Heartbeat timeout for Axis " + String(nodeId) + " ====");
                 axis.isAlive = false;
-                axis.status = RobotConstants::MoveStatus::FAILED; // Set status to FAILED on heartbeat timeout
             }
             else if ((now - lastHb) <= RobotConstants::Robot::HEARTBEAT_TIMEOUT_MS && !axis.isAlive)
             {
                 DBG_ERROR(DBG_GROUP_HEARTBEAT, "==== Heartbeat restored for Axis " + String(nodeId) + " ====");
                 axis.isAlive = true;
-                axis.status = RobotConstants::MoveStatus::OPERATIONAL; // Reset status for the axis when heartbeat is restored
             }
         }
     }
@@ -471,15 +486,15 @@ namespace StepDirController
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             Axis &axis = axes[nodeId];
-            if (axis.status == RobotConstants::MoveStatus::MOVING && !axis.isAlive)
+            if (axis.moveStatus == RobotConstants::MoveStatus::MOVING && !axis.isAlive)
             {
                 DBG_WARN(DBG_GROUP_MOVE, "MAJ failed for Axis " + String(nodeId) + ": Heartbeat timeout");
-                axis.status = RobotConstants::MoveStatus::MOVE_FAILED;
+                axis.moveStatus = RobotConstants::MoveStatus::MOVE_FAIL;
                 MAJ_finalResult();
             }
 
             uint32_t now = millis();
-            if (now - axis.lastRequestedStatusWord > 100 && axis.status == RobotConstants::MoveStatus::MOVING)
+            if (now - axis.lastRequestedStatusWord > 100 && axis.moveStatus == RobotConstants::MoveStatus::MOVING)
             {
                 // Step 4
                 canOpen->set_callback_read_x6041_statusword([this](uint8_t cbNodeId, bool success, uint16_t statusWord)
@@ -732,6 +747,7 @@ namespace StepDirController
             return;
         }
 
+        Serial2.println("MAJ: Read control word (0x6040) for Axis " + String(nodeId) + ": 0x" + String(controlWord, HEX));
         // Step 3 (data processing)
         if ((controlWord & 0x000F) != 0x000F)
         {
@@ -850,7 +866,7 @@ namespace StepDirController
 
         // Step 3 (Data processing)
         DBG_WARN(DBG_GROUP_MOVE, "MAJ TPDO4 from node " + String(nodeId) + ": actualLocation=" + String(actualLocation) + ", statusWord=0x" + String(statusWord, HEX));
-        axes[nodeId].status = RobotConstants::MoveStatus::READY_TO_MOVE;
+        axes[nodeId].moveStatus = RobotConstants::MoveStatus::READY_TO_MOVE;
         MAJ_SYNCFunnel();
     }
 
@@ -859,9 +875,9 @@ namespace StepDirController
 
         for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
-            DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel checking Axis " + String(nodeId) + " with status " + String(axes[nodeId].status));
-            RobotConstants::MoveStatus status = axes[nodeId].status;
-            if(status == RobotConstants::MoveStatus::PREPARED_FOR_MOVE)
+            DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel checking Axis " + String(nodeId) + " with status " + String(axes[nodeId].moveStatus));
+            RobotConstants::MoveStatus status = axes[nodeId].moveStatus;
+            if(status == RobotConstants::MoveStatus::MOVE_PREPARATION_SUCCESS)
             {
 
                 return; // Not all axes are ready yet
@@ -870,15 +886,17 @@ namespace StepDirController
 
         // All axes are ready, send SYNC
         DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");
+        Serial2.println("MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");
         canOpen->sendSYNC();
-        delay(10);
+        delay(100);
         for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
-            if(axes[nodeId].status == RobotConstants::MoveStatus::READY_TO_MOVE)
+            if(axes[nodeId].moveStatus == RobotConstants::MoveStatus::READY_TO_MOVE)
             {
-                axes[nodeId].status = RobotConstants::MoveStatus::MOVING;
+                axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVING;
                 DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: Axis " + String(nodeId) + " status set to MOVING.");
                 MAJ_requestStatusWord(nodeId); // Request status immediately after sending SYNC to minimize the delay before we get the first status update
+                delay(10);
             }
         }
     }
@@ -916,9 +934,10 @@ namespace StepDirController
         //DBG_INFO(DBG_GROUP_MOVE, "MAJ Status Word from node " + String(nodeId) + ": 0x" + String(statusWord, HEX));
         if(MAJ_checkTargetPositionReached(statusWord))
         {
-            DBG_INFO(DBG_GROUP_MOVE, "MAJ Target position reached for Axis " + String(nodeId));
-            axes[nodeId].status = RobotConstants::MoveStatus::MOVE_FINISHED;
-            DBG_INFO(DBG_GROUP_MOVE, "MAJ Movement finished for Axis " + String(nodeId));
+            //DBG_INFO(DBG_GROUP_MOVE, "MAJ Target position reached for Axis " + String(nodeId));
+            axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_SUCCESS;
+            //DBG_INFO(DBG_GROUP_MOVE, "MAJ Movement finished for Axis " + String(nodeId));
+            addDataToOutQueue("Axis " + String(nodeId) + " reached its target");
             MAJ_finalResult();
             return;
         }
@@ -927,9 +946,10 @@ namespace StepDirController
     void MoveControllerBase::MAJ_finalResult() {
         String successfullAxes = "";
         String failedAxes = "";
+        String unknownErrorAxes = "";
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
-            if (axes[nodeId].status == RobotConstants::MoveStatus::MOVING || axes[nodeId].status == RobotConstants::MoveStatus::READY_TO_MOVE || axes[nodeId].status == RobotConstants::MoveStatus::PREPARED_FOR_MOVE)
+            if (axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVING || axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVE_PREPARATION_SUCCESS || axes[nodeId].moveStatus == RobotConstants::MoveStatus::READY_TO_MOVE)
             {
                 DBG_INFO(DBG_GROUP_MOVE, "Still going for Axis " + String(nodeId)); 
                 return; // Still ongoing for some axes
@@ -939,23 +959,22 @@ namespace StepDirController
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             Axis &axis = axes[nodeId];
-            if (axis.status == RobotConstants::MoveStatus::MOVE_FINISHED)
+            if (axis.moveStatus == RobotConstants::MoveStatus::MOVE_SUCCESS)
             {
-                axis.status = RobotConstants::MoveStatus::OPERATIONAL; // Reset status for the axis
                 successfullAxes += String(nodeId) + " ";
             }
-            else if (axis.status == RobotConstants::MoveStatus::MOVE_FAILED)
+            else if (axis.moveStatus == RobotConstants::MoveStatus::MOVE_FAIL)
             {
-                axis.status = RobotConstants::MoveStatus::FAILED; // Reset status for the axis
                 failedAxes += String(nodeId) + " ";
             }
             else
             {
-                DBG_ERROR(DBG_GROUP_MOVE, "MAJ_finalResult called for Axis " + String(nodeId) + " with invalid status: " + String(axis.status));
-                axis.status = RobotConstants::MoveStatus::FAILED; // Reset status for the axis
-                failedAxes += String(nodeId) + " ";
+                DBG_ERROR(DBG_GROUP_MOVE, "MAJ_finalResult called for Axis " + String(nodeId) + " with invalid status: " + String(axis.moveStatus));
+                unknownErrorAxes += String(nodeId) + " ";
             }
         }
+
+        MAJ_clearMoveStatusesAfterMoveCompletion();
 
         String status;
         if (failedAxes.length() > 0 && successfullAxes.length() > 0)
@@ -971,8 +990,10 @@ namespace StepDirController
             status = RobotConstants::Status::OK;
         }
 
-        String commandReply = RobotConstants::Commands::MOVE_ABSOLUTE + " " + status + " " + successfullAxes + "|" + failedAxes;
+        String commandReply = (moveCommandName == nullptr ? RobotConstants::Status::UNKNOWN_ERROR : *moveCommandName) + " " + status + " " + successfullAxes + "|" + failedAxes + "|" + unknownErrorAxes;
         addDataToOutQueue(commandReply);
+        isMAJInProgress = false;
+        moveCommandName = nullptr;
     }
 
     bool MoveControllerBase::MAJ_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage)
@@ -980,13 +1001,13 @@ namespace StepDirController
         if (!success)
         {
             DBG_ERROR(DBG_GROUP_MOVE, "MAJ Failed for Axis " + String(nodeId) + ": " + errorMessage);
-            axes[nodeId].status = RobotConstants::MoveStatus::MOVE_FAILED;
+            axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_FAIL;
             MAJ_finalResult();
         }
         if (!axes[nodeId].isAlive)
         {
             DBG_ERROR(DBG_GROUP_MOVE, "MAJ Failed for Axis " + String(nodeId) + ": Axis is not alive (heartbeat timeout)");
-            axes[nodeId].status = RobotConstants::MoveStatus::MOVE_FAILED;
+            axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_FAIL;
             MAJ_finalResult();
         }
 
@@ -995,7 +1016,7 @@ namespace StepDirController
 
     bool MoveControllerBase::MAJ_checkTargetPositionReached(uint16_t statusWord)
     {   
-        // Check 10-th bit of the status word (0x400) to determine if the movement is finished
+        // Check 10-th bit (0-indexed) of the status word (0x0400) to determine if the movement is finished
         return (statusWord & 0b10000000000) != 0;
     }
     // ======== MAJ Sequence End ========

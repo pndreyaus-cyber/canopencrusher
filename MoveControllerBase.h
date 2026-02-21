@@ -66,9 +66,8 @@ namespace StepDirController
         void startZeroInitializationAllAxes();
         void startZeroInitializationSingleAxis(uint8_t nodeId);
 
-        bool move(MoveParams<RobotConstants::Robot::AXES_COUNT> params);
+        bool move(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove, const String* commandNameForLogging = nullptr);
 
-        bool isMoveInProgress() const;
         bool isInitialized() const { return initialized; }
 
         // Call this regularly from the main loop to check timeouts.
@@ -79,7 +78,7 @@ namespace StepDirController
         static String prepareMoveStatusToString(PrepareMoveStatus status);
 
     protected:
-        PrepareMoveComputationResult prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params);
+        PrepareMoveComputationResult prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params, bool isAbsoluteMove);
 
         // void prepareMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params);
     private:
@@ -115,6 +114,9 @@ namespace StepDirController
         // ======== ZEI Sequence End ========
 
         // ======== MAJ Sequence ========
+        bool isMAJInProgress = false;   
+        const String* moveCommandName = nullptr; // For logging purposes, to know which command triggered the MAJ
+
         void MAJ_start(uint8_t nodeId);
         void MAJ_afterRequestOf_0x6040(uint8_t nodeId, bool success, uint16_t controlWord);
         void MAJ_afterWriteTo_0x6040(uint8_t nodeId, bool success);
@@ -129,6 +131,13 @@ namespace StepDirController
 
         bool MAJ_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
         bool MAJ_checkTargetPositionReached(uint16_t statusWord);
+
+        void MAJ_clearMoveStatusesAfterMoveCompletion(){
+            for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+            {
+                axes[nodeId].moveStatus = RobotConstants::MoveStatus::NOT_TASKED_WITH_MOVE;
+            }
+        }
         // ======== MAJ Sequence End ========
 
         // ======== Regular callbacks ========
