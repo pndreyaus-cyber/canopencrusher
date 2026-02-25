@@ -14,6 +14,7 @@ using callback_x6060_modesOfOperation = std::function<void(uint8_t, bool)>;
 using callback_x607A_targetPosition = std::function<void(uint8_t, bool)>;
 using callback_x6041_statusword = std::function<void(uint8_t, bool, uint16_t)>;
 
+using callback_x2612_systemTemperature = std::function<void(uint8_t, bool, uint8_t)>;
 using callback_heartbeat = std::function<void(uint8_t, uint8_t)>;
 
 namespace RobotConstants
@@ -58,6 +59,8 @@ namespace RobotConstants
         const String MOTOR_STATUS = "RMS";
         const String ZERO_INITIALIZE = "ZEI";
         const String REQUEST_POSITION = "RPP";
+        const String TEMPERATURE_REQUEST = "TPP";
+        const String TEMPERATURE = "TMP";
         constexpr int COMMAND_LEN = 3;
         const float MIN_SPEED_UNITS = 0.0f;
         const float MAX_SPEED_UNITS = 100.0f;
@@ -142,6 +145,7 @@ namespace RobotConstants
         constexpr uint16_t ELECTRONIC_GEAR_MOLECULES = 0x260A;
         constexpr uint16_t ELECTRONIC_GEAR_DENOMINATOR = 0x260B;
         constexpr uint16_t DEVICE_ADDRESS = 0x2615;
+        constexpr uint16_t SYSTEM_TEMPERATURE = 0x2612;
 
         // Default subindex
         constexpr uint8_t DEFAULT_SUBINDEX = 0x00;

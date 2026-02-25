@@ -18,6 +18,16 @@ namespace StepDirController
         addDataToOutQueue(reply);
     }
 
+    void MoveControllerBase::requestTemperature()
+    {
+        String reply = RobotConstants::Commands::TEMPERATURE + " " + RobotConstants::Status::OK + " ";
+        for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+        {
+            reply += String(nodeId) + ":" + String(axes.at(nodeId).params.x2612_systemTemperature) + "; ";
+        }
+        addDataToOutQueue(reply);
+    }
+
     bool MoveControllerBase::start(CanOpen *canOpen, uint8_t axesCnt)
     {
         if (axesCnt == 0)
@@ -45,6 +55,9 @@ namespace StepDirController
 
         canOpen->set_callback_heartbeat([this](uint8_t nodeId, uint8_t status)
                                         { this->regularHeartbeatCallback(nodeId, status); });
+
+        canOpen->set_callback_x2612_systemTemperature([this](uint8_t nodeId, bool success, uint8_t systemTemperature)
+                                                      { this->regularTemperatureCheckCallback(nodeId, success, systemTemperature); });
 
         initialized = true;
         Serial2.println("MoveControllerBase initialized with " + String(axesCnt) + " axes");
@@ -503,7 +516,26 @@ void MoveControllerBase::prepareMove() // TODO: Does not work for a = 0, maybe o
         positionUpdate(nodeId, position);
         axes[nodeId].lastHeartbeatMs = millis();
     }
+
+    
+    void MoveControllerBase::regularTemperatureCheckCallback(uint8_t nodeId, bool success, uint8_t systemTemperature)
+    {
+        if(!success)
+        {
+            return;
+        }
+        axes[nodeId].params.x2612_systemTemperature = systemTemperature;
+    }
+
     // ======== Regular callbacks end ========
+
+    // ======== Temperature check =======
+    void MoveControllerBase::requestTemperatureUpdate(uint8_t nodeId)
+    {
+        canOpen->sendSDORead(nodeId, RobotConstants::ODIndices::SYSTEM_TEMPERATURE, RobotConstants::ODIndices::DEFAULT_SUBINDEX);
+    }
+
+    // ======== Temeperature check end =======
     // ============================= Private methods end =============================
     
 

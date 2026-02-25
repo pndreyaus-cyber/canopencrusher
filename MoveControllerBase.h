@@ -15,6 +15,8 @@ namespace StepDirController
     {
     public:
         void requestStatus();
+        void requestTemperature();
+
         int32_t axisPosition(uint8_t nodeId) { return axes.at(nodeId).getCurrentPositionInSteps(); }
 
         bool start(CanOpen *canOpen, uint8_t axesCnt);
@@ -37,6 +39,9 @@ namespace StepDirController
         void tick_50();
         void tick_500();
 
+        // ======== Temperature check ========
+        void requestTemperatureUpdate(uint8_t nodeId);
+        // ======== Temperature check end ========
 
     protected:
         void prepareMove();
@@ -80,7 +85,9 @@ namespace StepDirController
         // ======== Regular callbacks ========
         void regularHeartbeatCallback(uint8_t nodeId, uint8_t status);
         void regularPositionActualValueCallback(uint8_t nodeId, bool success, int32_t position);
+        void regularTemperatureCheckCallback(uint8_t nodeId, bool success, uint8_t systemTemperature);
         // ======== Regular callbacks end ========
+
     };
 
 }

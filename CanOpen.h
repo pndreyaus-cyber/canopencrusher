@@ -33,7 +33,10 @@ private:
     callback_x6060_modesOfOperation callbacks_x6060_modesOfOperation[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};               // index 0 is unused
     callback_x607A_targetPosition callbacks_x607A_targetPosition[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                   // index 0 is unused
     callback_x6041_statusword callbacks_x6041_statusword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                           // index 0 is unused
+    
+    callback_x2612_systemTemperature callbacks_x2612_systemTemperature = nullptr;
     callback_heartbeat callbacks_heartbeat = nullptr;
+
 
 public:
     CanOpen() : Can(PA11, PA12, RX_SIZE_128, TX_SIZE_128) {};
@@ -80,6 +83,11 @@ public:
     void set_callback_x6041_statusword(callback_x6041_statusword callback, uint8_t nodeId)
     {
         callbacks_x6041_statusword[nodeId] = callback;
+    }
+
+    void set_callback_x2612_systemTemperature(callback_x2612_systemTemperature callback)
+    {
+        callbacks_x2612_systemTemperature = callback;
     }
 
     void set_callback_heartbeat(callback_heartbeat callback)

@@ -398,6 +398,19 @@ bool CanOpen::read()
                     callbacks_x6041_statusword[nodeId](nodeId, success, statusWordValue);
                 }
             }
+            else if (registerAddress == RobotConstants::ODIndices::SYSTEM_TEMPERATURE)
+            { // 0x2612
+                if (callbacks_x2612_systemTemperature != nullptr)
+                {
+                    bool success = (data[0] != 0x80);
+                    uint8_t systemTemperature = 0;
+                    if (success)
+                    {
+                        systemTemperature = data[4];
+                    }
+                    callbacks_x2612_systemTemperature(nodeId, success, systemTemperature);
+                }
+            }
             return true;
         }
         return true;

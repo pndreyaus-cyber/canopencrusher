@@ -23,6 +23,7 @@ MotorIndices stringToMotorIndices(String command);
 void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove);
 void handleZeroInitialize(MotorIndices motorIndices);
 void handleRequestPosition(MotorIndices motorIndices);
+void handleTemperatureRequest(MotorIndices motorIndices);
 void handleMotorStatus(String command);
 
 bool receiveCommand();
@@ -139,6 +140,14 @@ void handleCommand()
     else if (function.equals(RobotConstants::Commands::REQUEST_POSITION))
     {
         handleRequestPosition(stringToMotorIndices(inData));
+    }
+    else if (function.equals(RobotConstants::Commands::TEMPERATURE_REQUEST)) 
+    {
+        handleTemperatureRequest(stringToMotorIndices(inData));
+    }
+    else if (function.equals(RobotConstants::Commands::TEMPERATURE))
+    {   
+        moveController.requestTemperature();
     }
     else
     {
@@ -459,4 +468,12 @@ void handleRequestPosition(MotorIndices motorIndices)
         reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId)) + " ";
     }
     addDataToOutQueue(reply);
+}
+
+void handleTemperatureRequest(MotorIndices motorIndices)
+{
+    for (uint8_t nodeId : motorIndices.nodeIds)
+    {
+        moveController.requestTemperatureUpdate(nodeId);
+    }
 }
