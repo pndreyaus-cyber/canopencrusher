@@ -27,6 +27,7 @@ MotorIndices stringToMotorIndices(String command);
 void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const String& command, bool isAbsoluteMove);
 void handleZeroInitialize(MotorIndices motorIndices);
 void handleRequestPosition(MotorIndices motorIndices);
+void handleRequestPositionAngles(MotorIndices motorIndices);
 void handleMotorStatus(String command);
 
 bool receiveCommand();
@@ -149,6 +150,10 @@ void handleCommand()
     else if (function.equals(RobotConstants::Commands::REQUEST_POSITION))
     {
         handleRequestPosition(stringToMotorIndices(inData));
+    }
+    else if (function.equals(RobotConstants::Commands::REQUEST_POSITION_ANGLES))
+    {
+        handleRequestPositionAngles(stringToMotorIndices(inData));
     }
     else if (function.equals(RobotConstants::Commands::PREPAREMOVE_TEST))
     {
@@ -438,10 +443,10 @@ void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const Stri
         return;
     }
 
-    Serial2.println("MAP: velocity=" + String(params.speed) + ", acceleration=" + String(params.acceleration));
+    DBG_VERBOSE(DBG_GROUP_MOVE, "MAP: velocity=" + String(params.speed) + ", acceleration=" + String(params.acceleration));
     for(uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
     {
-        Serial2.println("Axis " + String(nodeId) + ": movementUnits=" + String(params.movementUnits[nodeId - 1]));
+        DBG_VERBOSE(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": movementUnits=" + String(params.movementUnits[nodeId - 1]));
     }
 
     if (!moveController.move(params, isAbsoluteMove, &command))
@@ -500,6 +505,22 @@ void handleRequestPosition(MotorIndices motorIndices)
         reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId)) + " ";
     }
     addDataToOutQueue(reply);
+}
+
+void handleRequestPositionAngles(MotorIndices motorIndices)
+{
+    if (motorIndices.status != ParamsStatus::OK)
+    {
+        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + motorIndices.errorMsg);
+        addDataToOutQueue(RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + RobotConstants::Status::INVALID_PARAMS);
+        return;
+    }
+    String reply = RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + RobotConstants::Status::OK + " ";
+    for (uint8_t nodeId : motorIndices.nodeIds)
+    {
+        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(Axis::stepsToUnits(moveController.axisPosition(nodeId)), 6) + " ";
+    }
+    addDataToOutQueue(reply);    
 }
 
 void handlePrepareMoveTest(String command)

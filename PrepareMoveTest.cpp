@@ -86,7 +86,8 @@ bool runPrepareMoveTests(bool verbose)
         // {"mixed_angles_low_acceleration", makeParams({0.000219, 0.02219, 120.0, -95.0, 0.01, 0.000006}, 0.1, 0.00153), MoveController::PrepareMoveStatus::OK, true},
         // {"mixed_angles_low_speed_and_acceleration", makeParams({23.1, 0.00219, 1.0, 5.0, 0.01, 0.000006}, 0.000334, 0.00153), MoveController::PrepareMoveStatus::OK, true},
         // {"tiny_quantized", makeParams({0.000001, -0.000001, 0.0, 0.0, 0.0, 0.0}, 0.05, 0.15), MoveController::PrepareMoveStatus::NO_EFFECTIVE_MOTION, true},
-        {"normal_1", makeParams({9.0, 0.0, -20.0, 0.0, 10.0, 0.0}, 0.05, 0.1), MoveController::PrepareMoveStatus::OK, true}
+        //{"normal_1", makeParams({9.0, 0.0, -20.0, 0.0, 10.0, 0.0}, 0.05, 0.1), MoveController::PrepareMoveStatus::OK, true}
+        {"normal_1", makeParams({0.0, -1.0, 0.01, 0.003, -1.033421}, 0.1, 0.032), MoveController::PrepareMoveStatus::OK, true}
     };
 
     uint32_t passed = 0;

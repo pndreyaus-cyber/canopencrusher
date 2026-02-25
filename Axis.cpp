@@ -15,6 +15,7 @@ namespace StepDirController
         initialized = false;
         initStatus = RobotConstants::InitStatus::ZEI_NONE;
         moveStatus = RobotConstants::MoveStatus::NOT_TASKED_WITH_MOVE;
+        status = RobotConstants::AxisStatus::NOT_ALIVE;
     }
 
     Axis::Axis(uint8_t nodeId) : nodeId(nodeId)
@@ -23,6 +24,7 @@ namespace StepDirController
         params.x6064_positionActualValue = 0;
         initStatus = RobotConstants::InitStatus::ZEI_NONE;
         moveStatus = RobotConstants::MoveStatus::NOT_TASKED_WITH_MOVE;
+        status = RobotConstants::AxisStatus::NOT_ALIVE;
         initialized = true;
     }
 

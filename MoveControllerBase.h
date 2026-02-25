@@ -104,6 +104,7 @@ namespace StepDirController
         uint8_t axisToInitialize = 0;
 
         void ZEI_start(uint8_t nodeId);
+        void ZEI_AfterWriteTo_0x6081(uint8_t nodeId, bool success);
         void ZEI_AfterFirstWriteTo_0x6040(uint8_t nodeId, bool success);
         void ZEI_AfterFirstWriteTo_0x260A(uint8_t nodeId, bool success);
         void ZEI_AfterSecondWriteTo_0x260A(uint8_t nodeId, bool success);
@@ -139,6 +140,12 @@ namespace StepDirController
             }
         }
         // ======== MAJ Sequence End ========
+
+        // ======== Fixate Axis after restoring life ========
+        void FAL_start(uint8_t nodeId);
+        void FAL_afterWriteTo_0x6040(uint8_t nodeId, bool success);
+
+        // ======== End of Fixate Axis after restoring life ========
 
         // ======== Regular callbacks ========
         void regularHeartbeatCallback(uint8_t nodeId, uint8_t status);

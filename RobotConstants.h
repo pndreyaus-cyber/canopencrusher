@@ -45,6 +45,13 @@ namespace RobotConstants
         MOVE_SUCCESS = 7
     };
 
+    enum AxisStatus : uint8_t
+    {
+        NOT_ALIVE = 0,
+        ALIVE_BUT_NOT_INITIALIZED = 1,
+        ALIVE = 2
+    };
+
     enum MoveUnits : uint8_t
     {
         UNITS_PERCENT = 0,
@@ -86,6 +93,7 @@ namespace RobotConstants
         const String ZERO_INITIALIZE = "ZEI";
         const String REQUEST_POSITION = "RPP";
         const String PREPAREMOVE_TEST = "PMT";
+        const String REQUEST_POSITION_ANGLES = "RPA";
         constexpr int COMMAND_LEN = 3;
         const float MIN_SPEED_UNITS = 0.0f;
         const float MAX_SPEED_UNITS = 100.0f;
