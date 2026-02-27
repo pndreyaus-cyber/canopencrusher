@@ -30,33 +30,36 @@ namespace
     void emitPrepareMoveTestCaseResult(const MoveController::PrepareMoveComputationResult &result,
                                        bool verbose)
     {
-        String line = "status=" + MoveController::prepareMoveStatusToString(result.status) +
-                        "\nreason=" + result.reason +
-                        "\nprofile=" + String(result.isTriangularProfile ? "TRI" : "TRAP") +
-                        "\nta=" + String(result.accelerationTimeSec, 6) +
-                        "\ntc=" + String(result.constantVelocityTimeSec, 6) +
-                        "\ntt=" + String(result.fullMovementTimeSec, 6) +
-                        "\nsync=" + String(result.syncModelValid) +
-                        "\nmax_axis=" + String(result.maxMovementAxisId) +
-                        "\nmax_steps=" + String(result.maxMovementAbsSteps);
-
-        addDataToOutQueue(line);
+        const String prefix = "PMT ";
+        addDataToOutQueue(prefix + "status=" + MoveController::prepareMoveStatusToString(result.status));
+        addDataToOutQueue(prefix + "reason=" + result.reason);
+        addDataToOutQueue(prefix + "profile=" + String(result.isTriangularProfile ? "TRI" : "TRAP"));
+        addDataToOutQueue(prefix + "ta=" + String(result.accelerationTimeSec, 6));
+        addDataToOutQueue(prefix + "tc=" + String(result.constantVelocityTimeSec, 6));
+        addDataToOutQueue(prefix + "tt=" + String(result.fullMovementTimeSec, 6));
+        addDataToOutQueue(prefix + "sync=" + String(result.syncModelValid));
+        addDataToOutQueue(prefix + "max_axis=" + String(result.maxMovementAxisId));
+        addDataToOutQueue(prefix + "max_steps=" + String(result.maxMovementAbsSteps));
+        
         if (!verbose)
         {
             return;
         }
-        addDataToOutQueue("+ Detailed axis results: +");
+        
+        addDataToOutQueue(prefix + "+ Detailed axis results: +");
+        
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
         {
             const MoveController::PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
-            String axisLine = 
-                " axis=" + String(static_cast<char>(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) +
-                "\n  req=" + String(axisResult.requestedMovement) +
-                "\n  target_steps=" + String(axisResult.targetSteps) +
-                "\n  vel_rpm=" + String(axisResult.profileVelocityRpm) +
-                "\n  acc_rpmps=" + String(axisResult.profileAccelerationRpmPerSec) +
-                "\n  vel_sps=" + String(axisResult.velocityStepsPerSec, 6) +
-                "\n  acc_sps2=" + String(axisResult.accelerationStepsPerSec2, 6);
+            String axisLine =
+                prefix +
+                "axis=" + String(static_cast<char>(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) +
+                " req=" + String(axisResult.requestedMovement) +
+                " target_steps=" + String(axisResult.targetSteps) +
+                " vel_rpm=" + String(axisResult.profileVelocityRpm) +
+                " acc_rpmps=" + String(axisResult.profileAccelerationRpmPerSec) +
+                " vel_sps=" + String(axisResult.velocityStepsPerSec, 6) +
+                " acc_sps2=" + String(axisResult.accelerationStepsPerSec2, 6);
 
             addDataToOutQueue(axisLine);
         }

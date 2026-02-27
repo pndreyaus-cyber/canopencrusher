@@ -84,11 +84,6 @@ public:
         callbacks_x607A_targetPosition[nodeId] = callback;
     }
 
-    void set_callback_x6041_statusword(callback_read_x6041_statusword callback, uint8_t nodeId)
-    {
-        callbacks_read_x6041_statusword[nodeId] = callback;
-    }
-
     void set_callback_x6081_profileVelocity(callback_x6081_profileVelocity callback, uint8_t nodeId)
     {
         callbacks_x6081_profileVelocity[nodeId] = callback;

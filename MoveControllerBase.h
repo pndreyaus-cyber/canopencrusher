@@ -77,6 +77,9 @@ namespace StepDirController
         static PrepareMoveComputationResult computePrepareMove(MoveInput& input);
         static String prepareMoveStatusToString(PrepareMoveStatus status);
 
+        bool isMoveInProgress() const {return isMAJInProgress;}
+
+
     protected:
         PrepareMoveComputationResult prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params, bool isAbsoluteMove);
 

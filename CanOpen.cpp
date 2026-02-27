@@ -370,12 +370,12 @@ bool CanOpen::read()
             }
             else if (registerAddress == RobotConstants::ODIndices::CONTROLWORD)
             { // 0x6040
-                if ((data[0] == 0x60 || data[0] == 0x80)){ // Write to control word ack
+                if (data[0] == 0x60){ // Write to control word ack
                     if (callbacks_x6040_controlword[nodeId] != nullptr)
                     {
-                        callbacks_x6040_controlword[nodeId](nodeId, (data[0] == 0x60));
+                        callbacks_x6040_controlword[nodeId](nodeId, true);
                     }    
-                } else { // Read control word response  
+                } else if(data[0] != 0x80){ // Read control word response  
                     if (callbacks_read_x6040_controlword[nodeId] != nullptr)
                     {
                         bool success = (data[0] != 0x80);
@@ -385,6 +385,15 @@ bool CanOpen::read()
                             controlWordValue = static_cast<uint16_t>(data[4]) | (static_cast<uint16_t>(data[5]) << 8);
                         }
                         callbacks_read_x6040_controlword[nodeId](nodeId, success, controlWordValue);
+                    }
+                } else {
+                    if (callbacks_x6040_controlword[nodeId] != nullptr)
+                    {
+                        callbacks_x6040_controlword[nodeId](nodeId, false);
+                    }
+                    if (callbacks_read_x6040_controlword[nodeId] != nullptr)
+                    {
+                        callbacks_read_x6040_controlword[nodeId](nodeId, false, 0);
                     }
                 }
             }

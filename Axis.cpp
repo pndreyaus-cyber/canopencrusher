@@ -60,7 +60,6 @@ namespace StepDirController
         }
 
         params.x607A_targetPosition = steps;
-        relativeMovementSteps = steps - getCurrentPositionInSteps();
 
         return true;
     }
@@ -135,17 +134,6 @@ namespace StepDirController
         return params.x6064_positionActualValue;
     }
 
-    int32_t Axis::getRelativeMovementInSteps() const
-    {
-        if (!initialized)
-        {
-            DBG_WARN(DBG_GROUP_AXIS, "Axis::getRelativeMovementInSteps -- Axis not initialized");
-            return -1;
-        }
-
-        return relativeMovementSteps;
-    }
-
     int32_t Axis::getTargetPositionInSteps() const
     {
         if (!initialized)
@@ -189,7 +177,7 @@ namespace StepDirController
 
     int32_t Axis::unitsToSteps(double units) // Convert degrees to steps
     {
-        return static_cast<int32_t>(units * RobotConstants::Axis::GEAR_RATIO * RobotConstants::Axis::STEPS_PER_MOTOR_REV / RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV);
+        return static_cast<int32_t>(std::round(units * RobotConstants::Axis::GEAR_RATIO * RobotConstants::Axis::STEPS_PER_MOTOR_REV / RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV));
     }
 
     uint32_t Axis::speedUnitsToMotorRPM(double speedUnits) // Convert degrees/sec to RPM

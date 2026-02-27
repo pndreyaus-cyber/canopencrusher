@@ -32,7 +32,6 @@ namespace StepDirController
         // ============================= Getters =============================
         uint8_t getNodeId() const;
         int32_t getCurrentPositionInSteps() const;
-        int32_t getRelativeMovementInSteps() const;
         int32_t getTargetPositionInSteps() const;
         uint32_t getProfileVelocityInRPM() const;
         uint32_t getProfileAccelerationInRPMPerSec() const;
@@ -64,8 +63,6 @@ namespace StepDirController
         bool initialized = false;
         uint8_t nodeId;
         OD_RAM_t params;
-
-        int32_t relativeMovementSteps;
 
         double regularSpeed; // крейсерская скорость в шагах/сек
         double acceleration; // ускорение в шагах/сек^2

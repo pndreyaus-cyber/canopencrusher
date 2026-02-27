@@ -158,39 +158,20 @@ SCS нужна для программной установки текущего
 
 ---
 
-## Тестирование математики prepareMove (PMT)
+## prepareMoveTest (PMT)
 
-Добавлена встроенная команда проверки вычислений профиля движения:
+PrepareMoveTest.h/.cpp is used to test the math, which is used to calculate velocities and accelerations of the motors for a movement to be synchronous
 
-- `PMT` — запускает детерминированную матрицу тестов математики `prepareMove` (краткий вывод)
-- `PMTV1` — запускает тесты с подробным выводом по каждой оси
-- `PMTV0` — запускает тесты в кратком режиме и выключает подробный вывод
-
-Формат строк в Serial:
-
-- `PMT START ...` — входные данные тест-кейса
-- `PMT RESULT ...` — итог вычислений и verdict
-- `PMT AXIS ...` — детали по оси (только verbose)
-- `PMT SUMMARY ...` — количество пройденных/проваленных кейсов
-
-Изоляция:
-
-- PMT не запускает реальное движение осей и не отправляет команды старта движения.
-- Если контроллер уже выполняет движение, PMT возвращает ошибку занятости (`CONTROLLER_BUSY`).
+To start testing, you need to send either "PMT", "PMT V0" or "PMT V1" to Serial. If you send "PMT V1" the output of the test would be more verbose. But the limitation is, that you won't be able to run more than 7 tests at a time. There are too many messages in the out queue, that some bug appears and the program stops working the way you intended to
 
 ---
 
-## Serial queue/framing (ограничения MCU)
+## Problems with Serial
 
-Реализована стратегия безопасной отправки в условиях ограничения буфера:
+If there are too many messages in the outDataQeueue, the program stop working the way you intended to. When outDataQueue use to be a vector, not a queue, if I reserved 1000 elements in it, it already stopped working. 
+Maybe the problem is that the memory of the microcontroller cannot store 1000 String objects in memory. 
 
-- Максимальная полезная длина одного queued-фрагмента: `SERIAL_OUT_CHUNK_PAYLOAD_MAX = 63` байта.
-- Каждое логическое сообщение при добавлении в очередь разбивается на чанки фиксированного размера.
-- После логического сообщения добавляется отдельный чанк с `\n`.
-- Отправка выполняется чанками через `Serial2.write(...)`.
-
-Для уменьшения накладных расходов отказались от тяжелого hot-path паттерна
-`std::vector<String> + erase(begin) + substring` в очереди отправки. Вместо этого используется кольцевая очередь фиксированного размера (`SERIAL_OUT_QUEUE_CAPACITY`).
+Now outDataQueue is the queue data structure and it will hold up to 100 messages. So, if the size of the queue get bigger than 100, the head of the queue is sent instantly
 
 ### Переиспользование
 

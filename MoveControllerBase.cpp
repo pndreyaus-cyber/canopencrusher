@@ -15,7 +15,7 @@ namespace StepDirController
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             Axis &axis = axes.at(nodeId);
-            reply += String(nodeId) + ":" + String(axis.status) + "," + String(axis.initStatus) + +"," + String(axis.moveStatus) + "; ";
+            reply += String(nodeId) + ":" + String(axis.status) + "," + String(axis.initStatus) + "," + String(axis.moveStatus) + "; ";
         }
         addDataToOutQueue(reply);
     }
@@ -69,8 +69,7 @@ namespace StepDirController
 
     bool MoveControllerBase::move(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove, const String* commandNameForLogging)
     {
-        DBG_VERBOSE(DBG_GROUP_MOVE, "Move called: " + isAbsoluteMove + ' ' + (commandNameForLogging == nullptr ? "None" : *commandNameForLogging));
-        if (!initialized)
+        DBG_VERBOSE(DBG_GROUP_MOVE, String("Move called: ") + String(isAbsoluteMove) + ' ' + (commandNameForLogging == nullptr ? "None" : *commandNameForLogging));        if (!initialized)
         {
             DBG_VERBOSE(DBG_GROUP_MOVE, "MoveControllerBase::move failed. Not initialized");
             return false;
@@ -80,7 +79,6 @@ namespace StepDirController
             DBG_ERROR(DBG_GROUP_MOVE, "Move already in progress. Aborting!");
             return false;
         }
-        isMAJInProgress = true;
         moveCommandName = commandNameForLogging;
         for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
@@ -91,7 +89,7 @@ namespace StepDirController
         PrepareMoveComputationResult prepareResult = prepareMove(params, isAbsoluteMove);
         if (prepareResult.status == PrepareMoveStatus::NO_EFFECTIVE_MOTION)
         {
-            addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Status::OK + "  | ");
+            addDataToOutQueue(*moveCommandName + " " + RobotConstants::Status::OK + "  | ");
             MAJ_clearMoveStatusesAfterMoveCompletion();
             isMAJInProgress = false;
             moveCommandName = nullptr;
@@ -149,11 +147,18 @@ namespace StepDirController
 
     MoveControllerBase::PrepareMoveComputationResult MoveControllerBase::computePrepareMove(MoveInput& input)
     {
+        String movesStr = "CPM ";
+        for(int32_t steps : input.relativeMotions){
+            movesStr += String(steps) + " ";
+        }
+
+        DBG_VERBOSE(DBG_GROUP_MOVE, movesStr + " " + String(input.velocity, 4) + " " + String(input.acceleration, 4));
         PrepareMoveComputationResult result;
         if(input.velocity < 0 || RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_PERCENT < input.velocity){
             result.status = PrepareMoveStatus::INVALID_SPEED;
             return result;
         }
+
         if(input.acceleration < 0 || RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_PERCENT < input.acceleration){
             result.status = PrepareMoveStatus::INVALID_ACCELERATION;
             return result;
@@ -188,6 +193,8 @@ namespace StepDirController
                 result.maxMovementAxisId = nodeId;
             }
         }
+
+        DBG_VERBOSE(DBG_GROUP_MOVE, "computePrepareMove: MaxMovementAbs=" + String(maxMovementAbs) + ", vel=" + String(velocity, 3) + ", acc=" + String(acceleration, 3));
 
         result.maxMovementAbsSteps = maxMovementAbs;
         if (maxMovementAbs == 0)
@@ -262,43 +269,46 @@ namespace StepDirController
 
         bool hasEffectiveMotion = false;
         bool syncModelValid = true;
+        DBG_INFO(DBG_GROUP_MOVE, "Result: accTime=" + String(result.accelerationTimeSec, 5) + ", constantVelTime=" + String(result.constantVelocityTimeSec, 5) + " " + String(result.fullMovementTimeSec, 5));
+        DBG_INFO(DBG_GROUP_MOVE, "maxDistanceSteps=" + String(maxDistanceSteps, 2) + ", dAccelForMaxVelocity=" + String(dAccelForMaxVelocity, 2) + ", maxVelocityStepsPerSec=" + String(maxVelocityStepsPerSec, 2));
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
         {
             PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
-            const double relativeAbsSteps = std::abs(static_cast<double>(axisResult.targetSteps));
-            if (relativeAbsSteps == 0.0)
+            const int32_t relativeAbsSteps = std::abs(axisResult.targetSteps);
+            if (relativeAbsSteps == 0)
             {
+                axisResult.profileVelocityRpm = 0;
+                axisResult.profileAccelerationRpmPerSec = 0;
+                continue;
+            } else if (relativeAbsSteps == maxMovementAbs)
+            {
+                axisResult.profileVelocityRpm = std::round(velocity * RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
+                axisResult.profileAccelerationRpmPerSec = std::round(velocity * RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S);
                 continue;
             }
 
             hasEffectiveMotion = true;
             axisResult.velocityStepsPerSec = relativeAbsSteps / denominator;
-            // addDataToOutQueue("Axis " + String(nodeId) + 
-            //     ": relativeAbsSteps=" + String(relativeAbsSteps, 6) +
-            //     ", denominator=" + String(denominator, 6) +
-            //     ", velocityStepsPerSec=" + String(axisResult.velocityStepsPerSec, 6));
-            
+            DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + " axisResult.velocityStepsPerSec=" + String(axisResult.velocityStepsPerSec, 4) + "; relativeAbsSteps=" + String(relativeAbsSteps, 3) + "; denominator=" + String(denominator, 3));
             axisResult.accelerationStepsPerSec2 = axisResult.velocityStepsPerSec / result.accelerationTimeSec;
             if (!std::isfinite(axisResult.velocityStepsPerSec) || axisResult.velocityStepsPerSec <= 0.0 ||
                 !std::isfinite(axisResult.accelerationStepsPerSec2) || axisResult.accelerationStepsPerSec2 <= 0.0)
             {
+                DBG_INFO(DBG_GROUP_MOVE, "velocityStepsPerSec or accelerationStepsPerSec2 infinite or non-positive");
                 syncModelValid = false;
             }
-
             const double velocityRpmDouble = Axis::stepsPerSecToMotorRPMDouble(axisResult.velocityStepsPerSec);
             const double accelerationRpmPerSecDouble = Axis::stepsPerSec2ToRPMPSDouble(axisResult.accelerationStepsPerSec2);
-            // addDataToOutQueue("Axis " + String(nodeId) +
-            //  ": velocity(steps/s)=" + String(axisResult.velocityStepsPerSec, 6) +
-            //  ", acceleration(steps/s^2)=" + String(axisResult.accelerationStepsPerSec2, 6) +
-            //  ", velocity(rpm)=" + String(velocityRpmDouble, 6) +
-            //  ", acceleration(rpm/s)=" + String(accelerationRpmPerSecDouble, 6));
 
             if (!std::isfinite(velocityRpmDouble) || !std::isfinite(accelerationRpmPerSecDouble))
             {
+                DBG_INFO(DBG_GROUP_MOVE, "velocityRpmDouble or accelerationRpmPerSecDouble is not finite");
                 syncModelValid = false;
                 continue;
             }
 
+            //DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + " velocityRpmDouble=" + String(velocityRpmDouble, 3) + ", accelerationRpmPerSecDouble=" + String(accelerationRpmPerSecDouble, 3));
+            
             uint32_t profileVelocityRpm;
             if (axisResult.velocityStepsPerSec < RobotConstants::Control::MINIMUM_PROFILE_VELOCITY_IN_STEPS_PER_SEC)
             {
@@ -306,7 +316,7 @@ namespace StepDirController
             }
             else
             {
-                profileVelocityRpm = static_cast<uint32_t>(std::ceil(velocityRpmDouble));
+                profileVelocityRpm = static_cast<uint32_t>(std::round(velocityRpmDouble));
             }
 
             uint32_t profileAccelerationRpmPerSec;
@@ -316,20 +326,34 @@ namespace StepDirController
             }
             else
             {
-                profileAccelerationRpmPerSec = static_cast<uint32_t>(std::ceil(accelerationRpmPerSecDouble));
+                profileAccelerationRpmPerSec = static_cast<uint32_t>(std::round(accelerationRpmPerSecDouble));
             }
 
             axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
             axisResult.profileAccelerationRpmPerSec = std::min(profileAccelerationRpmPerSec, RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S);
 
-            const double axisAccelerationTime = axisResult.velocityStepsPerSec / axisResult.accelerationStepsPerSec2;
-            const double axisConstantTime = (relativeAbsSteps / axisResult.velocityStepsPerSec) - axisAccelerationTime;
-            const double syncTolerance = 1e-6;
-            if (std::abs(axisAccelerationTime - result.accelerationTimeSec) > syncTolerance ||
-                std::abs(axisConstantTime - result.constantVelocityTimeSec) > syncTolerance)
-            {
-                syncModelValid = false;
-            }
+            //DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + " axisResult.profileVelocityRpm=" + String(axisResult.profileVelocityRpm) + ", axisResult.profileAccelerationRpmPerSec=" + String(axisResult.profileAccelerationRpmPerSec));
+
+            // The following time check is a questionable feature. If the relative motiions are very different: for example 600000 steps and 21 sptes. The motor, which needs to move by 21 steps, will
+            // need very low velocity and acceleration (like 0.1 or less), but the minimal non-zero velocity and acceleration are 1. So all of the non-zero small velocities and accelerations will quantize to 1. And the time calculations will be very off
+            // That is a very big problem and I do not yet know how to solve it. Either leave it like that without time check. Because if the motors has to move so little, our eye won't notice it.  
+
+
+            // const double axisAccelerationTimeQuantized = static_cast<double>(axisResult.profileVelocityRpm) / axisResult.profileAccelerationRpmPerSec;
+
+            // const double axisConstantTimeQuantized = ((relativeAbsSteps/RobotConstants::Axis::STEPS_PER_MOTOR_REV) * RobotConstants::Math::SECONDS_IN_MINUTE / (axisResult.profileVelocityRpm)) - axisAccelerationTimeQuantized;
+            // const double syncTolerance = 2e-2;
+            // if (std::abs(axisAccelerationTimeQuantized- result.accelerationTimeSec) > syncTolerance ||
+            //     std::abs(axisConstantTimeQuantized - result.constantVelocityTimeSec) > syncTolerance)
+            // {
+
+            //     DBG_INFO(DBG_GROUP_MOVE, "axisAccelerationTimeQuantized = " + String(axisAccelerationTimeQuantized, 4) + " " + String(result.accelerationTimeSec, 4) + " ;" + String(syncTolerance));
+            //     DBG_INFO(DBG_GROUP_MOVE, "axisConstantTimeQuantized = " + String(axisConstantTimeQuantized, 5) + ", result.constantVelocityTimeSec = " + String(result.constantVelocityTimeSec, 5));
+            //     DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + " " + String(axisResult.profileAccelerationRpmPerSec) + " " + String(axisResult.profileVelocityRpm));
+            //     syncModelValid = false;
+            //     result.reason = "Axis " + String(nodeId) + ": " + String(axisConstantTimeQuantized, 5) + " " + String(result.constantVelocityTimeSec, 5) + "; " + String(axisAccelerationTimeQuantized, 5) + " " + String(result.accelerationTimeSec, 5) + "; "; 
+            //     break;
+            // }
         }
 
         if (!hasEffectiveMotion)
@@ -359,20 +383,23 @@ namespace StepDirController
         MoveInput input;
         input.velocity = params.speed;
         input.acceleration = params.acceleration;
+        String inputRelativeMotionsStr = "relativeMotion: ";
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
         {
             int32_t targetPositionInSteps = Axis::unitsToSteps(params.movementUnits[nodeId - 1]);
             if (isAbsoluteMove)
             {
-                input.relativeMotions[nodeId - 1] = targetPositionInSteps - axes[nodeId].getCurrentPositionInSteps();
+                input.relativeMotions[nodeId - 1] = targetPositionInSteps - axes.at(nodeId).getCurrentPositionInSteps();
+                inputRelativeMotionsStr += String(input.relativeMotions[nodeId - 1]) + " " + String(targetPositionInSteps) + " " + String(axes.at(nodeId).getCurrentPositionInSteps()) + "; ";
             }
             else
             {
                 input.relativeMotions[nodeId - 1] = targetPositionInSteps;
             }
         }
+        DBG_VERBOSE(DBG_GROUP_MOVE, inputRelativeMotionsStr + "; velocity=" + String(input.velocity) + "; acceleration=" + String(input.acceleration));
         DBG_VERBOSE(DBG_GROUP_MOVE, "Input: velocity=" + String(input.velocity) + ", acceleration=" + String(input.acceleration));
-        for(uint8_t nodeId = 1; nodeId < axesCnt; ++nodeId) 
+        for(uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId) 
         {
             DBG_VERBOSE(DBG_GROUP_MOVE, String(input.relativeMotions[nodeId - 1]) + ' ');
         }
@@ -398,7 +425,7 @@ namespace StepDirController
                 Axis &axis = axes.at(nodeId);
                 const PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
 
-                axis.setTargetPositionInSteps(axes[nodeId].getCurrentPositionInSteps() + axisResult.targetSteps);
+                axis.setTargetPositionInSteps(axes.at(nodeId).getCurrentPositionInSteps() + axisResult.targetSteps);
                 axis.setProfileVelocityInRPM(axisResult.profileVelocityRpm);
                 axis.setProfileAccelerationInRPMPerSec(axisResult.profileAccelerationRpmPerSec);
 
@@ -411,7 +438,7 @@ namespace StepDirController
         } else {
             for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
             {
-                axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_PREPARATION_FAIL;
+                axes.at(nodeId).moveStatus = RobotConstants::MoveStatus::MOVE_PREPARATION_FAIL;
             }
             DBG_ERROR(DBG_GROUP_MOVE, "prepareMove failed: status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason);
             return result;
@@ -919,7 +946,7 @@ namespace StepDirController
 
         for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
-            DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel checking Axis " + String(nodeId) + " with status " + String(axes[nodeId].moveStatus));
+            DBG_VERBOSE(DBG_GROUP_MOVE, "MAJ_SYNCFunnel checking Axis " + String(nodeId) + " with status " + String(axes[nodeId].moveStatus));
             RobotConstants::MoveStatus status = axes[nodeId].moveStatus;
             if(status == RobotConstants::MoveStatus::MOVE_PREPARATION_SUCCESS)
             {
@@ -931,13 +958,13 @@ namespace StepDirController
         // All axes are ready, send SYNC
         DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");
         canOpen->sendSYNC();
-        delay(100);
+        // delay(10); // Check for different 
         for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             if(axes[nodeId].moveStatus == RobotConstants::MoveStatus::READY_TO_MOVE)
             {
                 axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVING;
-                DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: Axis " + String(nodeId) + " status set to MOVING.");
+                DBG_VERBOSE(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: Axis " + String(nodeId) + " status set to MOVING.");
                 MAJ_requestStatusWord(nodeId); // Request status immediately after sending SYNC to minimize the delay before we get the first status update
                 delay(10);
             }

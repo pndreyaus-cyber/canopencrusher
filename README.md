@@ -28,20 +28,8 @@
 * `PMT AXIS ...` - per-axis computed details (only when verbose mode is enabled)
 * `PMT SUMMARY ...` - total/passed/failed counters
 
-## Serial Framing and Queue Strategy
-
-Serial output now uses bounded chunk framing through `addDataToOutQueue`:
-
-* Each queued chunk payload is capped at `63` bytes (`SERIAL_OUT_CHUNK_PAYLOAD_MAX`).
-* A newline chunk is appended after each logical message.
-* `sendData` transmits one queued chunk at a time using `Serial2.write(...)`.
-
-Queue internals are implemented as a fixed-size ring buffer (`SERIAL_OUT_QUEUE_CAPACITY`), which avoids front-erase and substring-heavy queue churn.
-
-## Reuse for Future Test Commands
-
-Any future diagnostics command should write output only via `addDataToOutQueue` to automatically inherit chunk framing and lightweight queue behavior.
-
-## Rollback Note
-
-If field behavior regresses, rollback by restoring the previous queue implementation around `addDataToOutQueue`/`sendData` from version control, then retest PMT output and core command replies.
+## Serial Output Strategy
+Serial output is currently line-oriented and based on an internal `String` buffer:
+* Logical messages are assembled as complete text lines in memory.
+* Each line is sent using `Serial2.println(...)`, which appends the newline terminator.
+* If the size of the queue extends 100 messages, the head of the queue is forced to be send to Serial

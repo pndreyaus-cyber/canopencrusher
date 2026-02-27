@@ -52,7 +52,7 @@ void setup()
     while (!Serial2)
     {
     }
-    Serial2.println("Serial connected!");
+    Serial2.println("Serial2 connected!");
 
     if (!canOpen.startCan(1000000))
     {
@@ -173,7 +173,7 @@ void handleCommand()
 void addDataToOutQueue(String data) // добавление сообщений в очередь на отправку на компьютер
 {
     noInterrupts();
-    if(outData.size() >= 100) // Limit the queue size to prevent memory issues
+    if(outData.size() >= RobotConstants::Buffers::SERIAL_OUT_QUEUE_CAPACITY) // Limit the queue size to prevent memory issues
     {
         sendData();
     }
@@ -298,6 +298,10 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command,
     int nodeCnt = 0;
     while (i < paramsStr.length() && !invalidParams && paramsStr.charAt(i) == (char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) // Parse movement parameters until we reach speed parameter (starting with 'S')
     {
+        if(i + 1 >= paramsStr.length()){
+            invalidParams = true;
+            break;
+        }
         char axisIdChar = paramsStr.charAt(i + 1);
         if (axisIdChar < RobotConstants::Robot::MIN_NODE_ID || RobotConstants::Robot::MAX_NODE_ID < axisIdChar)
         {
@@ -550,7 +554,11 @@ void handlePrepareMoveTest(String command)
     digitalWrite(PC13, LOW);
     delay(100);
     digitalWrite(PC13, HIGH);
-    
+    if(moveController.isMoveInProgress())
+    {
+        addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_TEST + " " + RobotConstants::Status::LOGIC_ERROR + " Cannot start test sequence, while move is in progress");
+        return;
+    }
     bool success = runPrepareMoveTests(isVerbose);
     if (!success)
     {
