@@ -151,8 +151,9 @@ namespace StepDirController
         for(int32_t steps : input.relativeMotions){
             movesStr += String(steps) + " ";
         }
-
         DBG_VERBOSE(DBG_GROUP_MOVE, movesStr + " " + String(input.velocity, 4) + " " + String(input.acceleration, 4));
+
+
         PrepareMoveComputationResult result;
         if(input.velocity < 0 || RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_PERCENT < input.velocity){
             result.status = PrepareMoveStatus::INVALID_SPEED;
@@ -283,7 +284,7 @@ namespace StepDirController
             } else if (relativeAbsSteps == maxMovementAbs)
             {
                 axisResult.profileVelocityRpm = std::round(velocity * RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
-                axisResult.profileAccelerationRpmPerSec = std::round(velocity * RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S);
+                axisResult.profileAccelerationRpmPerSec = std::round(acceleration * RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S);
                 continue;
             }
 
