@@ -288,7 +288,7 @@ namespace StepDirController
             }
 
             hasEffectiveMotion = true;
-            axisResult.velocityStepsPerSec = relativeAbsSteps / denominator;
+            axisResult.velocityStepsPerSec = static_cast<double>(relativeAbsSteps) / denominator;
             DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + " axisResult.velocityStepsPerSec=" + String(axisResult.velocityStepsPerSec, 4) + "; relativeAbsSteps=" + String(relativeAbsSteps, 3) + "; denominator=" + String(denominator, 3));
             axisResult.accelerationStepsPerSec2 = axisResult.velocityStepsPerSec / result.accelerationTimeSec;
             if (!std::isfinite(axisResult.velocityStepsPerSec) || axisResult.velocityStepsPerSec <= 0.0 ||
