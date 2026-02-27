@@ -958,7 +958,7 @@ namespace StepDirController
         // All axes are ready, send SYNC
         DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");
         canOpen->sendSYNC();
-        // delay(10); // Check for different 
+        delay(10); // Check for different 
         for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             if(axes[nodeId].moveStatus == RobotConstants::MoveStatus::READY_TO_MOVE)
