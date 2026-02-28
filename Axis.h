@@ -4,6 +4,8 @@
 #define AXIS_H
 
 #include <cstdint>
+#include <optional>
+
 #include "OD.h"
 #include "objdict_objectdefines.h"
 #include "RobotConstants.h"
@@ -30,11 +32,11 @@ namespace StepDirController
         // ============================= Setters of target position, profile velocity and acceleration end =============================
 
         // ============================= Getters =============================
-        uint8_t getNodeId() const;
-        int32_t getCurrentPositionInSteps() const;
-        int32_t getTargetPositionInSteps() const;
-        uint32_t getProfileVelocityInRPM() const;
-        uint32_t getProfileAccelerationInRPMPerSec() const;
+        std::optional<uint8_t> getNodeId() const;
+        std::optional<int32_t> getCurrentPositionInSteps() const;
+        std::optional<int32_t> getTargetPositionInSteps() const;
+        std::optional<uint32_t> getProfileVelocityInRPM() const;
+        std::optional<uint32_t> getProfileAccelerationInRPMPerSec() const;
         // ============================= Getters end =============================
 
         // ============================= Static methods =============================
@@ -42,19 +44,19 @@ namespace StepDirController
         static int32_t unitsToSteps(double units); // Convert units (degrees) to steps
 
         static uint32_t speedUnitsToMotorRPM(double speedUnits); // Convert degrees/sec to RPM
-        static double motorRPMToSpeedUnits(uint32_t rpm); // Convert RPM to degrees/sec
+        static double motorRPMToSpeedUnits(uint32_t rpm);        // Convert RPM to degrees/sec
 
-        static double motorRPMToStepsPerSec(uint32_t rpm); // Convert RPM to steps/sec
+        static double motorRPMToStepsPerSec(uint32_t rpm);          // Convert RPM to steps/sec
         static double motorRPMPSToStepsPerSec2(uint32_t rpmPerSec); // Convert RPM/sec to steps/sec^2
 
         static uint32_t stepsPerSecToMotorRPM(double stepsPerSec); // Convert steps/sec to RPM
-        static uint32_t stepsPerSec2ToRPMPS(double stepsPerSec2); // Convert degrees/sec^2 to RPM/sec
+        static uint32_t stepsPerSec2ToRPMPS(double stepsPerSec2);  // Convert degrees/sec^2 to RPM/sec
 
         static double stepsPerSecToMotorRPMDouble(double stepsPerSec); // Convert steps/sec to RPM
-        static double stepsPerSec2ToRPMPSDouble(double stepsPerSec2); // Convert degrees/sec^2 to RPM/sec
+        static double stepsPerSec2ToRPMPSDouble(double stepsPerSec2);  // Convert degrees/sec^2 to RPM/sec
 
         static uint32_t accelerationUnitsToRPMPS(double accelerationUnits); // Convert degrees/sec^2 to RPM/sec
-        static double RPMPSToAccelerationUnits(uint32_t rpmPerSecond);     // Convert RPM/sec to degrees/sec^2
+        static double RPMPSToAccelerationUnits(uint32_t rpmPerSecond);      // Convert RPM/sec to degrees/sec^2
 
         static double stepsToMotorRevs(int32_t steps);
         // ============================= Static methods end =============================
@@ -72,7 +74,7 @@ namespace StepDirController
         // For ZEI
         RobotConstants::InitStatus initStatus;
         uint32_t lastHeartbeatMs = 0;
-        //bool isAlive = true;
+        // bool isAlive = true;
 
         // For MAJ
         uint32_t lastRequestedStatusWord = 0;

@@ -58,13 +58,13 @@ extern void addDataToOutQueue(String data);
 
 #define DBG_ENABLED(level, group) ((dbgConfigLevel(DEBUG_CONFIG) >= (level)) && ((dbgConfigGroups(DEBUG_CONFIG) & (group)) != 0u))
 
-#define DBG_LOG(level, group, msg)     \
-    do                                 \
-    {                                  \
-        if (DBG_ENABLED(level, group)) \
-        {                              \
+#define DBG_LOG(level, group, msg)                                                    \
+    do                                                                                \
+    {                                                                                 \
+        if (DBG_ENABLED(level, group))                                                \
+        {                                                                             \
             addDataToOutQueue(String("[") + dbgLevelTag(level) + "] " + String(msg)); \
-        }                              \
+        }                                                                             \
     } while (0)
 
 #define DBG_ERROR(group, msg) DBG_LOG(DBG_LEVEL_ERROR, group, msg)

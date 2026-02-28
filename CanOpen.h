@@ -39,7 +39,7 @@ private:
 
     callback_heartbeat callbacks_heartbeat = nullptr;
 
-    callback_read_x6041_statusword callbacks_read_x6041_statusword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr}; // index 0 is unused
+    callback_read_x6041_statusword callbacks_read_x6041_statusword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};   // index 0 is unused
     callback_read_x6040_controlword callbacks_read_x6040_controlword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr}; // index 0 is unused
 
 public:

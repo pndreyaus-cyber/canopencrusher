@@ -1,5 +1,6 @@
 #include <math.h>
 #include <iostream>
+
 #include "Arduino.h"
 #include "Axis.h"
 #include "RobotConstants.h"
@@ -112,56 +113,56 @@ namespace StepDirController
     // ===================== Setters end =====================
 
     // ===================== Getters =====================
-    uint8_t Axis::getNodeId() const
+    std::optional<uint8_t> Axis::getNodeId() const
     {
         if (!initialized)
         {
             DBG_WARN(DBG_GROUP_AXIS, "Axis::getNodeId -- Axis not initialized");
-            return 0;
+            return std::nullopt;
         }
 
         return nodeId;
     }
 
-    int32_t Axis::getCurrentPositionInSteps() const
+    std::optional<int32_t> Axis::getCurrentPositionInSteps() const
     {
         if (!initialized)
         {
             DBG_WARN(DBG_GROUP_AXIS, "Axis::getCurrentPositionInSteps -- Axis not initialized");
-            return -1;
+            return std::nullopt;
         }
 
         return params.x6064_positionActualValue;
     }
 
-    int32_t Axis::getTargetPositionInSteps() const
+    std::optional<int32_t> Axis::getTargetPositionInSteps() const
     {
         if (!initialized)
         {
             DBG_WARN(DBG_GROUP_AXIS, "Axis::getTargetPositionInSteps -- Axis not initialized");
-            return -1;
+            return std::nullopt;
         }
 
         return params.x607A_targetPosition;
     }
 
-    uint32_t Axis::getProfileVelocityInRPM() const
+    std::optional<uint32_t> Axis::getProfileVelocityInRPM() const
     {
         if (!initialized)
         {
             DBG_WARN(DBG_GROUP_AXIS, "Axis::getProfileVelocityInRPM -- Axis not initialized");
-            return -1;
+            return std::nullopt;
         }
 
         return params.x6081_profileVelocity;
     }
 
-    uint32_t Axis::getProfileAccelerationInRPMPerSec() const
+    std::optional<uint32_t> Axis::getProfileAccelerationInRPMPerSec() const
     {
         if (!initialized)
         {
             DBG_WARN(DBG_GROUP_AXIS, "Axis::getProfileAccelerationInRPMPerSec -- Axis not initialized");
-            return -1;
+            return std::nullopt;
         }
 
         return params.x6083_profileAcceleration;
@@ -205,7 +206,7 @@ namespace StepDirController
     {
         return static_cast<double>(rpmPerSec) * RobotConstants::Axis::STEPS_PER_MOTOR_REV / RobotConstants::Math::SECONDS_IN_MINUTE;
     }
-    
+
     uint32_t Axis::stepsPerSecToMotorRPM(double stepsPerSec) // Convert steps/sec to RPM
     {
         return static_cast<uint32_t>(std::ceil(Axis::stepsPerSecToMotorRPMDouble(stepsPerSec)));
@@ -225,7 +226,7 @@ namespace StepDirController
         }
         return stepsPerSec * RobotConstants::Math::SECONDS_IN_MINUTE / RobotConstants::Axis::STEPS_PER_MOTOR_REV;
     }
-    
+
     double Axis::stepsPerSec2ToRPMPSDouble(double stepsPerSec2) // Convert degrees/sec^2 to RPM/sec
     {
         if (stepsPerSec2 < 0)
@@ -246,13 +247,12 @@ namespace StepDirController
         return static_cast<uint32_t>(accelerationUnits * RobotConstants::Math::SECONDS_IN_MINUTE * RobotConstants::Axis::GEAR_RATIO / RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV);
     }
 
-
     double Axis::RPMPSToAccelerationUnits(uint32_t rpmPerSecond)
     {
         return static_cast<double>(rpmPerSecond) * RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV / (RobotConstants::Math::SECONDS_IN_MINUTE * RobotConstants::Axis::GEAR_RATIO);
     }
 
-    double Axis::stepsToMotorRevs(int32_t steps) 
+    double Axis::stepsToMotorRevs(int32_t steps)
     {
         return static_cast<double>(steps) / RobotConstants::Axis::STEPS_PER_MOTOR_REV;
     }

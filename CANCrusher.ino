@@ -24,7 +24,7 @@ void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConsta
 MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command, RobotConstants::MoveUnits moveUnits);
 MotorIndices stringToMotorIndices(String command);
 
-void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const String& command, bool isAbsoluteMove);
+void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const String &command, bool isAbsoluteMove);
 void handleZeroInitialize(MotorIndices motorIndices);
 void handleRequestPosition(MotorIndices motorIndices);
 void handleRequestPositionAngles(MotorIndices motorIndices);
@@ -173,7 +173,7 @@ void handleCommand()
 void addDataToOutQueue(String data) // добавление сообщений в очередь на отправку на компьютер
 {
     noInterrupts();
-    if(outData.size() >= RobotConstants::Buffers::SERIAL_OUT_QUEUE_CAPACITY) // Limit the queue size to prevent memory issues
+    if (outData.size() >= RobotConstants::Buffers::SERIAL_OUT_QUEUE_CAPACITY) // Limit the queue size to prevent memory issues
     {
         sendData();
     }
@@ -269,7 +269,7 @@ void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConsta
             params.errorMsg = "For degree-based moves, speed must be in the range [0, " + String(RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S) + "] and acceleration must be in the range [0, " + String(RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2) + "]: speed: " + String(velocity) + ", acceleration: " + String(acceleration);
             return;
         }
-        params.speed = velocity / RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S; // Convert to percentage of maximum velocity
+        params.speed = velocity / RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S;                 // Convert to percentage of maximum velocity
         params.acceleration = acceleration / RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2; // Convert to percentage of maximum acceleration
     }
     else
@@ -298,7 +298,8 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command,
     int nodeCnt = 0;
     while (i < paramsStr.length() && !invalidParams && paramsStr.charAt(i) == (char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) // Parse movement parameters until we reach speed parameter (starting with 'S')
     {
-        if(i + 1 >= paramsStr.length()){
+        if (i + 1 >= paramsStr.length())
+        {
             invalidParams = true;
             break;
         }
@@ -438,7 +439,7 @@ MotorIndices stringToMotorIndices(String command)
     return motorIndices;
 }
 
-void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const String& command, bool isAbsoluteMove)
+void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const String &command, bool isAbsoluteMove)
 {
     if (params.status != ParamsStatus::OK)
     {
@@ -448,7 +449,7 @@ void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const Stri
     }
 
     DBG_VERBOSE(DBG_GROUP_MOVE, "MAP: velocity=" + String(params.speed) + ", acceleration=" + String(params.acceleration));
-    for(uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
+    for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
     {
         DBG_VERBOSE(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": movementUnits=" + String(params.movementUnits[nodeId - 1]));
     }
@@ -506,7 +507,7 @@ void handleRequestPosition(MotorIndices motorIndices)
     String reply = RobotConstants::Commands::REQUEST_POSITION + " " + RobotConstants::Status::OK + " ";
     for (uint8_t nodeId : motorIndices.nodeIds)
     {
-        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId)) + " ";
+        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId).value_or(0)) + " ";
     }
     addDataToOutQueue(reply);
 }
@@ -522,9 +523,9 @@ void handleRequestPositionAngles(MotorIndices motorIndices)
     String reply = RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + RobotConstants::Status::OK + " ";
     for (uint8_t nodeId : motorIndices.nodeIds)
     {
-        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(Axis::stepsToUnits(moveController.axisPosition(nodeId)), 6) + " ";
+        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(Axis::stepsToUnits(moveController.axisPosition(nodeId).value_or(0)), 6) + " ";
     }
-    addDataToOutQueue(reply);    
+    addDataToOutQueue(reply);
 }
 
 void handlePrepareMoveTest(String command)
@@ -554,7 +555,7 @@ void handlePrepareMoveTest(String command)
     digitalWrite(PC13, LOW);
     delay(100);
     digitalWrite(PC13, HIGH);
-    if(moveController.isMoveInProgress())
+    if (moveController.isMoveInProgress())
     {
         addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_TEST + " " + RobotConstants::Status::LOGIC_ERROR + " Cannot start test sequence, while move is in progress");
         return;

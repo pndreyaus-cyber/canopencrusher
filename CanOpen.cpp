@@ -169,7 +169,7 @@ bool CanOpen::send_RPDO4(uint8_t nodeId, int32_t targetPositionAbsolute)
     msgBuf[2] = static_cast<uint8_t>((targetPositionAbsolute >> 16) & 0xFF);
     msgBuf[3] = static_cast<uint8_t>((targetPositionAbsolute >> 24) & 0xFF);
 
-    for(int i = 4; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i) // Pad remaining bytes with zeroes
+    for (int i = 4; i < RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN; ++i) // Pad remaining bytes with zeroes
     {
         msgBuf[i] = 0;
     }
@@ -294,8 +294,8 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     {
         CAN_TX_msg.buf[i] = msgData[i];
     }
-    
-    for(int i = msgDataLen; i < 8; ++i) // Pad remaining bytes with zeroes
+
+    for (int i = msgDataLen; i < 8; ++i) // Pad remaining bytes with zeroes
     {
         CAN_TX_msg.buf[i] = 0;
     }
@@ -370,12 +370,15 @@ bool CanOpen::read()
             }
             else if (registerAddress == RobotConstants::ODIndices::CONTROLWORD)
             { // 0x6040
-                if (data[0] == 0x60){ // Write to control word ack
+                if (data[0] == 0x60)
+                { // Write to control word ack
                     if (callbacks_x6040_controlword[nodeId] != nullptr)
                     {
                         callbacks_x6040_controlword[nodeId](nodeId, true);
-                    }    
-                } else if(data[0] != 0x80){ // Read control word response  
+                    }
+                }
+                else if (data[0] != 0x80)
+                { // Read control word response
                     if (callbacks_read_x6040_controlword[nodeId] != nullptr)
                     {
                         bool success = (data[0] != 0x80);
@@ -386,7 +389,9 @@ bool CanOpen::read()
                         }
                         callbacks_read_x6040_controlword[nodeId](nodeId, success, controlWordValue);
                     }
-                } else {
+                }
+                else
+                {
                     if (callbacks_x6040_controlword[nodeId] != nullptr)
                     {
                         callbacks_x6040_controlword[nodeId](nodeId, false);
@@ -464,15 +469,14 @@ bool CanOpen::read()
         else if (function_code == RobotConstants::CANOpen::COB_ID_TPDO1_BASE)
         {
             int32_t actualPosition = (static_cast<int32_t>(data[3]) << 24) |
-                                 (static_cast<int32_t>(data[2]) << 16) |
-                                 (static_cast<int32_t>(data[1]) << 8) |
-                                 (static_cast<int32_t>(data[0]));
-            uint16_t statusWordValue = static_cast<uint16_t>(data[5]) | (static_cast<uint16_t>(data[6]) << 8);
-            if(callbacks_TPDO1[nodeId] != nullptr)
+                                     (static_cast<int32_t>(data[2]) << 16) |
+                                     (static_cast<int32_t>(data[1]) << 8) |
+                                     (static_cast<int32_t>(data[0]));
+            uint16_t statusWordValue = static_cast<uint16_t>(data[4]) | (static_cast<uint16_t>(data[5]) << 8);
+            if (callbacks_TPDO1[nodeId] != nullptr)
             {
                 callbacks_TPDO1[nodeId](nodeId, actualPosition, statusWordValue);
             }
-
         }
         else if (function_code == RobotConstants::CANOpen::COB_ID_TPDO4_BASE)
         {

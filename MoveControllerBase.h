@@ -5,6 +5,8 @@
 #include <array>
 #include <string>
 #include <unordered_map>
+#include <optional>
+
 #include "CanOpen.h"
 #include "Params.h"
 #include "Axis.h"
@@ -56,7 +58,7 @@ namespace StepDirController
         };
 
         void requestStatus();
-        int32_t axisPosition(uint8_t nodeId) { return axes.at(nodeId).getCurrentPositionInSteps(); }
+        std::optional<int32_t> axisPosition(uint8_t nodeId);
 
         bool start(CanOpen *canOpen, uint8_t axesCnt);
 
@@ -66,7 +68,7 @@ namespace StepDirController
         void startZeroInitializationAllAxes();
         void startZeroInitializationSingleAxis(uint8_t nodeId);
 
-        bool move(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove, const String* commandNameForLogging = nullptr);
+        bool move(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove, const String *commandNameForLogging = nullptr);
 
         bool isInitialized() const { return initialized; }
 
@@ -74,11 +76,10 @@ namespace StepDirController
         void tick_100();
         void tick_500();
 
-        static PrepareMoveComputationResult computePrepareMove(MoveInput& input);
+        static PrepareMoveComputationResult computePrepareMove(MoveInput &input);
         static String prepareMoveStatusToString(PrepareMoveStatus status);
 
-        bool isMoveInProgress() const {return isMAJInProgress;}
-
+        bool isMoveInProgress() const { return isMAJInProgress; }
 
     protected:
         PrepareMoveComputationResult prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params, bool isAbsoluteMove);
@@ -118,8 +119,8 @@ namespace StepDirController
         // ======== ZEI Sequence End ========
 
         // ======== MAJ Sequence ========
-        bool isMAJInProgress = false;   
-        const String* moveCommandName = nullptr; // For logging purposes, to know which command triggered the MAJ
+        bool isMAJInProgress = false;
+        const String *moveCommandName = nullptr; // For logging purposes, to know which command triggered the MAJ
 
         void MAJ_start(uint8_t nodeId);
         void MAJ_afterRequestOf_0x6040(uint8_t nodeId, bool success, uint16_t controlWord);
@@ -136,8 +137,9 @@ namespace StepDirController
         bool MAJ_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
         bool MAJ_checkTargetPositionReached(uint16_t statusWord);
 
-        void MAJ_clearMoveStatusesAfterMoveCompletion(){
-            for(uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+        void MAJ_clearMoveStatusesAfterMoveCompletion()
+        {
+            for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
             {
                 axes[nodeId].moveStatus = RobotConstants::MoveStatus::NOT_TASKED_WITH_MOVE;
             }

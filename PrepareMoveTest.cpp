@@ -14,8 +14,8 @@ namespace
     };
 
     MoveController::MoveInput makeParams(const std::array<double, RobotConstants::Robot::AXES_COUNT> &targetsDeg,
-                                                             double velocityPercent,
-                                                             double accelerationPercent)
+                                         double velocityPercent,
+                                         double accelerationPercent)
     {
         MoveController::MoveInput input;
         for (uint8_t idx = 0; idx < RobotConstants::Robot::AXES_COUNT; ++idx)
@@ -40,14 +40,14 @@ namespace
         addDataToOutQueue(prefix + "sync=" + String(result.syncModelValid));
         addDataToOutQueue(prefix + "max_axis=" + String(result.maxMovementAxisId));
         addDataToOutQueue(prefix + "max_steps=" + String(result.maxMovementAbsSteps));
-        
+
         if (!verbose)
         {
             return;
         }
-        
+
         addDataToOutQueue(prefix + "+ Detailed axis results: +");
-        
+
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
         {
             const MoveController::PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
@@ -90,8 +90,7 @@ bool runPrepareMoveTests(bool verbose)
         // {"mixed_angles_low_speed_and_acceleration", makeParams({23.1, 0.00219, 1.0, 5.0, 0.01, 0.000006}, 0.000334, 0.00153), MoveController::PrepareMoveStatus::OK, true},
         // {"tiny_quantized", makeParams({0.000001, -0.000001, 0.0, 0.0, 0.0, 0.0}, 0.05, 0.15), MoveController::PrepareMoveStatus::NO_EFFECTIVE_MOTION, true},
         //{"normal_1", makeParams({9.0, 0.0, -20.0, 0.0, 10.0, 0.0}, 0.05, 0.1), MoveController::PrepareMoveStatus::OK, true}
-        {"normal_1", makeParams({0.0, -1.0, 0.01, 0.003, -1.033421}, 0.1, 0.032), MoveController::PrepareMoveStatus::OK, true}
-    };
+        {"normal_1", makeParams({0.0, -1.0, 0.01, 0.003, -1.033421}, 0.1, 0.032), MoveController::PrepareMoveStatus::OK, true}};
 
     uint32_t passed = 0;
     uint32_t caseId = 0;
