@@ -27,25 +27,10 @@ namespace StepDirController
         moveStatus = RobotConstants::MoveStatus::NOT_TASKED_WITH_MOVE;
         status = RobotConstants::AxisStatus::NOT_ALIVE;
         initialized = true;
+        limitsEnabled = false;
     }
 
     // ===================== Setters =====================
-    bool Axis::setCurrentPositionInSteps(int32_t steps)
-    {
-        if (!initialized)
-        {
-            DBG_WARN(DBG_GROUP_AXIS, "Axis::setCurrentPositionInSteps -- Axis not initialized");
-            return false;
-        }
-        if (reversedLogic)
-        {
-            steps = -steps;
-        }
-        params.x6064_positionActualValue = steps;
-
-        return true;
-    }
-
     bool Axis::setTargetPositionInUnits(double units)
     {
         if (!initialized)
@@ -67,6 +52,11 @@ namespace StepDirController
         if (reversedLogic)
         {
             steps = -steps;
+        }
+        if (limitsEnabled && (steps < lowLimitSteps || highLimitSteps < steps))
+        {
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setTargetPositionInSteps -- Target position out of limits");
+            return false;
         }
         params.x607A_targetPosition = steps;
 
@@ -140,9 +130,11 @@ namespace StepDirController
             return std::nullopt;
         }
         int32_t positionActualValue = params.x6064_positionActualValue;
-        if (reversedLogic){
+        if (reversedLogic)
+        {
             return -positionActualValue;
-        } else 
+        }
+        else
         {
             return positionActualValue;
         }
@@ -156,9 +148,11 @@ namespace StepDirController
             return std::nullopt;
         }
         int32_t targetPosition = params.x607A_targetPosition;
-        if (reversedLogic){
+        if (reversedLogic)
+        {
             return -targetPosition;
-        } else 
+        }
+        else
         {
             return targetPosition;
         }
@@ -275,4 +269,42 @@ namespace StepDirController
         return static_cast<double>(steps) / RobotConstants::Axis::STEPS_PER_MOTOR_REV;
     }
     // ============================= Static methods end =============================
+
+    // ============================= Protected methods =============================
+    bool Axis::setCurrentPositionInSteps(int32_t steps)
+    {
+        if (!initialized)
+        {
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setCurrentPositionInSteps -- Axis not initialized");
+            return false;
+        }
+        if (reversedLogic)
+        {
+            steps = -steps;
+        }
+        params.x6064_positionActualValue = steps;
+
+        return true;
+    }
+
+    bool Axis::setLimits(double lowLimitUnits, double highLimitUnits)
+    {
+        if (!initialized)
+        {
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setLimits -- Axis not initialized");
+            return false;
+        }
+        if (lowLimitUnits >= highLimitUnits)
+        {
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::setLimits -- low limit must be less than high limit");
+            return false;
+        }
+        DBG_INFO(DBG_GROUP_AXIS, "Axis::setLimits -- Setting limits: low = " + String(lowLimitUnits) + " units, high = " + String(highLimitUnits) + " units");
+        
+        lowLimitSteps = unitsToSteps(lowLimitUnits);
+        highLimitSteps = unitsToSteps(highLimitUnits);
+
+        return true;
+    }
+    // ============================= Protected methods end =============================
 }

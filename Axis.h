@@ -21,7 +21,6 @@ namespace StepDirController
         Axis(uint8_t nodeId, bool reversedLogic = false);
 
         // ============================= Setters of target position, profile velocity and acceleration =============================
-        bool setCurrentPositionInSteps(int32_t steps);
 
         bool setTargetPositionInUnits(double units);
         bool setTargetPositionInSteps(int32_t steps);
@@ -64,6 +63,13 @@ namespace StepDirController
         // ============================= Static methods end =============================
 
     protected:
+        bool setCurrentPositionInSteps(int32_t steps);
+
+        bool setLimits(double lowLimitUnits, double highLimitUnits);
+        int32_t lowLimitSteps;
+        int32_t highLimitSteps;
+        bool limitsEnabled = false;
+
         bool initialized = false;
         uint8_t nodeId;
         OD_RAM_t params;

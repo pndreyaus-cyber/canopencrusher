@@ -1,7 +1,8 @@
 #include <unordered_set>
 #include <queue>
-
 #include <vector>
+#include <EEPROM.h>
+
 #include "STM32_CAN.h"
 #include "CanOpenController.h"
 #include "CanOpen.h"
@@ -9,6 +10,7 @@
 #include "RobotConstants.h"
 #include "Debug.h"
 #include "PrepareMoveTest.h"
+
 
 HardwareSerial Serial2(PA3, PA2);
 

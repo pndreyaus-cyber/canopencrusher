@@ -32,4 +32,10 @@ struct MotorIndices
     String errorCode;
 };
 
+struct LimitsEEPROM
+{
+    double lowLimits[RobotConstants::Robot::AXES_COUNT];
+    double highLimits[RobotConstants::Robot::AXES_COUNT];
+};
+
 #endif

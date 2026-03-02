@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <cmath>
+#include <EEPROM.h>
+
 #include "MoveControllerBase.h"
 #include "PrepareMoveTest.h"
 #include "Arduino.h"
@@ -44,11 +46,38 @@ namespace StepDirController
 
         this->canOpen = canOpen;
         this->axesCnt = axesCnt;
+        
+        int eeAddress = 0;
+        bool eepromContainsLimits = false;
+        EEPROM.get(eeAddress, eepromContainsLimits);
+        Serial2.println("EEPROM contains limits: " + String(eepromContainsLimits));
+
+        // if(!eepromContainsLimits)
+        // {
+        //     Serial2.println("EEPROM does not contain limits. Writing default limits to EEPROM.");
+        //     LimitsEEPROM defaultLimits;
+        //     for(uint8_t i = 0; i < RobotConstants::Robot::AXES_COUNT; ++i){
+        //         defaultLimits.lowLimits[i] = RobotConstants::Axis::DEFAULT_MIN_LIMITS[i];
+        //         defaultLimits.highLimits[i] = RobotConstants::Axis::DEFAULT_MAX_LIMITS[i];
+        //     }
+        //     EEPROM.put(eeAddress, true); // Mark that EEPROM now contains limits
+        //     EEPROM.put(eeAddress + sizeof(bool), defaultLimits);
+        // }
+
+        // LimitsEEPROM limitsEEPROM; 
+        // EEPROM.get(eeAddress + sizeof(bool), limitsEEPROM);
+        // Serial2.println("EEPROM limits loaded. lowLimits: " + String(limitsEEPROM.lowLimits[0]) + ", " + String(limitsEEPROM.lowLimits[1]) + ", " + String(limitsEEPROM.lowLimits[2]) + ", " + String(limitsEEPROM.lowLimits[3]) + ", " + String(limitsEEPROM.lowLimits[4]) + ", " + String(limitsEEPROM.lowLimits[5]));
+        // Serial2.println("EEPROM limits loaded. highLimits: " + String(limitsEEPROM.highLimits[0]) + ", " + String(limitsEEPROM.highLimits[0]) + ", " + String(limitsEEPROM.highLimits[1]) + ", " + String(limitsEEPROM.highLimits[2]) + ", " + String(limitsEEPROM.highLimits[3]) + ", " + String(limitsEEPROM.highLimits[4]) + ", " + String(limitsEEPROM.highLimits[5]));
 
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             axes[nodeId] = Axis(nodeId);
             axes[nodeId].lastHeartbeatMs = 0;
+            // axes[nodeId].setLimits(
+            //     limitsEEPROM.lowLimits[nodeId - 1],
+            //     limitsEEPROM.highLimits[nodeId - 1]
+            // );
+            axes[nodeId].limitsEnabled = true;
 
             setRegularPositionActualValueCallback(nodeId);
         }
@@ -108,7 +137,7 @@ namespace StepDirController
 
         if (prepareResult.status != PrepareMoveStatus::OK)
         {
-            addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Status::INVALID_PARAMS + " " + prepareResult.reason);
+            addDataToOutQueue(*moveCommandName + " " + prepareMoveStatusToString(prepareResult.status) + " " + prepareResult.reason);
             MAJ_clearMoveStatusesAfterMoveCompletion();
             isMAJInProgress = false;
             moveCommandName = nullptr;
@@ -440,7 +469,13 @@ namespace StepDirController
                 Axis &axis = axes.at(nodeId);
                 const PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
 
-                axis.setTargetPositionInSteps(axes.at(nodeId).getCurrentPositionInSteps().value() + axisResult.targetSteps);
+                if(!axis.setTargetPositionInSteps(axes.at(nodeId).getCurrentPositionInSteps().value() + axisResult.targetSteps)){
+                    axis.moveStatus = RobotConstants::MoveStatus::MOVE_PREPARATION_FAIL_OUT_OF_LIMITS;
+                    result.status = PrepareMoveStatus::INVALID_PROFILE_OUT_OF_LIMITS;   
+                    result.reason = "Axis " + String(nodeId) + ": target position in steps " + String(axes.at(nodeId).getCurrentPositionInSteps().value() + axisResult.targetSteps) + " is out of limits. lowLimit=" + String(axis.lowLimitSteps) + ", highLimit=" + String(axis.highLimitSteps);
+                    DBG_WARN(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": target position in steps " + String(axes.at(nodeId).getCurrentPositionInSteps().value() + axisResult.targetSteps) + " is out of limits. lowLimit=" + String(axis.lowLimitSteps) + ", highLimit=" + String(axis.highLimitSteps));
+                    return result;
+                }
                 axis.setProfileVelocityInRPM(axisResult.profileVelocityRpm);
                 axis.setProfileAccelerationInRPMPerSec(axisResult.profileAccelerationRpmPerSec);
 
@@ -1152,15 +1187,17 @@ namespace StepDirController
         case PrepareMoveStatus::OK:
             return "OK";
         case PrepareMoveStatus::NO_EFFECTIVE_MOTION:
-            return "NO_EFFECTIVE_MOTION";
+            return "NM";
         case PrepareMoveStatus::INVALID_SPEED:
-            return "INVALID_SPEED";
+            return "IS";
         case PrepareMoveStatus::INVALID_ACCELERATION:
-            return "INVALID_ACCELERATION";
+            return "IA";
         case PrepareMoveStatus::INVALID_PROFILE:
-            return "INVALID_PROFILE";
+            return "IP";
+        case PrepareMoveStatus::INVALID_PROFILE_OUT_OF_LIMITS:
+            return "IL";
         default:
-            return "UNKNOWN";
+            return "UE";
         }
     }
 

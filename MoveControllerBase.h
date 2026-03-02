@@ -24,6 +24,7 @@ namespace StepDirController
             INVALID_SPEED = 2,
             INVALID_ACCELERATION = 3,
             INVALID_PROFILE = 4,
+            INVALID_PROFILE_OUT_OF_LIMITS = 5,
         };
 
         struct PrepareMoveAxisResult

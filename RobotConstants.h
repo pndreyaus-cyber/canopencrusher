@@ -38,11 +38,12 @@ namespace RobotConstants
         NOT_TASKED_WITH_MOVE = 0,
         TASKED_WITH_MOVE = 1,
         MOVE_PREPARATION_FAIL = 2,
-        MOVE_PREPARATION_SUCCESS = 3,
-        READY_TO_MOVE = 4,
-        MOVING = 5,
-        MOVE_FAIL = 6,
-        MOVE_SUCCESS = 7
+        MOVE_PREPARATION_FAIL_OUT_OF_LIMITS = 3,
+        MOVE_PREPARATION_SUCCESS = 4,
+        READY_TO_MOVE = 5,
+        MOVING = 6,
+        MOVE_FAIL = 7,
+        MOVE_SUCCESS = 8
     };
 
     enum AxisStatus : uint8_t
@@ -193,6 +194,8 @@ namespace RobotConstants
         constexpr double UNITS_PER_OUTPUT_SHAFT_REV = 360; // 1 revolution of output shaft corresponds to 360 degrees
         constexpr int GEAR_RATIO = 50;
         constexpr double UNITS_PER_MOTOR_REV = UNITS_PER_OUTPUT_SHAFT_REV / GEAR_RATIO; // 1 revolution of motor corresponds to UNITS_PER_MOTOR_REV degrees
+        constexpr double DEFAULT_MAX_LIMITS[] = {180.0, 90.0, 130.0, 180.0, 110.0, 0.0}; // Max velocity in degrees per second for each axis
+        constexpr double DEFAULT_MIN_LIMITS[] = {-180.0, -35.0, -130.0, -180.0, -110.0, 0.0}; // Min velocity in degrees per second for each axis
     }
 
     // Control parameters
