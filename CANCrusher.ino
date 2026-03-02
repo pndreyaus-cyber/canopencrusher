@@ -129,13 +129,15 @@ void handleCommand()
 
     String function = inData.substring(0, 3);
     if (function.equals(RobotConstants::Commands::MOVE_ABSOLUTE))
-    {
-        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), RobotConstants::Commands::MOVE_ABSOLUTE, true);
+    {   
+        addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Status::NOT_IMPLEMENTED);
+        //handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), RobotConstants::Commands::MOVE_ABSOLUTE, true);
     }
 
     else if (function.equals(RobotConstants::Commands::MOVE_RELATIVE))
     {
-        handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), RobotConstants::Commands::MOVE_RELATIVE, false);
+        addDataToOutQueue(RobotConstants::Commands::MOVE_RELATIVE + " " + RobotConstants::Status::NOT_IMPLEMENTED);
+        //handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), RobotConstants::Commands::MOVE_RELATIVE, false);
     }
     else if (function.equals(RobotConstants::Commands::ECHO))
     {

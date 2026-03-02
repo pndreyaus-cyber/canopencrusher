@@ -86,9 +86,9 @@ namespace RobotConstants
     // Command identifiers sent to the robot controller
     namespace Commands
     {
-        const String MOVE_ABSOLUTE = "MAJ";
+        const String MOVE_ABSOLUTE = "MAJ"; // Not implemented
         const String MOVE_ABSOLUTE_PERCENT = "MAP";
-        const String MOVE_RELATIVE = "MRJ";
+        const String MOVE_RELATIVE = "MRJ"; // Not implemented
         const String ECHO = "ECH";
         const String MOTOR_STATUS = "RMS";
         const String ZERO_INITIALIZE = "ZEI";
