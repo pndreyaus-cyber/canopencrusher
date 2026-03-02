@@ -294,15 +294,16 @@ namespace StepDirController
             DBG_WARN(DBG_GROUP_AXIS, "Axis::setLimits -- Axis not initialized");
             return false;
         }
-        if (lowLimitUnits >= highLimitUnits)
+        DBG_INFO(DBG_GROUP_AXIS, "Axis::setLimits -- Setting limits: low = " + String(lowLimitUnits, 1) + " units, high = " + String(highLimitUnits, 1) + " units");
+        if (lowLimitUnits > highLimitUnits)
         {
             DBG_WARN(DBG_GROUP_AXIS, "Axis::setLimits -- low limit must be less than high limit");
             return false;
         }
-        DBG_INFO(DBG_GROUP_AXIS, "Axis::setLimits -- Setting limits: low = " + String(lowLimitUnits) + " units, high = " + String(highLimitUnits) + " units");
-        
+
         lowLimitSteps = unitsToSteps(lowLimitUnits);
         highLimitSteps = unitsToSteps(highLimitUnits);
+        DBG_INFO(DBG_GROUP_AXIS, "Axis::setLimits -- Limits in steps: low = " + String(lowLimitSteps) + " steps, high = " + String(highLimitSteps) + " steps");
 
         return true;
     }

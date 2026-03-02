@@ -48,35 +48,41 @@ namespace StepDirController
         this->axesCnt = axesCnt;
         
         int eeAddress = 0;
-        bool eepromContainsLimits = false;
+        bool eepromContainsLimits;
         EEPROM.get(eeAddress, eepromContainsLimits);
-        Serial2.println("EEPROM contains limits: " + String(eepromContainsLimits));
 
-        // if(!eepromContainsLimits)
-        // {
-        //     Serial2.println("EEPROM does not contain limits. Writing default limits to EEPROM.");
-        //     LimitsEEPROM defaultLimits;
-        //     for(uint8_t i = 0; i < RobotConstants::Robot::AXES_COUNT; ++i){
-        //         defaultLimits.lowLimits[i] = RobotConstants::Axis::DEFAULT_MIN_LIMITS[i];
-        //         defaultLimits.highLimits[i] = RobotConstants::Axis::DEFAULT_MAX_LIMITS[i];
-        //     }
-        //     EEPROM.put(eeAddress, true); // Mark that EEPROM now contains limits
-        //     EEPROM.put(eeAddress + sizeof(bool), defaultLimits);
-        // }
+        Serial2.println("EEPROM read:");
+        Serial2.println(eepromContainsLimits);
 
-        // LimitsEEPROM limitsEEPROM; 
-        // EEPROM.get(eeAddress + sizeof(bool), limitsEEPROM);
-        // Serial2.println("EEPROM limits loaded. lowLimits: " + String(limitsEEPROM.lowLimits[0]) + ", " + String(limitsEEPROM.lowLimits[1]) + ", " + String(limitsEEPROM.lowLimits[2]) + ", " + String(limitsEEPROM.lowLimits[3]) + ", " + String(limitsEEPROM.lowLimits[4]) + ", " + String(limitsEEPROM.lowLimits[5]));
-        // Serial2.println("EEPROM limits loaded. highLimits: " + String(limitsEEPROM.highLimits[0]) + ", " + String(limitsEEPROM.highLimits[0]) + ", " + String(limitsEEPROM.highLimits[1]) + ", " + String(limitsEEPROM.highLimits[2]) + ", " + String(limitsEEPROM.highLimits[3]) + ", " + String(limitsEEPROM.highLimits[4]) + ", " + String(limitsEEPROM.highLimits[5]));
+        if(!eepromContainsLimits)
+        {
+            Serial2.println("EEPROM does not contain limits. Writing default limits to EEPROM.");
+            LimitsEEPROM defaultLimits;
+            for(uint8_t i = 0; i < RobotConstants::Robot::AXES_COUNT; ++i){
+                defaultLimits.lowLimits[i] = RobotConstants::Axis::DEFAULT_MIN_LIMITS[i];
+                defaultLimits.highLimits[i] = RobotConstants::Axis::DEFAULT_MAX_LIMITS[i];
+            }
+            EEPROM.put(eeAddress, true); // Mark that EEPROM now contains limits
+            EEPROM.put(eeAddress + sizeof(bool), defaultLimits);
+        }
+
+        LimitsEEPROM limitsEEPROM; 
+        EEPROM.get(eeAddress + sizeof(bool), limitsEEPROM);
+        
+        Serial2.println("EEPROM limits loaded. lowLimits: " + String(limitsEEPROM.lowLimits[0]) + ", " + String(limitsEEPROM.lowLimits[1]) + ", " + String(limitsEEPROM.lowLimits[2]) + ", " + String(limitsEEPROM.lowLimits[3]) + ", " + String(limitsEEPROM.lowLimits[4]) + ", " + String(limitsEEPROM.lowLimits[5]));
+        Serial2.println("EEPROM limits loaded. highLimits: " + String(limitsEEPROM.highLimits[0]) + ", " + String(limitsEEPROM.highLimits[0]) + ", " + String(limitsEEPROM.highLimits[1]) + ", " + String(limitsEEPROM.highLimits[2]) + ", " + String(limitsEEPROM.highLimits[3]) + ", " + String(limitsEEPROM.highLimits[4]) + ", " + String(limitsEEPROM.highLimits[5]));
 
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             axes[nodeId] = Axis(nodeId);
             axes[nodeId].lastHeartbeatMs = 0;
-            // axes[nodeId].setLimits(
-            //     limitsEEPROM.lowLimits[nodeId - 1],
-            //     limitsEEPROM.highLimits[nodeId - 1]
-            // );
+            Serial2.println("Axis " + String(nodeId));
+            Serial2.println(limitsEEPROM.lowLimits[nodeId - 1]);
+            Serial2.println(limitsEEPROM.highLimits[nodeId - 1]);
+            axes[nodeId].setLimits(
+                limitsEEPROM.lowLimits[nodeId - 1],
+                limitsEEPROM.highLimits[nodeId - 1]
+            );
             axes[nodeId].limitsEnabled = true;
 
             setRegularPositionActualValueCallback(nodeId);
