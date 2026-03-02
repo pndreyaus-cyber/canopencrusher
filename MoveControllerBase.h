@@ -61,7 +61,7 @@ namespace StepDirController
         void requestStatus();
         std::optional<int32_t> axisPosition(uint8_t nodeId);
 
-        bool start(CanOpen *canOpen, uint8_t axesCnt);
+        bool start(CanOpen *canOpen, uint8_t axesCnt, bool writeNewLimitsToEEPROM = false, uint8_t* nodesToInvert = nullptr, uint8_t nodesToInvertCnt = 0);
 
         uint8_t getAxesCount() const { return axesCnt; }
         Axis &getAxis(uint8_t nodeId) { return axes.at(nodeId); }

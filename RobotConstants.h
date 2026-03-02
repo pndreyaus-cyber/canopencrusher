@@ -194,8 +194,8 @@ namespace RobotConstants
         constexpr double UNITS_PER_OUTPUT_SHAFT_REV = 360; // 1 revolution of output shaft corresponds to 360 degrees
         constexpr int GEAR_RATIO = 50;
         constexpr double UNITS_PER_MOTOR_REV = UNITS_PER_OUTPUT_SHAFT_REV / GEAR_RATIO; // 1 revolution of motor corresponds to UNITS_PER_MOTOR_REV degrees
-        constexpr double DEFAULT_MAX_LIMITS[] = {180.0, 90.0, 130.0, 180.0, 110.0, 0.0}; // Max velocity in degrees per second for each axis
-        constexpr double DEFAULT_MIN_LIMITS[] = {-180.0, -35.0, -130.0, -180.0, -110.0, 0.0}; // Min velocity in degrees per second for each axis
+        constexpr double DEFAULT_MAX_LIMITS[] = {170.0, 45.0, 135.0, 180.0, 110.0, 0.0}; // Max velocity in degrees per second for each axis
+        constexpr double DEFAULT_MIN_LIMITS[] = {-170.0, -90.0, -135.0, -180.0, -110.0, 0.0}; // Min velocity in degrees per second for each axis
     }
 
     // Control parameters

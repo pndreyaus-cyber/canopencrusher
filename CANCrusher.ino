@@ -68,7 +68,8 @@ void setup()
         Serial2.println("CAN bus initialized successfully");
     }
 
-    if (!moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT))
+    uint8_t nodesToInvert[] = {2};    
+    if (!moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 1))
     {
         Serial2.println("Failed to initialize MoveController");
         while (1)

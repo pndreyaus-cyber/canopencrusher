@@ -31,7 +31,7 @@ namespace StepDirController
         return axes.at(nodeId).getCurrentPositionInSteps().value(); 
     }
 
-    bool MoveControllerBase::start(CanOpen *canOpen, uint8_t axesCnt)
+    bool MoveControllerBase::start(CanOpen *canOpen, uint8_t axesCnt, bool writeNewLimitsToEEPROM,  uint8_t* nodesToInvert, uint8_t nodesToInvertCnt)
     {
         if (axesCnt == 0)
         {
@@ -54,9 +54,9 @@ namespace StepDirController
         Serial2.println("EEPROM read:");
         Serial2.println(eepromContainsLimits);
 
-        if(!eepromContainsLimits)
+        if(!eepromContainsLimits || writeNewLimitsToEEPROM)
         {
-            Serial2.println("EEPROM does not contain limits. Writing default limits to EEPROM.");
+            Serial2.println("EEPROM does not contain limits or writeNewLimitsToEEPROM is true. Writing default limits to EEPROM.");
             LimitsEEPROM defaultLimits;
             for(uint8_t i = 0; i < RobotConstants::Robot::AXES_COUNT; ++i){
                 defaultLimits.lowLimits[i] = RobotConstants::Axis::DEFAULT_MIN_LIMITS[i];
@@ -86,6 +86,15 @@ namespace StepDirController
             axes[nodeId].limitsEnabled = true;
 
             setRegularPositionActualValueCallback(nodeId);
+        }
+        for (uint8_t i = 0; i < nodesToInvertCnt; ++i)
+        {
+            uint8_t nodeId = nodesToInvert[i];
+            if (nodeId >= 1 && nodeId <= axesCnt)
+            {
+                axes[nodeId].reversedLogic = true;
+                Serial2.println("Axis " + String(nodeId) + " is set to be inverted");
+            }
         }
 
         canOpen->set_callback_heartbeat([this](uint8_t nodeId, uint8_t status)
