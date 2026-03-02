@@ -18,9 +18,11 @@ namespace StepDirController
     {
     public:
         Axis();
-        Axis(uint8_t nodeId);
+        Axis(uint8_t nodeId, bool reversedLogic = false);
 
         // ============================= Setters of target position, profile velocity and acceleration =============================
+        bool setCurrentPositionInSteps(int32_t steps);
+
         bool setTargetPositionInUnits(double units);
         bool setTargetPositionInSteps(int32_t steps);
 
@@ -66,6 +68,8 @@ namespace StepDirController
         uint8_t nodeId;
         OD_RAM_t params;
 
+        bool reversedLogic = false; // Whether the direction of movement is reversed for this axis
+
         double regularSpeed; // крейсерская скорость в шагах/сек
         double acceleration; // ускорение в шагах/сек^2
 
@@ -83,7 +87,6 @@ namespace StepDirController
         // Status
         RobotConstants::AxisStatus status;
 
-        void setCurrentPositionInSteps(int32_t steps);
     };
 }
 

@@ -19,7 +19,7 @@ namespace StepDirController
         status = RobotConstants::AxisStatus::NOT_ALIVE;
     }
 
-    Axis::Axis(uint8_t nodeId) : nodeId(nodeId)
+    Axis::Axis(uint8_t nodeId, bool reversedLogic) : nodeId(nodeId), reversedLogic(reversedLogic)
     {
         init_od_ram(&params);
         params.x6064_positionActualValue = 0;
@@ -30,15 +30,20 @@ namespace StepDirController
     }
 
     // ===================== Setters =====================
-    void Axis::setCurrentPositionInSteps(int32_t steps)
+    bool Axis::setCurrentPositionInSteps(int32_t steps)
     {
         if (!initialized)
         {
             DBG_WARN(DBG_GROUP_AXIS, "Axis::setCurrentPositionInSteps -- Axis not initialized");
-            return;
+            return false;
         }
-
+        if (reversedLogic)
+        {
+            steps = -steps;
+        }
         params.x6064_positionActualValue = steps;
+
+        return true;
     }
 
     bool Axis::setTargetPositionInUnits(double units)
@@ -59,7 +64,10 @@ namespace StepDirController
             DBG_WARN(DBG_GROUP_AXIS, "Axis::setTargetPositionInSteps -- Axis not initialized");
             return false;
         }
-
+        if (reversedLogic)
+        {
+            steps = -steps;
+        }
         params.x607A_targetPosition = steps;
 
         return true;
@@ -131,8 +139,13 @@ namespace StepDirController
             DBG_WARN(DBG_GROUP_AXIS, "Axis::getCurrentPositionInSteps -- Axis not initialized");
             return std::nullopt;
         }
-
-        return params.x6064_positionActualValue;
+        int32_t positionActualValue = params.x6064_positionActualValue;
+        if (reversedLogic){
+            return -positionActualValue;
+        } else 
+        {
+            return positionActualValue;
+        }
     }
 
     std::optional<int32_t> Axis::getTargetPositionInSteps() const
@@ -142,8 +155,13 @@ namespace StepDirController
             DBG_WARN(DBG_GROUP_AXIS, "Axis::getTargetPositionInSteps -- Axis not initialized");
             return std::nullopt;
         }
-
-        return params.x607A_targetPosition;
+        int32_t targetPosition = params.x607A_targetPosition;
+        if (reversedLogic){
+            return -targetPosition;
+        } else 
+        {
+            return targetPosition;
+        }
     }
 
     std::optional<uint32_t> Axis::getProfileVelocityInRPM() const
