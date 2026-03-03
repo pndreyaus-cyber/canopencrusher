@@ -31,6 +31,37 @@ namespace StepDirController
     }
 
     // ===================== Setters =====================
+    bool Axis::reverseLogic()
+    {
+        if (!initialized)
+        {
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::reverseLogic -- Axis not initialized");
+            return false;
+        }
+
+        reversedLogic = !reversedLogic;
+
+        if (limitsEnabled)
+        {
+            int32_t tempLowLimitSteps = lowLimitSteps;
+            lowLimitSteps = -highLimitSteps;
+            highLimitSteps = -tempLowLimitSteps;
+        }
+
+        return true;
+    }
+
+    bool Axis::checkTargetPositionInStepsForLimits(int32_t targetPositionInSteps)
+    {
+        if (!initialized)
+        {
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::checkTargetPositionInStepsForLimits -- Axis not initialized");
+            return false;
+        }
+
+        return (lowLimitSteps - RobotConstants::Axis::LIMIT_TOLERANCE) <= targetPositionInSteps && targetPositionInSteps <= (highLimitSteps + RobotConstants::Axis::LIMIT_TOLERANCE);
+    }
+
     bool Axis::setTargetPositionInUnits(double units)
     {
         if (!initialized)
@@ -49,14 +80,15 @@ namespace StepDirController
             DBG_WARN(DBG_GROUP_AXIS, "Axis::setTargetPositionInSteps -- Axis not initialized");
             return false;
         }
-        if (reversedLogic)
-        {
-            steps = -steps;
-        }
-        if (limitsEnabled && (steps < lowLimitSteps || highLimitSteps < steps))
+        if (limitsEnabled && !checkTargetPositionInStepsForLimits(steps))
         {
             DBG_WARN(DBG_GROUP_AXIS, "Axis::setTargetPositionInSteps -- Target position out of limits");
             return false;
+        }
+
+        if (reversedLogic)
+        {
+            steps = -steps;
         }
         params.x607A_targetPosition = steps;
 
@@ -148,14 +180,15 @@ namespace StepDirController
             return std::nullopt;
         }
         int32_t targetPosition = params.x607A_targetPosition;
-        if (reversedLogic)
-        {
-            return -targetPosition;
-        }
-        else
-        {
-            return targetPosition;
-        }
+        // if (reversedLogic)
+        // {
+        //     return -targetPosition;
+        // }
+        // else
+        // {
+        //     return targetPosition;
+        // }
+        return targetPosition;
     }
 
     std::optional<uint32_t> Axis::getProfileVelocityInRPM() const
@@ -278,10 +311,7 @@ namespace StepDirController
             DBG_WARN(DBG_GROUP_AXIS, "Axis::setCurrentPositionInSteps -- Axis not initialized");
             return false;
         }
-        if (reversedLogic)
-        {
-            steps = -steps;
-        }
+
         params.x6064_positionActualValue = steps;
 
         return true;
@@ -294,7 +324,6 @@ namespace StepDirController
             DBG_WARN(DBG_GROUP_AXIS, "Axis::setLimits -- Axis not initialized");
             return false;
         }
-        DBG_INFO(DBG_GROUP_AXIS, "Axis::setLimits -- Setting limits: low = " + String(lowLimitUnits, 1) + " units, high = " + String(highLimitUnits, 1) + " units");
         if (lowLimitUnits > highLimitUnits)
         {
             DBG_WARN(DBG_GROUP_AXIS, "Axis::setLimits -- low limit must be less than high limit");
@@ -303,7 +332,11 @@ namespace StepDirController
 
         lowLimitSteps = unitsToSteps(lowLimitUnits);
         highLimitSteps = unitsToSteps(highLimitUnits);
-        DBG_INFO(DBG_GROUP_AXIS, "Axis::setLimits -- Limits in steps: low = " + String(lowLimitSteps) + " steps, high = " + String(highLimitSteps) + " steps");
+        if(reversedLogic)
+        {
+            lowLimitSteps = -lowLimitSteps;
+            highLimitSteps = -highLimitSteps;
+        }
 
         return true;
     }

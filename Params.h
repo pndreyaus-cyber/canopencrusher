@@ -6,19 +6,24 @@
 #include <vector>
 #include <unordered_map>
 #include <Arduino.h>
+#include <optional>
 
 enum struct ParamsStatus
 {
     OK,
-    INCORRECT_COMMAND,
     INVALID_PARAMS,
+};
+
+struct ParamsStatusStruct{
+    ParamsStatus status = ParamsStatus::OK;
+    std::optional<String> errorMsg;
 };
 
 template<std::size_t N>
 struct MoveParams
 {
-    ParamsStatus status = ParamsStatus::OK;
-    String errorMsg;
+    ParamsStatusStruct status;
+
     double movementUnits[N] = {};
     double speed = 0; // It should be in percent [0, 1]
     double acceleration = 0; // It should be in percent [0, 1]
@@ -26,16 +31,8 @@ struct MoveParams
 
 struct MotorIndices
 {
-    ParamsStatus status;
+    ParamsStatusStruct status;
     std::vector<uint8_t> nodeIds;
-    String errorMsg;
-    String errorCode;
-};
-
-struct LimitsEEPROM
-{
-    double lowLimits[RobotConstants::Robot::AXES_COUNT];
-    double highLimits[RobotConstants::Robot::AXES_COUNT];
 };
 
 #endif

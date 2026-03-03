@@ -37,7 +37,6 @@ namespace
         addDataToOutQueue(prefix + "ta=" + String(result.accelerationTimeSec, 6));
         addDataToOutQueue(prefix + "tc=" + String(result.constantVelocityTimeSec, 6));
         addDataToOutQueue(prefix + "tt=" + String(result.fullMovementTimeSec, 6));
-        addDataToOutQueue(prefix + "sync=" + String(result.syncModelValid));
         addDataToOutQueue(prefix + "max_axis=" + String(result.maxMovementAxisId));
         addDataToOutQueue(prefix + "max_steps=" + String(result.maxMovementAbsSteps));
 
@@ -115,16 +114,13 @@ bool runPrepareMoveTests(bool verbose)
         MoveController::PrepareMoveComputationResult result = MoveController::computePrepareMove(inputCopy);
 
         const bool statusPass = result.status == testCase.expectedStatus;
-        const bool syncPass = (testCase.expectedSync == result.syncModelValid);
-        const bool pass = statusPass && syncPass;
-        if (pass)
+        if (statusPass)
         {
             ++passed;
         }
         String verdict = "\n++ OUTPUTS ++\n\nstatusExpected=" + MoveController::prepareMoveStatusToString(testCase.expectedStatus) +
                          "; statusGot=" + MoveController::prepareMoveStatusToString(result.status) +
-                         "\nsyncExpected=" + String(testCase.expectedSync) +
-                         "; syncGot=" + String(result.syncModelValid);
+                         "\nsyncExpected=" + String(testCase.expectedSync);
 
         addDataToOutQueue(verdict);
         emitPrepareMoveTestCaseResult(result, verbose);

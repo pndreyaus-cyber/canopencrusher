@@ -21,7 +21,9 @@ namespace StepDirController
         Axis(uint8_t nodeId, bool reversedLogic = false);
 
         // ============================= Setters of target position, profile velocity and acceleration =============================
+        bool reverseLogic(); // Reverse the direction of movement for this axis by negating the current position and limits
 
+        bool checkTargetPositionInStepsForLimits(int32_t targetPositionInSteps);
         bool setTargetPositionInUnits(double units);
         bool setTargetPositionInSteps(int32_t steps);
 

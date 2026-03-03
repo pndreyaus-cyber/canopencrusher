@@ -25,6 +25,9 @@ namespace StepDirController
             INVALID_ACCELERATION = 3,
             INVALID_PROFILE = 4,
             INVALID_PROFILE_OUT_OF_LIMITS = 5,
+            INVALID_TIMING = 6,
+            NOT_INITIALIZED = 7,
+            OTHER_COMMAND_IN_PROGRESS = 8,
         };
 
         struct PrepareMoveAxisResult
@@ -42,7 +45,6 @@ namespace StepDirController
             PrepareMoveStatus status = PrepareMoveStatus::NO_EFFECTIVE_MOTION;
             String reason;
             bool isTriangularProfile = false;
-            bool syncModelValid = false;
             uint8_t maxMovementAxisId = 0;
             int32_t maxMovementAbsSteps = 0;
             double accelerationTimeSec = 0.0;
@@ -61,7 +63,7 @@ namespace StepDirController
         void requestStatus();
         std::optional<int32_t> axisPosition(uint8_t nodeId);
 
-        bool start(CanOpen *canOpen, uint8_t axesCnt, bool writeNewLimitsToEEPROM = false, uint8_t* nodesToInvert = nullptr, uint8_t nodesToInvertCnt = 0);
+        ParamsStatusStruct start(CanOpen *canOpen, uint8_t axesCnt, bool writeNewLimitsToEEPROM = false, uint8_t* nodesToInvert = nullptr, uint8_t nodesToInvertCnt = 0);
 
         uint8_t getAxesCount() const { return axesCnt; }
         Axis &getAxis(uint8_t nodeId) { return axes.at(nodeId); }
@@ -69,7 +71,7 @@ namespace StepDirController
         void startZeroInitializationAllAxes();
         void startZeroInitializationSingleAxis(uint8_t nodeId);
 
-        bool move(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove, const String *commandNameForLogging = nullptr);
+        PrepareMoveStatus move(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove, const String *commandNameForLogging = nullptr);
 
         bool isInitialized() const { return initialized; }
 

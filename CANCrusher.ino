@@ -1,7 +1,6 @@
 #include <unordered_set>
 #include <queue>
 #include <vector>
-#include <EEPROM.h>
 
 #include "STM32_CAN.h"
 #include "CanOpenController.h"
@@ -30,7 +29,7 @@ void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const Stri
 void handleZeroInitialize(MotorIndices motorIndices);
 void handleRequestPosition(MotorIndices motorIndices);
 void handleRequestPositionAngles(MotorIndices motorIndices);
-void handleMotorStatus(String command);
+void handleMotorStatus(String params);
 
 bool receiveCommand();
 void handleCommand();
@@ -54,30 +53,31 @@ void setup()
     while (!Serial2)
     {
     }
-    Serial2.println("Serial2 connected!");
+    Serial2.println("SER OK");
 
     if (!canOpen.startCan(1000000))
     {
-        Serial2.println("Failed to initialize CAN bus");
+        Serial2.println("COP FF");
         while (1)
         {
         }
     }
     else
     {
-        Serial2.println("CAN bus initialized successfully");
+        Serial2.println("COP OK");
     }
 
     uint8_t nodesToInvert[] = {2};    
-    if (!moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 1))
+    ParamsStatusStruct moveControllerInitStatus = moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 1); 
+    if (moveControllerInitStatus.status == ParamsStatus::INVALID_PARAMS)
     {
-        Serial2.println("Failed to initialize MoveController");
+        Serial2.println("MVC FF " + moveControllerInitStatus.errorMsg.value_or("no error message"));
         while (1)
             ;
     }
     else
     {
-        Serial2.println("MoveController initialized successfully");
+        Serial2.println("MVC OK");
     }
     inData.reserve(128); // Reserve space to avoid dynamic allocations during command reception
 }
@@ -121,14 +121,14 @@ void handleCommand()
     inData.replace("\n", "");
     inData.replace("\r", "");
 
-    if (inData.length() < 3)
+    if (inData.length() < RobotConstants::Commands::COMMAND_LEN)
     {
         addDataToOutQueue(inData + " " + RobotConstants::Status::INCORRECT_COMMAND);
         inData = "";
         return;
     }
 
-    String function = inData.substring(0, 3);
+    String function = inData.substring(0, RobotConstants::Commands::COMMAND_LEN);
     if (function.equals(RobotConstants::Commands::MOVE_ABSOLUTE))
     {   
         addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Status::NOT_IMPLEMENTED);
@@ -142,7 +142,7 @@ void handleCommand()
     }
     else if (function.equals(RobotConstants::Commands::ECHO))
     {
-        addDataToOutQueue(inData.substring(4));
+        addDataToOutQueue(RobotConstants::Commands::ECHO + " " + inData.substring(4));
     }
     else if (function.equals(RobotConstants::Commands::MOTOR_STATUS))
     {
@@ -230,16 +230,16 @@ void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConsta
     int indexOfAC = paramsSubStr.indexOf("AC");
     if (indexOfAC == -1)
     {
-        params.status = ParamsStatus::INCORRECT_COMMAND;
-        params.errorMsg = "Expected acceleration parameter 'AC' after speed parameter";
+        params.status.status = ParamsStatus::INVALID_PARAMS;
+        params.status.errorMsg = "Expected acceleration parameter 'AC' after speed parameter";
         return;
     }
 
     String velocityStr = paramsSubStr.substring(2, indexOfAC);
     if (!isFloat(velocityStr))
     {
-        params.status = ParamsStatus::INVALID_PARAMS;
-        params.errorMsg = "Invalid speed value: " + velocityStr;
+        params.status.status = ParamsStatus::INVALID_PARAMS;
+        params.status.errorMsg = "Invalid speed value: " + velocityStr;
         return;
     }
 
@@ -248,8 +248,8 @@ void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConsta
     String accelerationStr = paramsSubStr.substring(indexOfAC + 2);
     if (!isFloat(accelerationStr))
     {
-        params.status = ParamsStatus::INVALID_PARAMS;
-        params.errorMsg = "Invalid acceleration value: " + accelerationStr;
+        params.status.status = ParamsStatus::INVALID_PARAMS;
+        params.status.errorMsg = "Invalid acceleration value: " + accelerationStr;
         return;
     }
 
@@ -259,19 +259,19 @@ void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConsta
     {
         if (velocity < 0.0f || velocity > 1.0f || acceleration < 0.0f || acceleration > 1.0f)
         {
-            params.status = ParamsStatus::INVALID_PARAMS;
-            params.errorMsg = "For percentage-based moves, speed and acceleration must be in the range [0, 1]: speed: " + String(velocity) + ", acceleration: " + String(acceleration);
+            params.status.status = ParamsStatus::INVALID_PARAMS;
+            params.status.errorMsg = "For percentage-based moves, speed and acceleration must be in the range [0, 1]: speed: " + String(velocity) + ", acceleration: " + String(acceleration);
             return;
         }
         params.speed = velocity;
         params.acceleration = acceleration;
     }
-    else if (moveUnits == RobotConstants::MoveUnits::UNITS_DEG)
+    else if (moveUnits == RobotConstants::MoveUnits::UNITS_DEG_PER_SEC)
     {
         if (velocity < 0.0f || velocity > RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S || acceleration < 0.0f || acceleration > RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2)
         {
-            params.status = ParamsStatus::INVALID_PARAMS;
-            params.errorMsg = "For degree-based moves, speed must be in the range [0, " + String(RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S) + "] and acceleration must be in the range [0, " + String(RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2) + "]: speed: " + String(velocity) + ", acceleration: " + String(acceleration);
+            params.status.status = ParamsStatus::INVALID_PARAMS;
+            params.status.errorMsg = "For degree-based moves, speed must be in the range [0, " + String(RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S) + "] and acceleration must be in the range [0, " + String(RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2) + "]: speed: " + String(velocity) + ", acceleration: " + String(acceleration);
             return;
         }
         params.speed = velocity / RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_DEG_PER_S;                 // Convert to percentage of maximum velocity
@@ -279,22 +279,22 @@ void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConsta
     }
     else
     {
-        params.status = ParamsStatus::INVALID_PARAMS;
-        params.errorMsg = "Invalid move units";
+        params.status.status = ParamsStatus::INVALID_PARAMS;
+        params.status.errorMsg = "Invalid move units";
     }
 }
 
 MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command, RobotConstants::MoveUnits moveUnits)
 {
     MoveParams<RobotConstants::Robot::AXES_COUNT> params;
-    params.status = ParamsStatus::OK;
+    params.status.status = ParamsStatus::OK;
 
     String paramsStr = command.substring(RobotConstants::Commands::COMMAND_LEN); // Only parameters, without command and space
 
     if (paramsStr.length() == 0)
     {
-        params.status = ParamsStatus::INCORRECT_COMMAND;
-        params.errorMsg = "No parameters provided";
+        params.status.status = ParamsStatus::INVALID_PARAMS;
+        params.status.errorMsg = "No parameters provided";
         return params;
     }
 
@@ -303,16 +303,17 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command,
     int nodeCnt = 0;
     while (i < paramsStr.length() && !invalidParams && paramsStr.charAt(i) == (char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) // Parse movement parameters until we reach speed parameter (starting with 'S')
     {
-        if (i + 1 >= paramsStr.length())
+        if (i + 1 >= paramsStr.length()) // It means, that the string ends with "J" without any axis identifier
         {
             invalidParams = true;
+            params.status.errorMsg = "No axis identifier for the last J";
             break;
         }
         char axisIdChar = paramsStr.charAt(i + 1);
         if (axisIdChar < RobotConstants::Robot::MIN_NODE_ID || RobotConstants::Robot::MAX_NODE_ID < axisIdChar)
         {
-            params.errorMsg = "Invalid axis identifier: " + String(axisIdChar);
             invalidParams = true;
+            params.status.errorMsg = "Invalid axis identifier: " + String(axisIdChar);
             break;
         }
 
@@ -328,7 +329,7 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command,
             {
                 if (decimalPointFound)
                 {
-                    params.errorMsg = "Multiple decimal points in parameter for axis " + String(axisIdChar);
+                    params.status.errorMsg = "Multiple decimal points in parameter for axis " + String(axisIdChar);
                     invalidParams = true;
                     break;
                 }
@@ -342,7 +343,7 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command,
         }
         if (j == i + 2)
         {
-            params.errorMsg = "No numeric value provided for axis " + String(axisIdChar);
+            params.status.errorMsg = "No numeric value provided for axis " + String(axisIdChar);
             invalidParams = true;
         }
 
@@ -359,29 +360,25 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command,
 
     if (invalidParams)
     {
-        params.status = ParamsStatus::INVALID_PARAMS;
+        params.status.status = ParamsStatus::INVALID_PARAMS;
         return params;
     }
 
     if (nodeCnt == 0)
     {
-        params.status = ParamsStatus::INCORRECT_COMMAND;
-        params.errorMsg = "No movement parameters provided";
+        params.status.status = ParamsStatus::INVALID_PARAMS;
+        params.status.errorMsg = "No movement parameters provided";
         return params;
     }
 
     if (paramsStr.substring(i, i + 2) != "SP")
     {
-        params.status = ParamsStatus::INCORRECT_COMMAND;
-        params.errorMsg = "Expected speed parameter 'SP' at position " + String(i);
+        params.status.status = ParamsStatus::INVALID_PARAMS;
+        params.status.errorMsg = "Expected speed parameter 'SP' at position " + String(i);
         return params;
     }
 
     stringToVelocityAndAcceleration(paramsStr.substring(i), params, moveUnits);
-    if (params.status != ParamsStatus::OK)
-    {
-        return params;
-    }
     return params;
 }
 
@@ -389,7 +386,7 @@ MotorIndices stringToMotorIndices(String command)
 {
     String params = command.substring(3); // Only parameters, without command and space
     MotorIndices motorIndices;
-    motorIndices.status = ParamsStatus::OK;
+    motorIndices.status.status = ParamsStatus::OK;
     if (params.length() == 0)
     {
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
@@ -406,7 +403,7 @@ MotorIndices stringToMotorIndices(String command)
         if (params.charAt(i) != RobotConstants::Robot::AXIS_IDENTIFIER_CHAR)
         {
             isOk = false;
-            motorIndices.errorMsg = "Motor identifiers should start with '" + String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + "' followed by a letter";
+            motorIndices.status.errorMsg = "Motor identifiers should start with '" + String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + "' followed by a letter";
             break;
         }
 
@@ -414,7 +411,7 @@ MotorIndices stringToMotorIndices(String command)
         if (motorChar < RobotConstants::Robot::MIN_NODE_ID || motorChar > RobotConstants::Robot::MAX_NODE_ID)
         {
             isOk = false;
-            motorIndices.errorMsg = "Invalid motor identifier: " + String(motorChar);
+            motorIndices.status.errorMsg = "Invalid motor identifier: " + String(motorChar);
             break;
         }
 
@@ -422,7 +419,7 @@ MotorIndices stringToMotorIndices(String command)
         if (nodeId > RobotConstants::Robot::AXES_COUNT)
         {
             isOk = false;
-            motorIndices.errorMsg = "Motor identifier out of range: " + String(motorChar);
+            motorIndices.status.errorMsg = "Motor identifier out of range: " + String(motorChar);
             break;
         }
 
@@ -433,41 +430,42 @@ MotorIndices stringToMotorIndices(String command)
     if (isOk && i != params.length())
     {
         isOk = false;
-        motorIndices.errorMsg = "Incomplete motor identifier at end of parameters";
+        motorIndices.status.errorMsg = "Incomplete motor identifier at end of parameters";
     }
 
     if (!isOk)
     {
-        motorIndices.status = ParamsStatus::INVALID_PARAMS;
-        motorIndices.errorCode = RobotConstants::Status::INVALID_PARAMS;
+        motorIndices.status.status = ParamsStatus::INVALID_PARAMS;
     }
     return motorIndices;
 }
 
 void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const String &command, bool isAbsoluteMove)
 {
-    if (params.status != ParamsStatus::OK)
+    if (params.status.status != ParamsStatus::OK)
     {
-        DBG_ERROR(DBG_GROUP_COMMAND, params.errorMsg);
+        DBG_WARN(DBG_GROUP_COMMAND, params.status.errorMsg.value_or("no error message"));
         addDataToOutQueue(command + " " + RobotConstants::Status::INVALID_PARAMS);
         return;
     }
 
-    DBG_VERBOSE(DBG_GROUP_MOVE, "MAP: velocity=" + String(params.speed) + ", acceleration=" + String(params.acceleration));
+    String moveInputStr = "MAP: vel=" + String(params.speed, 3) + ", acc=" + String(params.acceleration, 3) + "; ";
     for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
     {
-        DBG_VERBOSE(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": movementUnits=" + String(params.movementUnits[nodeId - 1]));
+        moveInputStr += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(params.movementUnits[nodeId - 1], 3) + " ";
     }
+    DBG_VERBOSE(DBG_GROUP_MOVE, moveInputStr);
 
-    if (!moveController.move(params, isAbsoluteMove, &command))
+    MoveController::PrepareMoveStatus movePrepareStatus = moveController.move(params, isAbsoluteMove, &command);
+    if (movePrepareStatus != MoveController::PrepareMoveStatus::OK)
     {
-        addDataToOutQueue(command + " " + RobotConstants::Status::LOGIC_ERROR);
+        addDataToOutQueue(command + " " + MoveController::prepareMoveStatusToString(movePrepareStatus));
     }
 }
 
-void handleMotorStatus(String command)
+void handleMotorStatus(String params)
 {
-    if (command != RobotConstants::Commands::MOTOR_STATUS)
+    if (params != RobotConstants::Commands::MOTOR_STATUS)
     {
         DBG_VERBOSE(DBG_GROUP_COMMAND, RobotConstants::Commands::MOTOR_STATUS + " does not take any parameters");
         addDataToOutQueue(RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Status::INVALID_PARAMS);
@@ -478,9 +476,9 @@ void handleMotorStatus(String command)
 
 void handleZeroInitialize(MotorIndices motorIndices)
 {
-    if (motorIndices.status != ParamsStatus::OK)
+    if (motorIndices.status.status != ParamsStatus::OK)
     {
-        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::ZERO_INITIALIZE + " " + motorIndices.errorMsg);
+        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::ZERO_INITIALIZE + " " + motorIndices.status.errorMsg.value_or("no error message"));
         addDataToOutQueue(RobotConstants::Commands::ZERO_INITIALIZE + " " + RobotConstants::Status::INVALID_PARAMS);
         return;
     }
@@ -503,32 +501,32 @@ void handleZeroInitialize(MotorIndices motorIndices)
 
 void handleRequestPosition(MotorIndices motorIndices)
 {
-    if (motorIndices.status != ParamsStatus::OK)
+    if (motorIndices.status.status != ParamsStatus::OK)
     {
-        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_POSITION + " " + motorIndices.errorMsg);
+        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_POSITION + " " + motorIndices.status.errorMsg.value_or("no error message"));
         addDataToOutQueue(RobotConstants::Commands::REQUEST_POSITION + " " + RobotConstants::Status::INVALID_PARAMS);
         return;
     }
     String reply = RobotConstants::Commands::REQUEST_POSITION + " " + RobotConstants::Status::OK + " ";
     for (uint8_t nodeId : motorIndices.nodeIds)
     {
-        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId).value_or(0)) + " ";
+        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId).value_or(0)) + "; ";
     }
     addDataToOutQueue(reply);
 }
 
 void handleRequestPositionAngles(MotorIndices motorIndices)
 {
-    if (motorIndices.status != ParamsStatus::OK)
+    if (motorIndices.status.status != ParamsStatus::OK)
     {
-        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + motorIndices.errorMsg);
+        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + motorIndices.status.errorMsg.value_or("no error message"));
         addDataToOutQueue(RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + RobotConstants::Status::INVALID_PARAMS);
         return;
     }
     String reply = RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + RobotConstants::Status::OK + " ";
     for (uint8_t nodeId : motorIndices.nodeIds)
     {
-        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(Axis::stepsToUnits(moveController.axisPosition(nodeId).value_or(0)), 6) + " ";
+        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(Axis::stepsToUnits(moveController.axisPosition(nodeId).value_or(0)), 6) + "; ";
     }
     addDataToOutQueue(reply);
 }

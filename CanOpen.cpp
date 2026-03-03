@@ -191,7 +191,7 @@ bool CanOpen::startCan(uint32_t baudRate)
         // Loopback test
         if (!loopbackTest())
         {
-            Serial2.println("CAN loopback test FAIL");
+            //Serial2.println("CAN loopback test FAIL");
             return false;
         }
         Can.end();

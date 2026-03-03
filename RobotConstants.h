@@ -56,8 +56,8 @@ namespace RobotConstants
     enum MoveUnits : uint8_t
     {
         UNITS_PERCENT = 0,
-        UNITS_MM = 1,
-        UNITS_DEG = 2,
+        UNITS_MM_PER_SEC = 1,
+        UNITS_DEG_PER_SEC = 2,
     };
 
     inline const char *initStatusToString(InitStatus status)
@@ -194,8 +194,9 @@ namespace RobotConstants
         constexpr double UNITS_PER_OUTPUT_SHAFT_REV = 360; // 1 revolution of output shaft corresponds to 360 degrees
         constexpr int GEAR_RATIO = 50;
         constexpr double UNITS_PER_MOTOR_REV = UNITS_PER_OUTPUT_SHAFT_REV / GEAR_RATIO; // 1 revolution of motor corresponds to UNITS_PER_MOTOR_REV degrees
-        constexpr double DEFAULT_MAX_LIMITS[] = {170.0, 45.0, 135.0, 180.0, 110.0, 0.0}; // Max velocity in degrees per second for each axis
-        constexpr double DEFAULT_MIN_LIMITS[] = {-170.0, -90.0, -135.0, -180.0, -110.0, 0.0}; // Min velocity in degrees per second for each axis
+        constexpr double DEFAULT_MAX_LIMITS[] = {170.0, 90.0, 135.0, 180.0, 110.0, 0.0}; // Max velocity in degrees per second for each axis
+        constexpr double DEFAULT_MIN_LIMITS[] = {-170.0, -45.0, -135.0, -180.0, -110.0, 0.0}; // Min velocity in degrees per second for each axis
+        constexpr double LIMIT_TOLERANCE = 0.1; // Tolerance in degrees for limit checking
     }
 
     // Control parameters
@@ -232,7 +233,6 @@ namespace RobotConstants
         constexpr size_t SERIAL_OUT_QUEUE_CAPACITY = 128;
         constexpr size_t SERIAL_MESSAGE_CAPACITY = 128;
     }
-
     // Status codes
     namespace Status
     {
@@ -242,11 +242,12 @@ namespace RobotConstants
         const String INCORRECT_COMMAND = "IC";
         const String INVALID_PARAMS = "IP";
         const String UNKNOWN_ERROR = "UE";
-        const String INVALID_NODE_ID = "IN";
         const String LOGIC_ERROR = "LE";
         const String NOT_IMPLEMENTED = "NI";
+        const String NOT_INITIALIZED = "NZ";
+        const String OTHER_COMMAND_IN_PROGRESS = "OP";
     }
 
 } // namespace RobotConstants
 
-#endif // ROBOT_CONSTANTS_H
+#endif
