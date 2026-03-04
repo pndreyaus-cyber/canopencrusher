@@ -420,7 +420,6 @@ namespace StepDirController
         DBG_VERBOSE(DBG_GROUP_MOVE, inputRelativeMotionsStr + "; velocity=" + String(input.velocity) + "; acceleration=" + String(input.acceleration));
 
         result = computePrepareMove(input);
-        Serial2.println("MY SPEED: " + String(result.axes[1].accelerationStepsPerSec2, 3) + " " + String(result.axes[1].profileAccelerationRpmPerSec, 3));
 
         DBG_VERBOSE(DBG_GROUP_MOVE, "\nPrepareMoveComputationResult: status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason);
 
@@ -452,7 +451,9 @@ namespace StepDirController
                 }
                 axis.setProfileVelocityInRPM(axisResult.profileVelocityRpm);
                 axis.setProfileAccelerationInRPMPerSec(axisResult.profileAccelerationRpmPerSec);
-
+                // if (nodeId == 1 || nodeId == 2 || nodeId == 3){
+                //     Serial2.println("setting profile acceleration " + String(nodeId) + " " + String(axisResult.profileAccelerationRpmPerSec) );
+                // }
                 axis.moveStatus = RobotConstants::MoveStatus::MOVE_PREPARATION_SUCCESS;
             }
 
