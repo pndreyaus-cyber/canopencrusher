@@ -105,7 +105,7 @@ namespace RobotConstants
     // Robot specifications
     namespace Robot
     {
-        constexpr uint8_t AXES_COUNT = 6;
+        constexpr uint8_t AXES_COUNT = 5;
         constexpr uint8_t MAX_AXES_COUNT = 6;
         constexpr uint8_t MIN_NODE_ID = 'A';
         constexpr uint8_t MAX_NODE_ID = (AXES_COUNT == 0) ? MIN_NODE_ID : static_cast<uint8_t>(MIN_NODE_ID + AXES_COUNT - 1);

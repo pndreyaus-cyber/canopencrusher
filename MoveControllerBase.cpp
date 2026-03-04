@@ -100,11 +100,11 @@ namespace StepDirController
             DBG_VERBOSE(DBG_GROUP_MOVE, "MoveControllerBase::move failed. Not initialized");
             return PrepareMoveStatus::NOT_INITIALIZED;
         }
-        if (isMAJInProgress)
-        {
-            DBG_ERROR(DBG_GROUP_MOVE, "Move already in progress. Aborting!");
-            return PrepareMoveStatus::OTHER_COMMAND_IN_PROGRESS;
-        }
+        // if (isMAJInProgress)
+        // {
+        //     DBG_ERROR(DBG_GROUP_MOVE, "Move already in progress. Aborting!");
+        //     return PrepareMoveStatus::OTHER_COMMAND_IN_PROGRESS;
+        // }
 
         moveCommandName = commandNameForLogging;
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
@@ -320,7 +320,6 @@ namespace StepDirController
             hasEffectiveMotion = true;
             axisResult.velocityStepsPerSec = static_cast<double>(relativeAbsSteps) / denominator;
             axisResult.accelerationStepsPerSec2 = axisResult.velocityStepsPerSec / result.accelerationTimeSec;
-            DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": velocityStepsPerSec=" + String(axisResult.velocityStepsPerSec) + "; accelerationStepsPerSec2=" + String(axisResult.accelerationStepsPerSec2));
             if (!std::isfinite(axisResult.velocityStepsPerSec) || axisResult.velocityStepsPerSec <= 0.0 ||
                 !std::isfinite(axisResult.accelerationStepsPerSec2) || axisResult.accelerationStepsPerSec2 <= 0.0)
             {
@@ -331,6 +330,11 @@ namespace StepDirController
             
             const double velocityRpmDouble = Axis::stepsPerSecToMotorRPMDouble(axisResult.velocityStepsPerSec);
             const double accelerationRpmPerSecDouble = Axis::stepsPerSec2ToRPMPSDouble(axisResult.accelerationStepsPerSec2);
+            
+            DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": velocityStepsPerSec=" + String(axisResult.velocityStepsPerSec) +
+                                     "; accelerationStepsPerSec2=" + String(axisResult.accelerationStepsPerSec2) + 
+                                     "; velocityRpmDouble=" + String(velocityRpmDouble, 3) +
+                                     "; accelerationRpmPerSecDouble=" + String(accelerationRpmPerSecDouble, 3));
 
             if (!std::isfinite(velocityRpmDouble) || !std::isfinite(accelerationRpmPerSecDouble))
             {
@@ -361,9 +365,20 @@ namespace StepDirController
                 profileAccelerationRpmPerSec = static_cast<uint32_t>(std::round(accelerationRpmPerSecDouble));
             }
 
-            axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
+            if(result.isTriangularProfile){
+                axisResult.profileVelocityRpm = 0;    
+            } else {
+                axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
+            }
             axisResult.profileAccelerationRpmPerSec = std::min(profileAccelerationRpmPerSec, RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S);
         }
+
+        String t = "";
+        for(uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
+        {
+            t += "Axis " + String(nodeId) + " " + String(result.axes[nodeId - 1].profileAccelerationRpmPerSec) + " ";
+        }
+        DBG_WARN(DBG_GROUP_MOVE, "profileAccelerationRpmPerSec: " + t);
 
         if (!hasEffectiveMotion)
         {
@@ -405,6 +420,7 @@ namespace StepDirController
         DBG_VERBOSE(DBG_GROUP_MOVE, inputRelativeMotionsStr + "; velocity=" + String(input.velocity) + "; acceleration=" + String(input.acceleration));
 
         result = computePrepareMove(input);
+        Serial2.println("MY SPEED: " + String(result.axes[1].accelerationStepsPerSec2, 3) + " " + String(result.axes[1].profileAccelerationRpmPerSec, 3));
 
         DBG_VERBOSE(DBG_GROUP_MOVE, "\nPrepareMoveComputationResult: status=" + prepareMoveStatusToString(result.status) + ", reason=" + result.reason);
 
@@ -919,7 +935,7 @@ namespace StepDirController
         {
             return;
         }
-
+        //delay(1000);
         // Step 3
         canOpen->set_callback_TPDO4([this](uint8_t cbNodeId, int32_t actualLocation, uint16_t statusWord)
                                     { this->MAJ_TPDO4(cbNodeId, actualLocation, statusWord); }, nodeId);
@@ -947,7 +963,6 @@ namespace StepDirController
         // }
 
         // Step 3 (Data processing)
-        DBG_WARN(DBG_GROUP_MOVE, "MAJ TPDO4 from node " + String(nodeId) + ": actualLocation=" + String(actualLocation) + ", statusWord=0x" + String(statusWord, HEX));
         axes[nodeId].moveStatus = RobotConstants::MoveStatus::READY_TO_MOVE;
         MAJ_SYNCFunnel();
     }
@@ -1029,7 +1044,9 @@ namespace StepDirController
         String unknownErrorAxes = "";
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
-            if (axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVING || axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVE_PREPARATION_SUCCESS || axes[nodeId].moveStatus == RobotConstants::MoveStatus::READY_TO_MOVE)
+            if (axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVING || 
+                axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVE_PREPARATION_SUCCESS || 
+                axes[nodeId].moveStatus == RobotConstants::MoveStatus::READY_TO_MOVE)
             {
                 DBG_INFO(DBG_GROUP_MOVE, "Still going for Axis " + String(nodeId));
                 return; // Still ongoing for some axes
@@ -1084,12 +1101,12 @@ namespace StepDirController
             axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_FAIL;
             MAJ_finalResult();
         }
-        if (axes[nodeId].status == RobotConstants::AxisStatus::NOT_ALIVE)
-        {
-            DBG_ERROR(DBG_GROUP_MOVE, "MAJ Failed for Axis " + String(nodeId) + ": Axis is not alive (heartbeat timeout)");
-            axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_FAIL;
-            MAJ_finalResult();
-        }
+        // else if (axes[nodeId].status == RobotConstants::AxisStatus::NOT_ALIVE && isMAJInProgress)
+        // {
+        //     DBG_ERROR(DBG_GROUP_MOVE, "MAJ Failed for Axis " + String(nodeId) + ": Axis is not alive (heartbeat timeout)");
+        //     axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_FAIL;
+        //     MAJ_finalResult();
+        // }
 
         return success;
     }
