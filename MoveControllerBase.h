@@ -128,6 +128,7 @@ namespace StepDirController
         void MAJ_SYNCFunnel();
         void MAJ_requestStatusWord(uint8_t nodeId);
         void MAJ_statusWordCallback(uint8_t nodeId, bool success, uint16_t statusWord);
+        void MAJ_afterRequestPosition(uint8_t nodeId, bool success, int32_t positionActualValue);
         void MAJ_finalResult();
 
         bool MAJ_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
