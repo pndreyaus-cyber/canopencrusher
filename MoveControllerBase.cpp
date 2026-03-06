@@ -4,6 +4,7 @@
 #include "PrepareMoveTest.h"
 #include "Arduino.h"
 #include "Debug.h"
+//#include "serial_config.h"
 
 namespace StepDirController
 {
@@ -24,12 +25,12 @@ namespace StepDirController
     {
         if (axesCnt == 0)
         {
-            Serial2.println("MoveControllerBase start with 0 axes. This is not allowed");
+            Serial.println("MoveControllerBase start with 0 axes. This is not allowed");
             return false;
         }
         if (canOpen == nullptr)
         {
-            Serial2.println("MoveControllerBase start with nullptr canOpen. This is not allowed");
+            Serial.println("MoveControllerBase start with nullptr canOpen. This is not allowed");
             return false;
         }
 
@@ -48,7 +49,7 @@ namespace StepDirController
                                         { this->regularHeartbeatCallback(nodeId, status); });
 
         initialized = true;
-        Serial2.println("MoveControllerBase initialized with " + String(axesCnt) + " axes");
+        Serial.println("MoveControllerBase initialized with " + String(axesCnt) + " axes");
         return true;
     }
 

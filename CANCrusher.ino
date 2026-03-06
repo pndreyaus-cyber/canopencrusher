@@ -9,8 +9,9 @@
 #include "RobotConstants.h"
 #include "Debug.h"
 #include "PrepareMoveTest.h"
+//#include "serial_config.h"
 
-HardwareSerial Serial2(PA3, PA2);
+//HardwareSerial Serial2(PA3, PA2);
 
 CanOpen canOpen;
 MoveController moveController;
@@ -42,41 +43,40 @@ uint32_t lastTickTime_500 = 0;
 
 void setup()
 {
-    pinMode(PC13, OUTPUT);
-    digitalWrite(PC13, HIGH);
+    // pinMode(PC13, OUTPUT);
+    // digitalWrite(PC13, HIGH);
 
-    Serial2.setRx(PA3);
-    Serial2.setTx(PA2);
 
-    Serial2.begin(115200);
-    while (!Serial2)
+    Serial.begin(115200);
+    while (!Serial)
     {
     }
-    Serial2.println("Serial connected!");
-
+    Serial.println("Serial connected!");
+    Serial.println("Checing CAN");
     if (!canOpen.startCan(1000000))
     {
-        Serial2.println("Failed to initialize CAN bus");
+        Serial.println("Failed to initialize CAN bus");
         while (1)
         {
         }
     }
     else
     {
-        Serial2.println("CAN bus initialized successfully");
+        Serial.println("CAN bus initialized successfully");
     }
 
     if (!moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT))
     {
-        Serial2.println("Failed to initialize MoveController");
+        Serial.println("Failed to initialize MoveController");
         while (1)
             ;
     }
     else
     {
-        Serial2.println("MoveController initialized successfully");
+        Serial.println("MoveController initialized successfully");
     }
     inData.reserve(128); // Reserve space to avoid dynamic allocations during command reception
+    Serial.println("Setup complete!!!!");
 }
 
 void loop()
@@ -104,9 +104,9 @@ void loop()
 bool receiveCommand()
 {
     char received = 0x00;
-    if (Serial2.available())
+    if (Serial.available())
     {
-        received = Serial2.read();
+        received = Serial.read();
         inData += received;
     }
     return received == '\n';
@@ -192,7 +192,7 @@ void sendData() // отправка сообщений на компьютер
     outData.pop();
     interrupts();
 
-    Serial2.println(data);
+    Serial.println(data);
 }
 
 bool isFloat(String str)
@@ -543,13 +543,13 @@ void handlePrepareMoveTest(String command)
             return;
         }
     }
-    digitalWrite(PC13, LOW);
-    delay(100);
-    digitalWrite(PC13, HIGH);
-    delay(100);
-    digitalWrite(PC13, LOW);
-    delay(100);
-    digitalWrite(PC13, HIGH);
+    // digitalWrite(PC13, LOW);
+    // delay(100);
+    // digitalWrite(PC13, HIGH);
+    // delay(100);
+    // digitalWrite(PC13, LOW);
+    // delay(100);
+    // digitalWrite(PC13, HIGH);
     
     bool success = runPrepareMoveTests(isVerbose);
     if (!success)

@@ -34,7 +34,7 @@ Serial output now uses bounded chunk framing through `addDataToOutQueue`:
 
 * Each queued chunk payload is capped at `63` bytes (`SERIAL_OUT_CHUNK_PAYLOAD_MAX`).
 * A newline chunk is appended after each logical message.
-* `sendData` transmits one queued chunk at a time using `Serial2.write(...)`.
+* `sendData` transmits one queued chunk at a time using `SerialInstance.write(...)`.
 
 Queue internals are implemented as a fixed-size ring buffer (`SERIAL_OUT_QUEUE_CAPACITY`), which avoids front-erase and substring-heavy queue churn.
 

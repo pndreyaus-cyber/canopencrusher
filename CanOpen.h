@@ -43,7 +43,7 @@ private:
     callback_read_x6040_controlword callbacks_read_x6040_controlword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr}; // index 0 is unused
 
 public:
-    CanOpen() : Can(PA11, PA12, RX_SIZE_128, TX_SIZE_128) {};
+    CanOpen() : Can(PB8, PB9, RX_SIZE_128, TX_SIZE_128) {};
     bool startCan(uint32_t baudRate);
 
     bool send_x260A_electronicGearMolecules(uint8_t nodeId, uint16_t value);
