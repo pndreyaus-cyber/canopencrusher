@@ -6,7 +6,6 @@
 #include "PrepareMoveTest.h"
 #include "Arduino.h"
 #include "Debug.h"
-//#include "serial_config.h"
 
 namespace StepDirController
 {
@@ -304,11 +303,12 @@ namespace StepDirController
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
         {
             PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
-            const int32_t relativeAbsSteps = std::abs(axisResult.targetSteps);
+            //const int32_t relativeAbsSteps = std::abs(axisResult.targetSteps);
+            const double relativeAbsSteps = std::abs(static_cast<double>(axisResult.targetSteps));
             if (relativeAbsSteps == 0)
             {
-                axisResult.profileVelocityRpm = 0;
-                axisResult.profileAccelerationRpmPerSec = 0;
+                //axisResult.profileVelocityRpm = 0;
+                //axisResult.profileAccelerationRpmPerSec = 0;
                 continue;
             }
             else if (relativeAbsSteps == maxMovementAbs)
@@ -319,7 +319,8 @@ namespace StepDirController
             }
 
             hasEffectiveMotion = true;
-            axisResult.velocityStepsPerSec = static_cast<double>(relativeAbsSteps) / denominator;
+            //axisResult.velocityStepsPerSec = static_cast<double>(relativeAbsSteps) / denominator;
+            axisResult.velocityStepsPerSec = relativeAbsSteps / denominator;
             axisResult.accelerationStepsPerSec2 = axisResult.velocityStepsPerSec / result.accelerationTimeSec;
             if (!std::isfinite(axisResult.velocityStepsPerSec) || axisResult.velocityStepsPerSec <= 0.0 ||
                 !std::isfinite(axisResult.accelerationStepsPerSec2) || axisResult.accelerationStepsPerSec2 <= 0.0)
@@ -367,10 +368,11 @@ namespace StepDirController
             }
 
             if(result.isTriangularProfile){
-                axisResult.profileVelocityRpm = 0;    
+                //axisResult.profileVelocityRpm = 0;    
             } else {
-                axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
+                //axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
             }
+            axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
             axisResult.profileAccelerationRpmPerSec = std::min(profileAccelerationRpmPerSec, RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S);
         }
 

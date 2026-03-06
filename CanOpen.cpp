@@ -2,7 +2,6 @@
 #include "CanOpen.h"
 #include "RobotConstants.h"
 #include "Debug.h"
-//#include "serial_config.h"
 
 bool CanOpen::send_x260A_electronicGearMolecules(uint8_t nodeId, uint16_t value)
 {

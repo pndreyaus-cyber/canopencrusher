@@ -9,7 +9,6 @@
 #include "RobotConstants.h"
 #include "Debug.h"
 #include "PrepareMoveTest.h"
-//#include "serial_config.h"
 
 //HardwareSerial Serial2(PA3, PA2);
 
