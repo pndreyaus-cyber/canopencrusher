@@ -9,9 +9,9 @@
 #include "RobotConstants.h"
 #include "Debug.h"
 #include "PrepareMoveTest.h"
+//#include "serial_config.h"
 
-
-HardwareSerial Serial2(PA3, PA2);
+//HardwareSerial Serial2(PA3, PA2);
 
 CanOpen canOpen;
 MoveController moveController;
@@ -43,43 +43,42 @@ uint32_t lastTickTime_500 = 0;
 
 void setup()
 {
-    pinMode(PC13, OUTPUT);
-    digitalWrite(PC13, HIGH);
+    // pinMode(PC13, OUTPUT);
+    // digitalWrite(PC13, HIGH);
 
-    Serial2.setRx(PA3);
-    Serial2.setTx(PA2);
 
-    Serial2.begin(115200);
-    while (!Serial2)
+    Serial.begin(115200);
+    while (!Serial)
     {
     }
-    Serial2.println("SER OK");
+    Serial.println("SER OK");
 
     if (!canOpen.startCan(1000000))
     {
-        Serial2.println("COP FF");
+        Serial.println("COP FF");
         while (1)
         {
         }
     }
     else
     {
-        Serial2.println("COP OK");
+        Serial.println("COP OK");
     }
 
     uint8_t nodesToInvert[] = {2};    
     ParamsStatusStruct moveControllerInitStatus = moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 1); 
     if (moveControllerInitStatus.status == ParamsStatus::INVALID_PARAMS)
     {
-        Serial2.println("MVC FF " + moveControllerInitStatus.errorMsg.value_or("no error message"));
+        Serial.println("MVC FF " + moveControllerInitStatus.errorMsg.value_or("no error message"));
         while (1)
             ;
     }
     else
     {
-        Serial2.println("MVC OK");
+        Serial.println("MVC OK");
     }
     inData.reserve(128); // Reserve space to avoid dynamic allocations during command reception
+    Serial.println("Setup complete!!!!");
 }
 
 void loop()
@@ -107,9 +106,9 @@ void loop()
 bool receiveCommand()
 {
     char received = 0x00;
-    if (Serial2.available())
+    if (Serial.available())
     {
-        received = Serial2.read();
+        received = Serial.read();
         inData += received;
     }
     return received == '\n';
@@ -197,7 +196,7 @@ void sendData() // отправка сообщений на компьютер
     outData.pop();
     interrupts();
 
-    Serial2.println(data);
+    Serial.println(data);
 }
 
 bool isFloat(String str)
@@ -551,18 +550,15 @@ void handlePrepareMoveTest(String command)
             return;
         }
     }
-    digitalWrite(PC13, LOW);
-    delay(100);
-    digitalWrite(PC13, HIGH);
-    delay(100);
-    digitalWrite(PC13, LOW);
-    delay(100);
-    digitalWrite(PC13, HIGH);
-    if (moveController.isMoveInProgress())
-    {
-        addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_TEST + " " + RobotConstants::Status::LOGIC_ERROR + " Cannot start test sequence, while move is in progress");
-        return;
-    }
+    
+    // digitalWrite(PC13, LOW);
+    // delay(100);
+    // digitalWrite(PC13, HIGH);
+    // delay(100);
+    // digitalWrite(PC13, LOW);
+    // delay(100);
+    // digitalWrite(PC13, HIGH);
+    
     bool success = runPrepareMoveTests(isVerbose);
     if (!success)
     {

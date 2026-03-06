@@ -6,6 +6,7 @@
 #include "PrepareMoveTest.h"
 #include "Arduino.h"
 #include "Debug.h"
+//#include "serial_config.h"
 
 namespace StepDirController
 {
@@ -982,7 +983,7 @@ namespace StepDirController
         }
 
         // All axes are ready, send SYNC
-        DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");
+        //DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");
         canOpen->sendSYNC();
         delay(10); // Check for different
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
@@ -1030,24 +1031,55 @@ namespace StepDirController
         // DBG_INFO(DBG_GROUP_MOVE, "MAJ Status Word from node " + String(nodeId) + ": 0x" + String(statusWord, HEX));
         if (MAJ_checkTargetPositionReached(statusWord))
         {
-            // DBG_INFO(DBG_GROUP_MOVE, "MAJ Target position reached for Axis " + String(nodeId));
-            axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_SUCCESS;
-            DBG_INFO(DBG_GROUP_MOVE, "MAJ Movement finished for Axis " + String(nodeId));
-            MAJ_finalResult();
+            //DBG_INFO(DBG_GROUP_MOVE, "MAJ Target position reached for Axis " + String(nodeId));
+            axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_FINISHED;
+            
+            canOpen->set_callback_x6064_positionActualValue([this](uint8_t cbNodeId, bool success, int32_t positionActualValue)
+                                        { this->MAJ_afterRequestPosition(cbNodeId, success, positionActualValue); }, nodeId);
+        
+            // Step 5
+            bool successSend = canOpen->sendSDORead(nodeId,
+                                                    RobotConstants::ODIndices::POSITION_ACTUAL_VALUE,
+                                                    RobotConstants::ODIndices::DEFAULT_SUBINDEX);
+            // Step 6
+            if (!MAJ_checkResponseStatus(nodeId, successSend,
+                                        "MAJ: Failed to send position request for Axis " + String(nodeId)))
+            {
+                // Step 7
+                setRegularPositionActualValueCallback(nodeId);
+            }
             return;
         }
     }
 
-    void MoveControllerBase::MAJ_finalResult()
+    void MoveControllerBase::MAJ_afterRequestPosition(uint8_t nodeId, bool success, int32_t positionActualValue)
     {
+        // Step 1
+        setRegularPositionActualValueCallback(nodeId);
+        // Step 2
+        if (!MAJ_checkResponseStatus(nodeId, success,
+                                     "MAJ: Failed to get the position of the Axis " + String(nodeId) + "after move finished"))
+        {
+            return;
+        }
+
+        axes[nodeId].setCurrentPositionInSteps(positionActualValue);
+        axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_SUCCESS;
+        DBG_INFO(DBG_GROUP_MOVE, "MAJ Movement finished for Axis (position updated) " + String(nodeId));
+        MAJ_finalResult();
+    }
+
+
+    void MoveControllerBase::MAJ_finalResult() {
         String successfullAxes = "";
         String failedAxes = "";
         String unknownErrorAxes = "";
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
-            if (axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVING || 
+            if (axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVING ||
                 axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVE_PREPARATION_SUCCESS || 
-                axes[nodeId].moveStatus == RobotConstants::MoveStatus::READY_TO_MOVE)
+                axes[nodeId].moveStatus == RobotConstants::MoveStatus::READY_TO_MOVE ||
+                axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVE_FINISHED)
             {
                 DBG_INFO(DBG_GROUP_MOVE, "Still going for Axis " + String(nodeId));
                 return; // Still ongoing for some axes

@@ -43,7 +43,8 @@ namespace RobotConstants
         READY_TO_MOVE = 5,
         MOVING = 6,
         MOVE_FAIL = 7,
-        MOVE_SUCCESS = 8
+        MOVE_FINISHED = 8,
+        MOVE_SUCCESS = 9,
     };
 
     enum AxisStatus : uint8_t
@@ -105,6 +106,7 @@ namespace RobotConstants
     // Robot specifications
     namespace Robot
     {
+        constexpr uint8_t AXES_COUNT = 5;
         constexpr uint8_t AXES_COUNT = 5;
         constexpr uint8_t MAX_AXES_COUNT = 6;
         constexpr uint8_t MIN_NODE_ID = 'A';
