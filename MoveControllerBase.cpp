@@ -100,11 +100,11 @@ namespace StepDirController
             DBG_VERBOSE(DBG_GROUP_MOVE, "MoveControllerBase::move failed. Not initialized");
             return PrepareMoveStatus::NOT_INITIALIZED;
         }
-        // if (isMAJInProgress)
-        // {
-        //     DBG_ERROR(DBG_GROUP_MOVE, "Move already in progress. Aborting!");
-        //     return PrepareMoveStatus::OTHER_COMMAND_IN_PROGRESS;
-        // }
+        if (isMAJInProgress)
+        {
+            DBG_ERROR(DBG_GROUP_MOVE, "Move already in progress. Aborting!");
+            return PrepareMoveStatus::OTHER_COMMAND_IN_PROGRESS;
+        }
 
         moveCommandName = commandNameForLogging;
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
