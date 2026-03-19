@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+from html import parser
 import itertools
+import math
 import re
 import signal
 import string
@@ -14,42 +16,8 @@ from typing import Iterable, List, Optional, Tuple
 
 import serial  # type: ignore
 
-
-def axis_num_to_letter(axis_num: int) -> str:
-    if axis_num < 1:
-        raise ValueError(f"Axis number must be >= 1, got {axis_num}")
-    return chr(ord("A") + axis_num - 1)
-
-
-@dataclass
-class PathPoint:
-    target_positions_deg: List[float]
-    target_velocity_part_of_1: float
-    target_acceleration_part_of_1: float
-
-    def __init__(
-        self,
-        target_positions_deg,
-        target_velocity_part_of_1,
-        target_acceleration_part_of_1,
-    ) -> None:
-        self.target_positions_deg = target_positions_deg
-        self.target_velocity_part_of_1 = target_velocity_part_of_1
-        self.target_acceleration_part_of_1 = target_acceleration_part_of_1
-        self.build_map_command()
-
-    def build_map_command(self):
-        self.string_representation = "MAP "
-        for i in range(0, len(self.target_positions_deg)):
-            self.string_representation += (
-                f"J{axis_num_to_letter(i + 1)}{self.target_positions_deg[i]} "
-            )
-        self.string_representation += f"SP{self.target_velocity_part_of_1}"
-        self.string_representation += f"AC{self.target_acceleration_part_of_1}"
-
-    def __str__(self) -> str:
-        return self.string_representation
-
+from ik1 import IkParameters, calc_ik_simple, calculate_angles
+from ik2 import solve_robot
 
 class SerialRobotClient:
     def __init__(
@@ -179,6 +147,64 @@ def main() -> int:
     client.close()
     return 0
 
+def test_ik_1(port, baud, axes):
+    client = SerialRobotClient(port=port, baud=baud, axes_num=axes)
+
+    ik_params = IkParameters()
+    result, joint_positions = calc_ik_simple(0.32, 0.35, 0.17, ik_params) # in meters
+    print(result)
+    print(joint_positions)
+    print(list(map(lambda x: x * 180 / math.pi, joint_positions)))  # Convert radians to degrees
+    if result:
+        command = "MAP JA{:.2f} JB{:.2f} JC{:.2f} JD0.0 JE{:.2f} SP0.1 AC0.02".format(
+            180 * joint_positions[0] / math.pi,
+            -180 * joint_positions[1] / math.pi,
+            180 * joint_positions[2] / math.pi,
+            min(180 * joint_positions[3] / math.pi, 110),
+        )
+        print(f"Generated command: {command}")
+        #run_commands([(command, "MAP")], client, move_timeout_s=20)
+    #run_commands([("MAP " + " ".join(f"{chr(ord('A') + i)}{joint_positions[i]:.2f}" for i in range(len(joint_positions))), "MAP")], client, move_timeout_s=5)
+
+def test_ik_2(port, baud, axes):
+    client = SerialRobotClient(port=port, baud=baud, axes_num=axes)
+    positions = [(-0.064, 0.395, 0.575)]
+    for pos in positions:
+        angles = calculate_angles(*pos)
+        command = "MAP JA{:.2f} JB{:.2f} JC{:.2f} JD0.0 JE{:.2f} SP0.1 AC0.005".format(
+                180 * angles[0] / math.pi,
+                180 * angles[1] / math.pi,
+                180 * angles[2] / math.pi,
+                min(-180 * angles[3] / math.pi, 110),
+            )
+        print(f"Generated command: {command}")
+        run_commands([(command, "MAP")], client, move_timeout_s=20)
+        time.sleep(2)
+
+def test_ik_3(port, baud, axes):
+    client = SerialRobotClient(port=port, baud=baud, axes_num=axes)
+    angles = solve_robot(0.0, 0.35, 0.4)
+    if angles is None:
+        print("IK solver failed to find a solution")
+        return
+    print("IK solver found angles (radians):", angles)
+    command = "MAP JA{:.2f} JB{:.2f} JC{:.2f} JD0.0 JE{:.2f} SP0.1 AC0.02".format(
+            180 * angles[0] / math.pi,
+            180 * angles[1] / math.pi,
+            180 * angles[2] / math.pi,
+            min(-180 * angles[3] / math.pi, 110),
+        )
+    print(f"Generated command: {command}")
+    #run_commands([(command, "MAP")], client, move_timeout_s=20)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser(
+        description="Automated MAP move command executor for CANCrusher"
+    )
+
+    parser.add_argument("--port", required=True, help="Serial port, e.g. COM7")
+    parser.add_argument("--axes", required=True, type=int, help="Number of axes to use")
+    parser.add_argument("--baud", type=int, default=115200, help="Serial baud rate")
+    args = parser.parse_args()
+    test_ik_2(args.port, args.baud, args.axes)
+    #test_ik_3(args.port, args.baud, args.axes)

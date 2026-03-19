@@ -1109,11 +1109,11 @@ namespace StepDirController
         MAJ_clearMoveStatusesAfterMoveCompletion();
 
         String status;
-        if (failedAxes.length() > 0 && successfullAxes.length() > 0)
+        if ((failedAxes.length() + unknownErrorAxes.length()) > 0 && successfullAxes.length() > 0)
         {
             status = RobotConstants::Status::COMMAND_PARTIAL_FAIL;
         }
-        else if (failedAxes.length() > 0)
+        else if ((failedAxes.length() + unknownErrorAxes.length()) > 0)
         {
             status = RobotConstants::Status::COMMAND_FULL_FAIL;
         }
@@ -1122,7 +1122,14 @@ namespace StepDirController
             status = RobotConstants::Status::OK;
         }
 
-        String commandReply = (moveCommandName == nullptr ? RobotConstants::Status::UNKNOWN_ERROR : *moveCommandName) + " " + status + " " + successfullAxes + "|" + failedAxes + "|" + unknownErrorAxes;
+        String commandReply = (moveCommandName == nullptr ? RobotConstants::Status::UNKNOWN_ERROR : *moveCommandName) + " " + status;
+        if (status == RobotConstants::Status::COMMAND_PARTIAL_FAIL)
+        {
+            commandReply += " " + successfullAxes + " | " + failedAxes + " | " + unknownErrorAxes;
+        } else if (status == RobotConstants::Status::COMMAND_FULL_FAIL)
+        {
+            commandReply += " " + failedAxes + " | " + unknownErrorAxes;
+        }
         addDataToOutQueue(commandReply);
         isMAJInProgress = false;
         moveCommandName = nullptr;

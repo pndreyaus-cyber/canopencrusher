@@ -455,7 +455,8 @@ void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const Stri
     DBG_VERBOSE(DBG_GROUP_MOVE, moveInputStr);
 
     MoveController::PrepareMoveStatus movePrepareStatus = moveController.move(params, isAbsoluteMove, &command);
-    if (movePrepareStatus != MoveController::PrepareMoveStatus::OK)
+    if (movePrepareStatus != MoveController::PrepareMoveStatus::OK) // If something went wrong during preparation (before sending to CAN bus). 
+    // If the preparation was successful, the reply will be sent later, after the move is completed or if an error occurs during the move (in MAJ_finalResult callback).
     {
         addDataToOutQueue(command + " " + MoveController::prepareMoveStatusToString(movePrepareStatus));
     }
@@ -524,7 +525,7 @@ void handleRequestPositionAngles(MotorIndices motorIndices)
     String reply = RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + RobotConstants::Status::OK + " ";
     for (uint8_t nodeId : motorIndices.nodeIds)
     {
-        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(Axis::stepsToUnits(moveController.axisPosition(nodeId).value_or(0)), 6) + "; ";
+        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(Axis::stepsToUnits(moveController.axisPosition(nodeId).value_or(0)), 3) + "; ";
     }
     addDataToOutQueue(reply);
 }

@@ -87,13 +87,13 @@ namespace RobotConstants
     // Command identifiers sent to the robot controller
     namespace Commands
     {
-        //const String MOVE_ABSOLUTE = "MAJ"; // Not implemented
-        const String MOVE_ABSOLUTE_PERCENT = "MAJ";
+        const String MOVE_ABSOLUTE = "MAJ"; // Not implemented
+        const String MOVE_ABSOLUTE_PERCENT = "MAP";
         const String MOVE_RELATIVE = "MRJ"; // Not implemented
         const String ECHO = "ECH";
         const String MOTOR_STATUS = "RMS";
         const String ZERO_INITIALIZE = "ZEI";
-        const String REQUEST_POSITION = "RPP";
+        const String REQUEST_POSITION = "RPS";
         const String PREPAREMOVE_TEST = "PMT";
         const String REQUEST_POSITION_ANGLES = "RPA";
         constexpr int COMMAND_LEN = 3;
@@ -106,7 +106,7 @@ namespace RobotConstants
     // Robot specifications
     namespace Robot
     {
-        constexpr uint8_t AXES_COUNT = 5;
+        constexpr uint8_t AXES_COUNT = 4;
         constexpr uint8_t MAX_AXES_COUNT = 6;
         constexpr uint8_t MIN_NODE_ID = 'A';
         constexpr uint8_t MAX_NODE_ID = (AXES_COUNT == 0) ? MIN_NODE_ID : static_cast<uint8_t>(MIN_NODE_ID + AXES_COUNT - 1);
@@ -195,8 +195,8 @@ namespace RobotConstants
         constexpr double UNITS_PER_OUTPUT_SHAFT_REV = 360; // 1 revolution of output shaft corresponds to 360 degrees
         constexpr int GEAR_RATIO = 50;
         constexpr double UNITS_PER_MOTOR_REV = UNITS_PER_OUTPUT_SHAFT_REV / GEAR_RATIO; // 1 revolution of motor corresponds to UNITS_PER_MOTOR_REV degrees
-        constexpr double DEFAULT_MAX_LIMITS[] = {170.0, 90.0, 135.0, 180.0, 110.0, 0.0}; // Max velocity in degrees per second for each axis
-        constexpr double DEFAULT_MIN_LIMITS[] = {-170.0, -45.0, -135.0, -180.0, -110.0, 0.0}; // Min velocity in degrees per second for each axis
+        constexpr double DEFAULT_MAX_LIMITS[] = {180.0, 90.0, 135.0, 180.0, 110.0, 0.0}; // Max velocity in degrees per second for each axis
+        constexpr double DEFAULT_MIN_LIMITS[] = {-180.0, -45.0, -135.0, -180.0, -110.0, 0.0}; // Min velocity in degrees per second for each axis
         constexpr double LIMIT_TOLERANCE = 0.1; // Tolerance in degrees for limit checking
     }
 
