@@ -250,11 +250,11 @@ typedef struct
     struct
     {
         uint8_t numberOfEntries;
-        int16_t positionRegulatorP_gain;
+        int16_t positionRegulatorP_gain; // 01
         int16_t positionRegulatorI_gain;
         int16_t positionRegulatorD_gain;
-        uint16_t velocityFeedForwardFactor;
-        uint16_t accelerationFeedForwardFactor;
+        int16_t velocityFeedForwardFactor; // 02
+        int16_t accelerationFeedForwardFactor;
     } x60FB_positionControlParameterSet;
     int32_t x60FF_targetVelocity;
 } OD_RAM_t;

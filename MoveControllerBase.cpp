@@ -303,12 +303,12 @@ namespace StepDirController
         for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
         {
             PrepareMoveAxisResult &axisResult = result.axes[nodeId - 1];
-            //const int32_t relativeAbsSteps = std::abs(axisResult.targetSteps);
+            // const int32_t relativeAbsSteps = std::abs(axisResult.targetSteps);
             const double relativeAbsSteps = std::abs(static_cast<double>(axisResult.targetSteps));
             if (relativeAbsSteps == 0)
             {
-                //axisResult.profileVelocityRpm = 0;
-                //axisResult.profileAccelerationRpmPerSec = 0;
+                // axisResult.profileVelocityRpm = 0;
+                // axisResult.profileAccelerationRpmPerSec = 0;
                 continue;
             }
             else if (relativeAbsSteps == maxMovementAbs)
@@ -319,29 +319,29 @@ namespace StepDirController
             }
 
             hasEffectiveMotion = true;
-            //axisResult.velocityStepsPerSec = static_cast<double>(relativeAbsSteps) / denominator;
+            // axisResult.velocityStepsPerSec = static_cast<double>(relativeAbsSteps) / denominator;
             axisResult.velocityStepsPerSec = relativeAbsSteps / denominator;
             axisResult.accelerationStepsPerSec2 = axisResult.velocityStepsPerSec / result.accelerationTimeSec;
             if (!std::isfinite(axisResult.velocityStepsPerSec) || axisResult.velocityStepsPerSec <= 0.0 ||
                 !std::isfinite(axisResult.accelerationStepsPerSec2) || axisResult.accelerationStepsPerSec2 <= 0.0)
             {
                 result.status = PrepareMoveStatus::INVALID_SPEED;
-                result.reason =  "Axis " + String(nodeId) + ": velocityStepsPerSec or accelerationStepsPerSec2 infinite or non-positive";
+                result.reason = "Axis " + String(nodeId) + ": velocityStepsPerSec or accelerationStepsPerSec2 infinite or non-positive";
                 break;
             }
-            
+
             const double velocityRpmDouble = Axis::stepsPerSecToMotorRPMDouble(axisResult.velocityStepsPerSec);
             const double accelerationRpmPerSecDouble = Axis::stepsPerSec2ToRPMPSDouble(axisResult.accelerationStepsPerSec2);
-            
+
             DBG_INFO(DBG_GROUP_MOVE, "Axis " + String(nodeId) + ": velocityStepsPerSec=" + String(axisResult.velocityStepsPerSec) +
-                                     "; accelerationStepsPerSec2=" + String(axisResult.accelerationStepsPerSec2) + 
-                                     "; velocityRpmDouble=" + String(velocityRpmDouble, 3) +
-                                     "; accelerationRpmPerSecDouble=" + String(accelerationRpmPerSecDouble, 3));
+                                         "; accelerationStepsPerSec2=" + String(axisResult.accelerationStepsPerSec2) +
+                                         "; velocityRpmDouble=" + String(velocityRpmDouble, 3) +
+                                         "; accelerationRpmPerSecDouble=" + String(accelerationRpmPerSecDouble, 3));
 
             if (!std::isfinite(velocityRpmDouble) || !std::isfinite(accelerationRpmPerSecDouble))
             {
                 result.status = PrepareMoveStatus::INVALID_SPEED;
-                result.reason =  "Axis " + String(nodeId) + ": velocityRpmDouble or accelerationRpmPerSecDouble infinite";
+                result.reason = "Axis " + String(nodeId) + ": velocityRpmDouble or accelerationRpmPerSecDouble infinite";
                 break;
             }
 
@@ -367,17 +367,20 @@ namespace StepDirController
                 profileAccelerationRpmPerSec = static_cast<uint32_t>(std::round(accelerationRpmPerSecDouble));
             }
 
-            if(result.isTriangularProfile){
-                //axisResult.profileVelocityRpm = 0;    
-            } else {
-                //axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
+            if (result.isTriangularProfile)
+            {
+                // axisResult.profileVelocityRpm = 0;
+            }
+            else
+            {
+                // axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
             }
             axisResult.profileVelocityRpm = std::min(profileVelocityRpm, RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_RPM);
             axisResult.profileAccelerationRpmPerSec = std::min(profileAccelerationRpmPerSec, RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S);
         }
 
         String t = "";
-        for(uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
+        for (uint8_t nodeId = 1; nodeId <= RobotConstants::Robot::AXES_COUNT; ++nodeId)
         {
             t += "Axis " + String(nodeId) + " " + String(result.axes[nodeId - 1].profileAccelerationRpmPerSec) + " ";
         }
@@ -939,8 +942,8 @@ namespace StepDirController
         {
             return;
         }
-        //delay(1000);
-        // Step 3
+        // delay(1000);
+        //  Step 3
         canOpen->set_callback_TPDO4([this](uint8_t cbNodeId, int32_t actualLocation, uint16_t statusWord)
                                     { this->MAJ_TPDO4(cbNodeId, actualLocation, statusWord); }, nodeId);
         // Step 4
@@ -985,7 +988,7 @@ namespace StepDirController
         }
 
         // All axes are ready, send SYNC
-        //DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");
+        // DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");
         canOpen->sendSYNC();
         delay(10); // Check for different
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
@@ -1033,19 +1036,19 @@ namespace StepDirController
         // DBG_INFO(DBG_GROUP_MOVE, "MAJ Status Word from node " + String(nodeId) + ": 0x" + String(statusWord, HEX));
         if (MAJ_checkTargetPositionReached(statusWord))
         {
-            //DBG_INFO(DBG_GROUP_MOVE, "MAJ Target position reached for Axis " + String(nodeId));
+            // DBG_INFO(DBG_GROUP_MOVE, "MAJ Target position reached for Axis " + String(nodeId));
             axes[nodeId].moveStatus = RobotConstants::MoveStatus::MOVE_FINISHED;
-            
+
             canOpen->set_callback_x6064_positionActualValue([this](uint8_t cbNodeId, bool success, int32_t positionActualValue)
-                                        { this->MAJ_afterRequestPosition(cbNodeId, success, positionActualValue); }, nodeId);
-        
+                                                            { this->MAJ_afterRequestPosition(cbNodeId, success, positionActualValue); }, nodeId);
+
             // Step 5
             bool successSend = canOpen->sendSDORead(nodeId,
                                                     RobotConstants::ODIndices::POSITION_ACTUAL_VALUE,
                                                     RobotConstants::ODIndices::DEFAULT_SUBINDEX);
             // Step 6
             if (!MAJ_checkResponseStatus(nodeId, successSend,
-                                        "MAJ: Failed to send position request for Axis " + String(nodeId)))
+                                         "MAJ: Failed to send position request for Axis " + String(nodeId)))
             {
                 // Step 7
                 setRegularPositionActualValueCallback(nodeId);
@@ -1071,15 +1074,15 @@ namespace StepDirController
         MAJ_finalResult();
     }
 
-
-    void MoveControllerBase::MAJ_finalResult() {
+    void MoveControllerBase::MAJ_finalResult()
+    {
         String successfullAxes = "";
         String failedAxes = "";
         String unknownErrorAxes = "";
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             if (axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVING ||
-                axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVE_PREPARATION_SUCCESS || 
+                axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVE_PREPARATION_SUCCESS ||
                 axes[nodeId].moveStatus == RobotConstants::MoveStatus::READY_TO_MOVE ||
                 axes[nodeId].moveStatus == RobotConstants::MoveStatus::MOVE_FINISHED)
             {
@@ -1126,7 +1129,8 @@ namespace StepDirController
         if (status == RobotConstants::Status::COMMAND_PARTIAL_FAIL)
         {
             commandReply += " " + successfullAxes + " | " + failedAxes + " | " + unknownErrorAxes;
-        } else if (status == RobotConstants::Status::COMMAND_FULL_FAIL)
+        }
+        else if (status == RobotConstants::Status::COMMAND_FULL_FAIL)
         {
             commandReply += " " + failedAxes + " | " + unknownErrorAxes;
         }
@@ -1194,6 +1198,313 @@ namespace StepDirController
             axes.at(nodeId).status = RobotConstants::AxisStatus::ALIVE;
         }
     }
+
+    // ======== Request PI Sequence ========
+    void MoveControllerBase::RPI_start(uint8_t nodeId)
+    {
+        // Step 1
+        // Step 2
+        // Step 3
+        canOpen->set_callback_read_PI_controller([this](uint8_t nodeId, uint16_t registerAddress, uint8_t subindex, bool success, int16_t piParameterValue)
+                                                 { this->RPI_OnReplyFrom_0x60F9_01(nodeId, success, piParameterValue); });
+        // Step 4
+        bool successSend = canOpen->sendSDORead(nodeId, RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL, RobotConstants::ODIndices::VELOCITY_KP_SUBINDEX);
+        // Step 5
+        if (!RPI_checkResponseStatus(nodeId, 0, successSend,
+                                     "RPI: Failed to send request 0x60F9:01 for Axis " + String(nodeId)))
+        {
+            // Step 6
+            canOpen->set_callback_read_PI_controller(nullptr);
+        }
+    }
+
+    void MoveControllerBase::RPI_OnReplyFrom_0x60F9_01(uint8_t nodeId, bool success, int16_t piParameterValue)
+    {
+        // Step 1
+        canOpen->set_callback_read_PI_controller(nullptr);
+        // Step 2
+        if (!RPI_checkResponseStatus(nodeId, 1, success,
+                                     "RPI: Failed to read 0x60F9:01 for Axis " + String(nodeId)))
+        {
+            return;
+        }
+        axes.at(nodeId).params.x60F9_velocityControlParameterSet.velocityRegulatorP_gain = piParameterValue;
+        // Step 3
+        canOpen->set_callback_read_PI_controller([this](uint8_t nodeId, uint16_t registerAddress, uint8_t subindex, bool success, int16_t piParameterValue)
+                                                 { this->RPI_OnReplyFrom_0x60F9_02(nodeId, success, piParameterValue); });
+        // Step 4
+        bool successSend = canOpen->sendSDORead(nodeId, RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL, RobotConstants::ODIndices::VELOCITY_KI_SUBINDEX);
+        // Step 5
+        if (!RPI_checkResponseStatus(nodeId, 2, successSend,
+                                     "RPI: Failed to send request for 0x60F9:02 for Axis " + String(nodeId)))
+        {
+            // Step 6
+            canOpen->set_callback_read_PI_controller(nullptr);
+        }
+    }
+
+    void MoveControllerBase::RPI_OnReplyFrom_0x60F9_02(uint8_t nodeId, bool success, int16_t piParameterValue)
+    {
+        // Step 1
+        canOpen->set_callback_read_PI_controller(nullptr);
+        // Step 2
+        if (!RPI_checkResponseStatus(nodeId, 2, success,
+                                     "RPI: Failed to read 0x60F9:02 for Axis " + String(nodeId)))
+        {
+            return;
+        }
+        axes.at(nodeId).params.x60F9_velocityControlParameterSet.velocityRegulatorI_gain = piParameterValue;
+        // Step 3
+        canOpen->set_callback_read_PI_controller([this](uint8_t nodeId, uint16_t registerAddress, uint8_t subindex, bool success, int16_t piParameterValue)
+                                                 { this->RPI_OnReplyFrom_0x60FB_01(nodeId, success, piParameterValue); });
+        // Step 4
+        bool successSend = canOpen->sendSDORead(nodeId, RobotConstants::ODIndices::POSITION_LOOP_CONTROL, RobotConstants::ODIndices::POSITION_KP_SUBINDEX);
+        // Step 5
+        if (!RPI_checkResponseStatus(nodeId, 3, successSend,
+                                     "RPI: Failed to send request for 0x60FB:01 for Axis " + String(nodeId)))
+        {
+            // Step 6
+            canOpen->set_callback_read_PI_controller(nullptr);
+        }
+    }
+
+    void MoveControllerBase::RPI_OnReplyFrom_0x60FB_01(uint8_t nodeId, bool success, int16_t piParameterValue)
+    {
+        // Step 1
+        canOpen->set_callback_read_PI_controller(nullptr);
+        // Step 2
+        if (!RPI_checkResponseStatus(nodeId, 3, success,
+                                     "RPI: Failed to read 0x60FB:01 for Axis " + String(nodeId)))
+        {
+            return;
+        }
+        axes.at(nodeId).params.x60FB_positionControlParameterSet.positionRegulatorP_gain = piParameterValue;
+        // Step 3
+        canOpen->set_callback_read_PI_controller([this](uint8_t nodeId, uint16_t registerAddress, uint8_t subindex, bool success, int16_t piParameterValue)
+                                                 { this->RPI_OnReplyFrom_0x60FB_02(nodeId, success, piParameterValue); });
+        // Step 4
+        bool successSend = canOpen->sendSDORead(nodeId, RobotConstants::ODIndices::POSITION_LOOP_CONTROL, RobotConstants::ODIndices::FEEDFORWARD);
+        // Step 5
+        if (!RPI_checkResponseStatus(nodeId, 4, successSend,
+                                     "RPI: Failed to send request for 0x60FB:02 for Axis " + String(nodeId)))
+        {
+            // Step 6
+            canOpen->set_callback_read_PI_controller(nullptr);
+        }
+    }
+
+    void MoveControllerBase::RPI_OnReplyFrom_0x60FB_02(uint8_t nodeId, bool success, int16_t piParameterValue)
+    {
+        // Step 1
+        canOpen->set_callback_read_PI_controller(nullptr);
+        // Step 2
+        if (!RPI_checkResponseStatus(nodeId, 4, success,
+                                     "RPI: Failed to read 0x60FB:02 for Axis " + String(nodeId)))
+        {
+            return;
+        }
+        axes.at(nodeId).params.x60FB_positionControlParameterSet.velocityFeedForwardFactor = piParameterValue;
+        // Need to have some funnel, which will actually print read parameters to Serial
+        RPI_finalResult(nodeId, 4);
+    }
+
+    void MoveControllerBase::RPI_finalResult(uint8_t nodeId, uint8_t stepsCompleted)
+    {
+        String reply = RobotConstants::Commands::REQUEST_PI + " " +
+                       String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) +
+                       String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + " ";
+        if (stepsCompleted < 4)
+        {
+            reply += RobotConstants::Status::COMMAND_PARTIAL_FAIL + " ";
+        }
+        else
+        {
+            reply += RobotConstants::Status::OK + " ";
+        }
+
+        Axis &a = axes.at(nodeId);
+        reply += String(a.params.x60F9_velocityControlParameterSet.velocityRegulatorP_gain) + " " +
+                 String(a.params.x60F9_velocityControlParameterSet.velocityRegulatorI_gain) + " " +
+                 String(a.params.x60FB_positionControlParameterSet.positionRegulatorP_gain) + " " +
+                 String(a.params.x60FB_positionControlParameterSet.velocityFeedForwardFactor);
+
+        addDataToOutQueue(reply);
+    }
+
+    bool MoveControllerBase::RPI_checkResponseStatus(uint8_t nodeId, uint8_t step, bool success, String errorMessage)
+    {
+        if (!success)
+        {
+            DBG_ERROR(DBG_GROUP_MOVE, "MAJ Failed for Axis " + String(nodeId) + ": " + errorMessage);
+            RPI_finalResult(nodeId, step);
+        }
+        return success;
+    }
+    // ======== Request PI Sequence End ========
+
+    // ======== Update PI Sequence ========
+    void MoveControllerBase::UPS_start(uint8_t nodeId, uint8_t parameterId, int16_t value)
+    {
+        String commandReply = RobotConstants::Commands::PI_CONTROL + " " +
+                              String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) +
+                              String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + " ";
+        DBG_INFO(DBG_GROUP_PI, "UPS_start for node " + String(nodeId) + " " + commandReply);
+        bool (CanOpen::*funcPtr)(uint8_t, int16_t);
+        int16_t min_value, max_value;
+
+        if (parameterId == 1)
+        {
+            commandReply += String(RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL, HEX) + " " + String(RobotConstants::ODIndices::VELOCITY_KP_SUBINDEX, HEX) + " ";
+            min_value = RobotConstants::MotorControlLimits::MIN_VELOCITY_P;
+            max_value = RobotConstants::MotorControlLimits::MAX_VELOCITY_P;
+            funcPtr = &CanOpen::x60F9_velocityControlParameterSet_PGain;
+        }
+        else if (parameterId == 2)
+        {
+            commandReply += String(RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL, HEX) + " " + String(RobotConstants::ODIndices::VELOCITY_KI_SUBINDEX, HEX) + " ";
+            min_value = RobotConstants::MotorControlLimits::MIN_VELOCITY_I;
+            max_value = RobotConstants::MotorControlLimits::MAX_VELOCITY_I;
+            funcPtr = &CanOpen::x60F9_velocityControlParameterSet_IGain;
+        }
+        else if (parameterId == 3)
+        {
+            commandReply += String(RobotConstants::ODIndices::POSITION_LOOP_CONTROL, HEX) + " " + String(RobotConstants::ODIndices::POSITION_KP_SUBINDEX, HEX) + " ";
+            min_value = RobotConstants::MotorControlLimits::MIN_POSITION_P;
+            max_value = RobotConstants::MotorControlLimits::MAX_POSITION_P;
+            funcPtr = &CanOpen::x60FB_positionControlParameterSet_PGain;
+        }
+        else if (parameterId == 4)
+        {
+            commandReply += String(RobotConstants::ODIndices::POSITION_LOOP_CONTROL, HEX) + " " + String(RobotConstants::ODIndices::FEEDFORWARD, HEX) + " ";
+            min_value = RobotConstants::MotorControlLimits::MIN_FEEDFORWARD;
+            max_value = RobotConstants::MotorControlLimits::MAX_FEEDFORWARD;
+            funcPtr = &CanOpen::x60FB_positionControlParameterSet_FeedForwardFactor;
+        }
+        else
+        {
+            commandReply += RobotConstants::Status::INVALID_PARAMS;
+            addDataToOutQueue(commandReply);
+            return;
+        }
+
+        if (value < min_value || value > max_value)
+        {
+            commandReply += RobotConstants::Status::INVALID_PARAMS;
+            addDataToOutQueue(commandReply);
+            return;
+        }
+
+        DBG_INFO(DBG_GROUP_PI, commandReply + "ready to go");
+        // Step 1
+        // Step 2
+        // Step 3
+        canOpen->set_callback_PI_controller([this](uint8_t nodeId, uint16_t index, uint8_t subindex, bool success)
+                                            { this->UPS_OnReplyFrom_PIRegister(nodeId, index, subindex, success); });
+
+        // Step 4
+        bool successSend = (canOpen->*funcPtr)(nodeId, value);
+
+        // Step 5
+        if (!UPS_checkResponseStatus(nodeId, successSend,
+                                     "UPS: Failed to send parameter" + String(parameterId) + " for Axis " + String(nodeId)))
+        {
+            // Step 6
+            canOpen->set_callback_PI_controller(nullptr);
+        }
+        DBG_INFO(DBG_GROUP_PI, "Setting pramaeter sent");
+    }
+
+    void MoveControllerBase::UPS_OnReplyFrom_PIRegister(uint8_t nodeId, uint16_t index, uint8_t subindex, bool success)
+    {
+        DBG_INFO(DBG_GROUP_PI, "Reply after parameter setting" + String(success));
+        // Step 1
+        canOpen->set_callback_PI_controller(nullptr);
+        // Step 2
+        if (!UPS_checkResponseStatus(nodeId, success,
+                                     "UPS: Failed to set" + String(index, HEX) + ":" + String(subindex, HEX) + "for Axis " + String(nodeId)))
+        {
+            return;
+        }
+        //  Step 3
+        canOpen->set_callback_x2614_dataSaveFlag([this](uint8_t nodeId, bool success)
+                                                 { this->UPS_OnReplyFrom_0x2614_DataSaveFlag_Write(nodeId, success); });
+        // Step 4
+        bool successSend = canOpen->saveParameters(nodeId);
+        DBG_INFO(DBG_GROUP_PI, "Sent savePrameters write");
+        // Step 5
+        if (!UPS_checkResponseStatus(nodeId, successSend,
+                                     "UPS: Failed to send parameter save for Axis " + String(nodeId)))
+        {
+            // Step 6
+            canOpen->set_callback_TPDO4(nullptr, nodeId);
+        }
+    }
+    void MoveControllerBase::UPS_OnReplyFrom_0x2614_DataSaveFlag_Write(uint8_t nodeId, bool success)
+    {
+        // Step 1
+        canOpen->set_callback_x2614_dataSaveFlag(nullptr);
+        // Step 2
+        if (!UPS_checkResponseStatus(nodeId, success,
+                                     "UPS: Failed to write 'save parameters' for Axis " + String(nodeId)))
+        {
+            return;
+        }
+        //  Step 3
+        canOpen->set_callback_read_x2614_dataSaveFlag([this](uint8_t nodeId, bool success, uint8_t value)
+                                                      { this->UPS_OnReplyFrom_0x2614_DataSaveFlag_Read(nodeId, success, value); });
+        // Step 4
+        delay(1000);
+        bool successSend = canOpen->sendSDORead(nodeId,
+                                                RobotConstants::ODIndices::DATA_SAVE_FLAG,
+                                                RobotConstants::ODIndices::DEFAULT_SUBINDEX);
+        DBG_INFO(DBG_GROUP_PI, "Sent saveParameters read");
+        // Step 5
+        if (!UPS_checkResponseStatus(nodeId, successSend,
+                                     "UPS: Failed to send request to read parameter save for Axis " + String(nodeId)))
+        {
+            // Step 6
+            canOpen->set_callback_read_x2614_dataSaveFlag(nullptr);
+        }
+    }
+
+    void MoveControllerBase::UPS_OnReplyFrom_0x2614_DataSaveFlag_Read(uint8_t nodeId, bool success, uint8_t value)
+    {
+        // Step 1
+        canOpen->set_callback_read_x2614_dataSaveFlag(nullptr);
+        // Step 2
+        if (!UPS_checkResponseStatus(nodeId, success,
+                                     "UPS: Failed to read 'save parameters' for Axis " + String(nodeId)))
+        {
+            return;
+        }
+        String reply = RobotConstants::Commands::PI_CONTROL + " " +
+                              String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) +
+                              String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + " ";
+        DBG_INFO(DBG_GROUP_PI, "saveParameter value is " + String(value));
+        if (value == 2)
+        {
+            reply += RobotConstants::Status::OK;
+        } else 
+        {
+            reply += RobotConstants::Status::COMMAND_FULL_FAIL;
+        }
+        addDataToOutQueue(reply);
+    }
+
+    bool MoveControllerBase::UPS_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage)
+    {
+        if (!success)
+        {
+            DBG_ERROR(DBG_GROUP_MOVE, "UPS Failed for Axis " + String(nodeId) + ": " + errorMessage);
+            addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " +
+                              String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) +
+                              String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + " " +
+                              RobotConstants::Status::COMMAND_FULL_FAIL);
+        }
+        return success;
+    }
+
+    // ======== Update PI Sequence End ========
 
     // ======== End of Fixate Axis after restoring life ========
 
@@ -1264,7 +1575,13 @@ namespace StepDirController
         positionUpdate(nodeId, position);
         axes[nodeId].lastHeartbeatMs = millis();
     }
+
     // ======== Regular callbacks end ========
     // ============================= Private methods end =============================
+
+    void MoveControllerBase::setPIControlParameter(uint8_t nodeId, uint8_t parameterId, int16_t value)
+    {
+        UPS_start(nodeId, parameterId, value);
+    }
 
 }

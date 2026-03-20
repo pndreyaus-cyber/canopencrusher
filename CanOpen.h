@@ -37,10 +37,17 @@ private:
     callback_TPDO1 callbacks_TPDO1[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                                                 // index 0 is unused
     callback_TPDO4 callbacks_TPDO4[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                                                 // index 0 is unused
 
+    callback_x2614_dataSaveFlag callbacks_x2614_dataSaveFlag = nullptr;
+
     callback_heartbeat callbacks_heartbeat = nullptr;
 
     callback_read_x6041_statusword callbacks_read_x6041_statusword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};   // index 0 is unused
     callback_read_x6040_controlword callbacks_read_x6040_controlword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr}; // index 0 is unused
+
+    callback_PI_controller callbacks_PI_controller = nullptr;
+
+    callback_read_PI_controller callbacks_read_PI_controller = nullptr; // Won't call simultaneously for multiple nodes, so we don't need an array
+    callback_read_x2614_dataSaveFlag callbacks_read_x2614_dataSaveFlag = nullptr;
 
 public:
     CanOpen() : Can(PB8, PB9, RX_SIZE_128, TX_SIZE_128) {};
@@ -55,6 +62,11 @@ public:
     bool send_x607A_targetPosition(uint8_t nodeId, int32_t value);
     bool send_RPDO1(uint8_t nodeId, uint16_t controlWord, int8_t workMode, int32_t targetPosition);
     bool send_RPDO4(uint8_t nodeId, int32_t targetPositionAbsolute);
+    bool x60F9_velocityControlParameterSet_PGain(uint8_t nodeId, int16_t value);
+    bool x60F9_velocityControlParameterSet_IGain(uint8_t nodeId, int16_t value);
+    bool x60FB_positionControlParameterSet_PGain(uint8_t nodeId, int16_t value);
+    bool x60FB_positionControlParameterSet_FeedForwardFactor(uint8_t nodeId, int16_t value);
+    bool saveParameters(uint8_t nodeId);
     bool sendSYNC();
 
     bool sendSDOWrite(uint8_t nodeId, uint8_t dataLen, uint16_t index, uint8_t subindex, const void *data);
@@ -117,6 +129,26 @@ public:
     void set_callback_read_x6040_controlword(callback_read_x6040_controlword callback, uint8_t nodeId)
     {
         callbacks_read_x6040_controlword[nodeId] = callback;
+    }
+
+    void set_callback_PI_controller(callback_PI_controller callback)
+    {
+        callbacks_PI_controller = callback;
+    }
+
+    void set_callback_read_PI_controller(callback_read_PI_controller callback)
+    {
+        callbacks_read_PI_controller = callback;
+    }
+
+    void set_callback_x2614_dataSaveFlag(callback_x2614_dataSaveFlag callback)
+    {
+        callbacks_x2614_dataSaveFlag = callback;
+    }
+
+    void set_callback_read_x2614_dataSaveFlag(callback_read_x2614_dataSaveFlag callback)
+    {
+        callbacks_read_x2614_dataSaveFlag = callback;
     }
 
     bool read();

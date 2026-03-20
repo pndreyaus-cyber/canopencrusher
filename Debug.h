@@ -15,6 +15,7 @@
 #define DBG_GROUP_ZEI (1u << 5)
 #define DBG_GROUP_SERIAL (1u << 6)
 #define DBG_GROUP_INIT (1u << 7)
+#define DBG_GROUP_PI (1u << 8)
 #define DBG_GROUP_ALL 0xFFFFu
 
 #define DBG_LEVEL_SHIFT 16u

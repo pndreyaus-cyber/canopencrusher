@@ -73,6 +73,57 @@ bool CanOpen::send_x607A_targetPosition(uint8_t nodeId, int32_t value)
         &value);
 }
 
+bool CanOpen::x60F9_velocityControlParameterSet_PGain(uint8_t nodeId, int16_t value)
+{
+    return sendSDOWrite(
+        nodeId,
+        2,
+        RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL,
+        RobotConstants::ODIndices::VELOCITY_KP_SUBINDEX,
+        &value);
+}
+
+bool CanOpen::x60F9_velocityControlParameterSet_IGain(uint8_t nodeId, int16_t value)
+{
+    return sendSDOWrite(
+        nodeId,
+        2,
+        RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL,
+        RobotConstants::ODIndices::VELOCITY_KI_SUBINDEX,
+        &value);
+}
+
+bool CanOpen::x60FB_positionControlParameterSet_PGain(uint8_t nodeId, int16_t value)
+{
+    return sendSDOWrite(
+        nodeId,
+        2,
+        RobotConstants::ODIndices::POSITION_LOOP_CONTROL,
+        RobotConstants::ODIndices::POSITION_KP_SUBINDEX,
+        &value);
+}
+
+bool CanOpen::x60FB_positionControlParameterSet_FeedForwardFactor(uint8_t nodeId, int16_t value)
+{
+    return sendSDOWrite(
+        nodeId,
+        2,
+        RobotConstants::ODIndices::POSITION_LOOP_CONTROL,
+        RobotConstants::ODIndices::FEEDFORWARD,
+        &value);
+}
+
+bool CanOpen::saveParameters(uint8_t nodeId)
+{
+    uint8_t value = 1;
+    return sendSDOWrite(
+        nodeId,
+        1,
+        RobotConstants::ODIndices::DATA_SAVE_FLAG,
+        RobotConstants::ODIndices::DEFAULT_SUBINDEX,
+        &value);
+}
+
 bool CanOpen::sendSDOWrite(uint8_t nodeId, uint8_t dataLenBytes, uint16_t index, uint8_t subindex, const void *data)
 {
     uint8_t msgBuf[RobotConstants::Buffers::MAX_CAN_MESSAGE_LEN] = {0}; // 8 bytes of CAN message data
@@ -462,6 +513,64 @@ bool CanOpen::read()
                         statusWordValue = static_cast<uint16_t>(data[4]) | (static_cast<uint16_t>(data[5]) << 8);
                     }
                     callbacks_read_x6041_statusword[nodeId](nodeId, success, statusWordValue);
+                }
+            }
+            else if (registerAddress == RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL || registerAddress == RobotConstants::ODIndices::POSITION_LOOP_CONTROL)
+            { // 0x60F9, 0x60FB
+                if (data[0] == 0x60)
+                { // Write to PI ack
+                    if (callbacks_PI_controller != nullptr)
+                    {
+                        callbacks_PI_controller(nodeId, registerAddress, data[3], true);
+                    }
+                }
+                else if (data[0] != 0x80)
+                { // Read PI controller response
+                    if (callbacks_read_PI_controller != nullptr)
+                    {
+                        int16_t piParameterValue = 0;
+                        piParameterValue = static_cast<int16_t>(data[4]) | (static_cast<int16_t>(data[5]) << 8);
+                        callbacks_read_PI_controller(nodeId, registerAddress, data[3], true, piParameterValue);
+                    }
+                }
+                else
+                {
+                    if (callbacks_PI_controller != nullptr)
+                    {
+                        callbacks_PI_controller(nodeId, registerAddress, data[3], false);
+                    }
+                    if (callbacks_read_PI_controller != nullptr)
+                    {
+                        callbacks_read_PI_controller(nodeId, registerAddress, data[3], false, 0);
+                    }
+                }
+            } else if (registerAddress == RobotConstants::ODIndices::DATA_SAVE_FLAG)
+            { // 0x2614
+                if (data[0] == 0x60)
+                { // Write to DataSaveFlag ack
+                    if (callbacks_x2614_dataSaveFlag != nullptr)
+                    {
+                        callbacks_x2614_dataSaveFlag(nodeId, true);
+                    }
+                }
+                else if (data[0] != 0x80)
+                { // Read DataSaveFlag response
+                    if (callbacks_read_x2614_dataSaveFlag != nullptr)
+                    {
+                        uint8_t dataSaveFlagValue = data[4];
+                        callbacks_read_x2614_dataSaveFlag(nodeId, true, dataSaveFlagValue);
+                    }
+                }
+                else
+                {
+                    if (callbacks_x2614_dataSaveFlag != nullptr)
+                    {
+                        callbacks_x2614_dataSaveFlag(nodeId, false);
+                    }
+                    if (callbacks_read_x2614_dataSaveFlag != nullptr)
+                    {
+                        callbacks_read_x2614_dataSaveFlag(nodeId, false, 0);
+                    }
                 }
             }
             return true;

@@ -15,6 +15,7 @@ using callback_x6060_modesOfOperation = std::function<void(uint8_t, bool)>;
 using callback_x607A_targetPosition = std::function<void(uint8_t, bool)>;
 using callback_x6081_profileVelocity = std::function<void(uint8_t, bool)>;
 using callback_x6083_profileAcceleration = std::function<void(uint8_t, bool)>;
+using callback_x2614_dataSaveFlag = std::function<void(uint8_t, bool)>;
 using callback_TPDO1 = std::function<void(uint8_t, int32_t, uint16_t)>;
 using callback_TPDO4 = std::function<void(uint8_t, int32_t, uint16_t)>;
 
@@ -22,6 +23,12 @@ using callback_heartbeat = std::function<void(uint8_t, uint8_t)>;
 
 using callback_read_x6041_statusword = std::function<void(uint8_t, bool, uint16_t)>;
 using callback_read_x6040_controlword = std::function<void(uint8_t, bool, uint16_t)>;
+
+using callback_PI_controller = std::function<void(uint8_t, uint16_t, uint8_t, bool)>; // node-id, index, subindex, success
+
+using callback_read_PI_controller = std::function<void(uint8_t, uint16_t, uint8_t, bool, int16_t)>; // node-id, index, subindex, success, value
+
+using callback_read_x2614_dataSaveFlag = std::function<void(uint8_t, bool, uint8_t)>;
 
 namespace RobotConstants
 {
@@ -96,6 +103,8 @@ namespace RobotConstants
         const String REQUEST_POSITION = "RPS";
         const String PREPAREMOVE_TEST = "PMT";
         const String REQUEST_POSITION_ANGLES = "RPA";
+        const String PI_CONTROL = "PIC";
+        const String REQUEST_PI = "RPI";
         constexpr int COMMAND_LEN = 3;
         const float MIN_SPEED_UNITS = 0.0f;
         const float MAX_SPEED_UNITS = 100.0f;
@@ -173,9 +182,17 @@ namespace RobotConstants
         constexpr uint16_t PROFILE_ACCELERATION = 0x6083;
         constexpr uint16_t TARGET_VELOCITY = 0x60FF;
 
-        // Motor parameters
-        constexpr uint16_t VELOCITY_CONTROL_PARAM = 0x60F9;
-        constexpr uint16_t POSITION_CONTROL_PARAM = 0x60FB;
+        // Control parameters
+        constexpr uint16_t VELOCITY_LOOP_CONTROL = 0x60F9;
+        constexpr uint8_t VELOCITY_KP_SUBINDEX = 0x01;
+        constexpr uint8_t VELOCITY_KI_SUBINDEX = 0x02;
+
+        constexpr uint16_t POSITION_LOOP_CONTROL = 0x60FB;
+        constexpr uint8_t POSITION_KP_SUBINDEX = 0x01;
+        constexpr uint8_t FEEDFORWARD = 0x02;
+
+        // Parameter saving
+        constexpr uint16_t DATA_SAVE_FLAG = 0x2614;
 
         // Driver specific
         constexpr uint16_t MODBUS_ENABLE = 0x2600;
@@ -188,16 +205,31 @@ namespace RobotConstants
         constexpr uint8_t DEFAULT_SUBINDEX = 0x00;
     }
 
+    namespace MotorControlLimits
+    {
+        constexpr int16_t MIN_VELOCITY_P = 0;     // Min velocity in device-specific units for P gain calculation
+        constexpr int16_t MAX_VELOCITY_P = 10000; // Max velocity in device-specific units for P gain calculation
+
+        constexpr int16_t MIN_VELOCITY_I = 2;    // Min velocity in device-specific units for I gain calculation
+        constexpr int16_t MAX_VELOCITY_I = 2000; // Max velocity in device-specific units for I gain calculation
+
+        constexpr int16_t MIN_POSITION_P = 60;    // Min velocity in device-specific units for P gain calculation
+        constexpr int16_t MAX_POSITION_P = 30000; // Max velocity in device-specific units for P gain calculation
+
+        constexpr int16_t MIN_FEEDFORWARD = 0;    // Min velocity in device-specific units for feedforward factor calculation
+        constexpr int16_t MAX_FEEDFORWARD = 3924; // Max velocity in device-specific units for feedforward factor calculation
+    }
+
     // Axis configuration
     namespace Axis
     {
         constexpr int32_t STEPS_PER_MOTOR_REV = 32768;
         constexpr double UNITS_PER_OUTPUT_SHAFT_REV = 360; // 1 revolution of output shaft corresponds to 360 degrees
         constexpr int GEAR_RATIO = 50;
-        constexpr double UNITS_PER_MOTOR_REV = UNITS_PER_OUTPUT_SHAFT_REV / GEAR_RATIO; // 1 revolution of motor corresponds to UNITS_PER_MOTOR_REV degrees
-        constexpr double DEFAULT_MAX_LIMITS[] = {180.0, 90.0, 135.0, 180.0, 110.0, 0.0}; // Max velocity in degrees per second for each axis
+        constexpr double UNITS_PER_MOTOR_REV = UNITS_PER_OUTPUT_SHAFT_REV / GEAR_RATIO;       // 1 revolution of motor corresponds to UNITS_PER_MOTOR_REV degrees
+        constexpr double DEFAULT_MAX_LIMITS[] = {180.0, 120.0, 135.0, 180.0, 110.0, 0.0};      // Max velocity in degrees per second for each axis
         constexpr double DEFAULT_MIN_LIMITS[] = {-180.0, -45.0, -135.0, -180.0, -110.0, 0.0}; // Min velocity in degrees per second for each axis
-        constexpr double LIMIT_TOLERANCE = 0.1; // Tolerance in degrees for limit checking
+        constexpr double LIMIT_TOLERANCE = 0.1;                                               // Tolerance in degrees for limit checking
     }
 
     // Control parameters
@@ -210,7 +242,7 @@ namespace RobotConstants
 
         constexpr uint32_t MAXIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S = 65535;
         constexpr double MAXIMUM_PROFILE_ACCELERATION_IN_DEG_PER_S2 = 7864.2;
-        constexpr uint32_t MAXIMUM_PROFILE_ACCELERATION_IN_STEPS_PER_SECOND2 = 35790848; // Corresponds to 65535 RPM/s for a motor with 32768 steps per revolution 
+        constexpr uint32_t MAXIMUM_PROFILE_ACCELERATION_IN_STEPS_PER_SECOND2 = 35790848; // Corresponds to 65535 RPM/s for a motor with 32768 steps per revolution
         constexpr double MAXIMUM_PROFILE_ACCELERATION_IN_PERCENT = 1.0;
 
         constexpr uint32_t MINIMUM_PROFILE_VELOCITY_IN_RPM = 1;
@@ -223,7 +255,7 @@ namespace RobotConstants
         constexpr double MINIMUM_PROFILE_ACCELERATION_IN_PERCENT = 0.000015259;
         constexpr uint32_t MINIMUM_PROFILE_ACCELERATION_IN_STEPS_PER_SEC2 = Axis::STEPS_PER_MOTOR_REV * MINIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S / Math::SECONDS_IN_MINUTE;
 
-        constexpr double MINIMUM_ABSOLUTE_ANGLE = 9.0/40960.0; // 0.0002197265
+        constexpr double MINIMUM_ABSOLUTE_ANGLE = 9.0 / 40960.0; // 0.0002197265
     }
 
     // Buffer sizes
@@ -247,6 +279,8 @@ namespace RobotConstants
         const String NOT_IMPLEMENTED = "NI";
         const String NOT_INITIALIZED = "NZ";
         const String OTHER_COMMAND_IN_PROGRESS = "OP";
+        const String CAN_SEND_FAIL = "CS";
+        const String PARAMETER_SET_FAIL = "PF";
     }
 
 } // namespace RobotConstants

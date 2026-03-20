@@ -29,6 +29,8 @@ void handleZeroInitialize(MotorIndices motorIndices);
 void handleRequestPosition(MotorIndices motorIndices);
 void handleRequestPositionAngles(MotorIndices motorIndices);
 void handleMotorStatus(String params);
+void handlePIControl(String params);
+void handleRequestPI(MotorIndices motorIndices);
 
 bool receiveCommand();
 void handleCommand();
@@ -64,8 +66,8 @@ void setup()
         Serial.println("COP OK");
     }
 
-    uint8_t nodesToInvert[] = {2};    
-    ParamsStatusStruct moveControllerInitStatus = moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 1); 
+    uint8_t nodesToInvert[] = {3, 4};    
+    ParamsStatusStruct moveControllerInitStatus = moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 2); 
     if (moveControllerInitStatus.status == ParamsStatus::INVALID_PARAMS)
     {
         Serial.println("MVC FF " + moveControllerInitStatus.errorMsg.value_or("no error message"));
@@ -165,6 +167,14 @@ void handleCommand()
     else if (function.equals(RobotConstants::Commands::MOVE_ABSOLUTE_PERCENT))
     {
         handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_PERCENT), RobotConstants::Commands::MOVE_ABSOLUTE_PERCENT, true); // For now, treat MAP the same as MAJ. The move controller will need to be updated to handle percentage-based moves.
+    }
+    else if (function.equals(RobotConstants::Commands::PI_CONTROL))
+    {
+        handlePIControl(inData);
+    }
+    else if (function.equals(RobotConstants::Commands::REQUEST_PI))
+    {
+        handleRequestPI(stringToMotorIndices(inData));
     }
     else
     {
@@ -472,6 +482,70 @@ void handleMotorStatus(String params)
     }
     moveController.requestStatus();
 }
+
+void handlePIControl(String params)
+{
+    // PIC <nodeId> <paramId> <value>
+    // Example: PIC JA P1 V100
+    String paramsSubStr = params.substring(RobotConstants::Commands::COMMAND_LEN);
+    if (!paramsSubStr.startsWith("J") || paramsSubStr.length() < 2)
+    {
+        DBG_ERROR(DBG_GROUP_PI, "Does not start with J followed by node identifier or not long enough");
+        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Status::INVALID_PARAMS);
+        return;
+    }
+    
+    uint8_t nodeId = static_cast<uint8_t>(paramsSubStr.charAt(1) - RobotConstants::Robot::MIN_NODE_ID) + 1;
+    if (nodeId < 1 || RobotConstants::Robot::AXES_COUNT < nodeId)
+    {
+        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Status::INVALID_PARAMS);
+        return;
+    }
+    DBG_INFO(DBG_GROUP_PI, "RPI for node " + String(nodeId));
+    // Find spaces
+    int firstSpace = paramsSubStr.indexOf('P', 0); // Start searching after position 1
+    if (firstSpace == -1){
+        DBG_ERROR(DBG_GROUP_PI, "No 'P'");
+        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Status::INVALID_PARAMS);
+        return;
+    }
+    
+    int secondSpace = paramsSubStr.indexOf('V', firstSpace + 1);
+    if (secondSpace == -1){
+        DBG_ERROR(DBG_GROUP_PI, "No 'V'");
+        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Status::INVALID_PARAMS);
+        return;
+    }
+    
+    // Extract second parameter
+    String secondParamStr = paramsSubStr.substring(firstSpace + 1, secondSpace);
+    long parameterId = secondParamStr.toInt();
+    DBG_INFO(DBG_GROUP_PI, "Parameter ID: " + String(parameterId));
+    if (parameterId <= 0 || 4 < parameterId) // For now, we only support parameters 1-4, which correspond to P and I gains of velocity and position controllers. This can be expanded in the future if needed.
+    {
+        DBG_ERROR(DBG_GROUP_PI, "ParameterId invalid");
+        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Status::INVALID_PARAMS);
+        return;
+    }
+    
+    // Extract third parameter
+    String thirdParamStr = paramsSubStr.substring(secondSpace + 1);
+    long value = thirdParamStr.toInt();
+    DBG_INFO(DBG_GROUP_PI, "third param value " + String(value));
+    moveController.setPIControlParameter(nodeId, parameterId, value);
+}
+
+void handleRequestPI(MotorIndices motorIndices)
+{
+    if (motorIndices.status.status != ParamsStatus::OK || motorIndices.nodeIds.size() != 1) // For simplicity, for now we only support requesting PI parameters for a single axis at a time. This can be expanded in the future if needed.
+    {
+        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_PI + " " + motorIndices.status.errorMsg.value_or("no error message"));
+        addDataToOutQueue(RobotConstants::Commands::REQUEST_PI + " " + RobotConstants::Status::INVALID_PARAMS);
+        return;
+    }
+    moveController.startRequestPI(motorIndices.nodeIds[0]);
+}
+
 
 void handleZeroInitialize(MotorIndices motorIndices)
 {

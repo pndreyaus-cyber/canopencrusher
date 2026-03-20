@@ -63,13 +63,19 @@ namespace StepDirController
         void requestStatus();
         std::optional<int32_t> axisPosition(uint8_t nodeId);
 
-        ParamsStatusStruct start(CanOpen *canOpen, uint8_t axesCnt, bool writeNewLimitsToEEPROM = false, uint8_t* nodesToInvert = nullptr, uint8_t nodesToInvertCnt = 0);
+        ParamsStatusStruct start(CanOpen *canOpen, uint8_t axesCnt, bool writeNewLimitsToEEPROM = false, uint8_t *nodesToInvert = nullptr, uint8_t nodesToInvertCnt = 0);
 
         uint8_t getAxesCount() const { return axesCnt; }
         Axis &getAxis(uint8_t nodeId) { return axes.at(nodeId); }
 
         void startZeroInitializationAllAxes();
         void startZeroInitializationSingleAxis(uint8_t nodeId);
+
+        void startRequestPI(uint8_t nodeId)
+        {
+            RPI_start(nodeId);
+        }
+    
 
         PrepareMoveStatus move(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove, const String *commandNameForLogging = nullptr);
 
@@ -83,6 +89,7 @@ namespace StepDirController
         static String prepareMoveStatusToString(PrepareMoveStatus status);
 
         bool isMoveInProgress() const { return isMAJInProgress; }
+        void setPIControlParameter(uint8_t nodeId, uint8_t parameterId, int16_t value);
 
     protected:
         PrepareMoveComputationResult prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params, bool isAbsoluteMove);
@@ -155,6 +162,27 @@ namespace StepDirController
         void FAL_afterWriteTo_0x6040(uint8_t nodeId, bool success);
 
         // ======== End of Fixate Axis after restoring life ========
+
+        // ======== Request PI Sequence ========
+        void RPI_start(uint8_t nodeId);
+        void RPI_OnReplyFrom_0x60F9_01(uint8_t nodeId, bool success, int16_t piParameterValue);
+        void RPI_OnReplyFrom_0x60F9_02(uint8_t nodeId, bool success, int16_t piParameterValue);
+        void RPI_OnReplyFrom_0x60FB_01(uint8_t nodeId, bool success, int16_t piParameterValue);
+        void RPI_OnReplyFrom_0x60FB_02(uint8_t nodeId, bool success, int16_t piParameterValue);
+
+        void RPI_finalResult(uint8_t nodeId, uint8_t stepsCompleted);
+
+        bool RPI_checkResponseStatus(uint8_t nodeId, uint8_t step, bool success, String errorMessage);
+        // ======== Request PI Sequence End ========
+
+        // ======== Update PI Sequence ========
+        void UPS_start (uint8_t nodeId, uint8_t parameterId, int16_t value);
+        void UPS_OnReplyFrom_PIRegister (uint8_t nodeId, uint16_t index, uint8_t subindex, bool success);
+        void UPS_OnReplyFrom_0x2614_DataSaveFlag_Write (uint8_t nodeId, bool success);
+        void UPS_OnReplyFrom_0x2614_DataSaveFlag_Read (uint8_t nodeId, bool success, uint8_t value);
+
+        bool UPS_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
+        // ======== Update PI Sequence End ========
 
         // ======== Regular callbacks ========
         void regularHeartbeatCallback(uint8_t nodeId, uint8_t status);
