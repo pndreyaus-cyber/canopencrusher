@@ -105,6 +105,8 @@ namespace RobotConstants
         const String REQUEST_POSITION_ANGLES = "RPA";
         const String PI_CONTROL = "PIC";
         const String REQUEST_PI = "RPI";
+        const String GRAB = "GRB";
+        const String LET_GO = "LGO";
         constexpr int COMMAND_LEN = 3;
         const float MIN_SPEED_UNITS = 0.0f;
         const float MAX_SPEED_UNITS = 100.0f;

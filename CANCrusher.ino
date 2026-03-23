@@ -19,6 +19,8 @@ String inData;
 uint8_t bufIndex = 0;       // хранилище данных с последовательного порта
 std::queue<String> outData; // очередь сообщений на отправку
 
+#define AIR PB5
+
 // Forward declarations
 void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConstants::Robot::AXES_COUNT> &params, RobotConstants::MoveUnits moveUnits);
 MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command, RobotConstants::MoveUnits moveUnits);
@@ -47,6 +49,7 @@ void setup()
     // pinMode(PC13, OUTPUT);
     // digitalWrite(PC13, HIGH);
 
+    pinMode(AIR, OUTPUT);
 
     Serial.begin(115200);
     while (!Serial)
@@ -66,8 +69,8 @@ void setup()
         Serial.println("COP OK");
     }
 
-    uint8_t nodesToInvert[] = {3, 4};    
-    ParamsStatusStruct moveControllerInitStatus = moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 2); 
+    uint8_t nodesToInvert[] = {2};    
+    ParamsStatusStruct moveControllerInitStatus = moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 1); 
     if (moveControllerInitStatus.status == ParamsStatus::INVALID_PARAMS)
     {
         Serial.println("MVC FF " + moveControllerInitStatus.errorMsg.value_or("no error message"));
@@ -175,6 +178,16 @@ void handleCommand()
     else if (function.equals(RobotConstants::Commands::REQUEST_PI))
     {
         handleRequestPI(stringToMotorIndices(inData));
+    }
+        else if (function.equals(RobotConstants::Commands::GRAB))
+    {
+        digitalWrite(AIR, HIGH);
+        addDataToOutQueue(RobotConstants::Commands::GRAB + " " + RobotConstants::Status::OK);
+    }
+    else if (function.equals(RobotConstants::Commands::LET_GO))
+    {
+        digitalWrite(AIR, LOW);
+        addDataToOutQueue(RobotConstants::Commands::LET_GO + " " + RobotConstants::Status::OK);
     }
     else
     {
