@@ -69,20 +69,20 @@ def calc_ik_simple(goalX: float, goalY: float, goalZ: float, ikParams: IkParamet
         return False, jointGroupPositions
 
 
-def calculate_angles(x, y, z, offset_y=0.286, offset_x=0.049, a1=0.472, a2=0.3206, a3=0.095):
-    alpha_0 = math.atan2(x, y)
+def calculate_angles(x: float, y: float, z: float, du: float, dv: float, l1: float, l2: float, l3: float):
+    alpha_1 = math.atan2(x, y)
 
-    v5 = math.sqrt(x**2 + y**2) + offset_x
-    m5 = z - offset_y
+    uT = math.sqrt(x**2 + y**2)
+    vT = z
 
-    d1 = math.sqrt(v5**2 + (m5 + a3)**2)
+    d1 = math.sqrt((uT - du)**2 + (vT + l3 - dv)**2)
 
-    gamma_3 = math.acos((a1**2 + d1**2 - a2**2)/(2 * a1 * d1))
-    gamma_2 = math.acos((d1**2 + v5**2 - (m5 + a3)**2)/(2 * d1 * v5))
-    gamma_4 = math.acos((a2**2 + a1**2 - d1**2)/(2 * a1 * a2))
+    gamma_1 = math.acos((l1**2 + d1**2 - l2**2)/(2*l1*d1))
+    gamma_2 = math.acos((l2**2 + l1**2 - d1**2)/(2*l1*l2))
+    gamma_4 = math.acos((uT - du)/d1)
 
-    alpha_1 = math.pi/2 - gamma_3 - gamma_2
-    alpha_2 = math.pi - gamma_4
-    alpha_3 = math.pi - alpha_1 - alpha_2
-    
-    return [alpha_0, alpha_1, alpha_2, alpha_3]
+    alpha_2 = math.pi/2 - gamma_1 - gamma_4
+    alpha_3 = math.pi - gamma_2
+    alpha_4 = math.pi - alpha_2 - alpha_3
+
+    return [alpha_1, alpha_2, alpha_3, alpha_4]

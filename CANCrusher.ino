@@ -69,8 +69,8 @@ void setup()
         Serial.println("COP OK");
     }
 
-    uint8_t nodesToInvert[] = {2};    
-    ParamsStatusStruct moveControllerInitStatus = moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 1); 
+    uint8_t nodesToInvert[] = {3, 4};    
+    ParamsStatusStruct moveControllerInitStatus = moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 2); 
     if (moveControllerInitStatus.status == ParamsStatus::INVALID_PARAMS)
     {
         Serial.println("MVC FF " + moveControllerInitStatus.errorMsg.value_or("no error message"));

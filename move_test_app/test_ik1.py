@@ -2,7 +2,16 @@ from serialRobotClient import SerialRobotClient
 from ik1 import IkParameters, calc_ik_simple, calculate_angles
 import math
 import argparse
+from typing import List
+from numpy import matmul
 
+transform_matrix = [[1.01535, -0.01541, 0.029135, -21.7568],
+                    [-0.00696, 0.950244, -0.0021, 542.5955],
+                    [-0.00892, -0.00729, 1.006019, 256.8192]]
+
+
+def calculate_real_position(position_theory: tuple[float, float, float]):
+    return matmul(transform_matrix, [*position_theory, 1])
 
 def test_ik_1(port, baud, axes):
     client = SerialRobotClient(port=port, baud=baud, axes_num=axes)
@@ -18,33 +27,38 @@ def test_ik_1(port, baud, axes):
     #           ((0.145, 0.40, 0.290), 0),
     #           ((-0.023, 0.40, 0.290), 0),
     #           ((-0.023, 0.40, 0.284), 2),  ]
-    angles = [((0.0, 0.58, 0.275), 0),
-              ((0.10, 0.48, 0.375), 0),
-              ((0.0, 0.38, 0.275), 0),
-              ((0.10, 0.38, 0.375), 0)]
+    # angles = [((0.0, 0.58, 0.275), 0),
+    #           ((0.10, 0.48, 0.375), 0),
+    #           ((0.0, 0.38, 0.275), 0),
+    #           ((0.10, 0.38, 0.375), 0)]
     # (0.0, 0.58, 0.275)
     # (0.10, 0.48, 0.375)
     # (0.10, 0.48, 0.375)
     # (0.0, 0.38, 0.275)
     # (0.10, 0.38, 0.375)
     # (0.0, 0.58, 0.275)
-    for a in angles:
-        ra = a[0]
-        action = a[1]
-        joint_positions = calculate_angles(*ra, 0.286, 0.049, 0.370, 0.370, 0.115)
+    positions_actions = [((52.5, 52.5, 50), 0)]
+
+    for position_action in positions_actions:
+        position_theory = position_action[0]
+        position = calculate_real_position(position_theory)
+        #position = position_theory
+        print("Real position: ", position)
+        action = position_action[1]
+        joint_positions = calculate_angles(*position, 49, 286, 372, 365.5, 115.5)
         print(
             list(map(lambda x: x * 180 / math.pi, joint_positions))
         )  # Convert radians to degrees
 
-        command = "MAP JA{:.2f} JB{:.2f} JC{:.2f} JD{:.2f} SP0.1 AC0.01".format(
-            180 * joint_positions[0] / math.pi + 90,
+        command = "MAP JA{:.2f} JB{:.2f} JC{:.2f} JD{:.2f} SP0.15 AC0.02".format(
+            180 * joint_positions[0] / math.pi,
             180 * joint_positions[1] / math.pi,
             180 * joint_positions[2] / math.pi,
             min(180 * joint_positions[3] / math.pi, 110),
         )
         print(f"Generated command: {command}")
-        #do_run = input("Run command? (y/n):")
-        do_run = "y"
+        do_run = input("Run command? (y/n):")
+        #do_run = "n"
         if do_run == "y":
             client.send_command(command)
             reply = client.wait_for_prefix("MAP", 30)
