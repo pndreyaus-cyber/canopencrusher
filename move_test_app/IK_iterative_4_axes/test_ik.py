@@ -1,12 +1,11 @@
 from serialRobotClient import SerialRobotClient
-from ik1 import IkParameters, calc_ik_simple, calculate_angles
+#from ik1 import IkParameters, calc_ik_simple, calculate_angles
 import math
 import argparse
 from typing import List
 import numpy as np
 from numpy import matmul
-
-from IK import FourAxisSolver
+from ikpy.chain import Chain
 
 transform_matrix = [[0.982685, -0.02253, 0.022949, 30.20585], # Changed -21.7568 to -17.7568
                     [-0.00843, 0.939357, 0.000573, 559.0083], # Changed 542.5955 to 546.5955
@@ -18,51 +17,54 @@ def calculate_real_position(position_theory: tuple[float, float, float]) -> tupl
 
 def test_ik_1(port, baud, axes):
     client = SerialRobotClient(port=port, baud=baud, axes_num=axes)
-    # angles = [((-0.023, 0.40, 0.290), 0),
-    #           ((-0.023, 0.40, 0.284), 1),
-    #           ((-0.023, 0.40, 0.290), 0),
-    #           ((0.145, 0.40, 0.290), 0),
-    #           ((0.145, 0.40, 0.284), 2),
-    #           ((0.145, 0.40, 0.290), 0),
-    #           ((-0.023, 0.40, 0.290), 0),
-    #           ((0.145, 0.40, 0.290), 0),
-    #           ((0.145, 0.40, 0.284), 1),
-    #           ((0.145, 0.40, 0.290), 0),
-    #           ((-0.023, 0.40, 0.290), 0),
-    #           ((-0.023, 0.40, 0.284), 2),  ]
-    # angles = [((0.0, 0.58, 0.275), 0),
-    #           ((0.10, 0.48, 0.375), 0),
-    #           ((0.0, 0.38, 0.275), 0),
-    #           ((0.10, 0.38, 0.375), 0)]
-    # (0.0, 0.58, 0.275)
-    # (0.10, 0.48, 0.375)
-    # (0.10, 0.48, 0.375)
-    # (0.0, 0.38, 0.275)
-    # (0.10, 0.38, 0.375)
-    # (0.0, 0.58, 0.275)
-    # positions_actions = [((0, 307, 792.2), 0)]
-    positions_actions = [([0+np.cos(i)*50, 414+np.sin(i)*50, 534], 0) for i in np.linspace(0, 6*math.pi, 48)]
-    
-    solver = FourAxisSolver()
-    # target = [0, 365+49, 534]
-    #target = [0, 307, 792.2]
 
-    for position_action in positions_actions:
-        position_theory = position_action[0]
+    chain = Chain.from_urdf_file(
+        "robot_4.urdf",
+        active_links_mask=[False, True, True, True, True, True]
+    )
+
+    # positions_actions = [((0, 307, 792.2), 0)]
+    # positions_actions = [([0+np.cos(i)*50, 414+np.sin(i)*50, 534], 0) for i in np.linspace(0, 6*math.pi, 48)]
+    
+    target_orient = [0, 0, -1]
+    target_orient_axis = "Z"
+    target_pos = [0.5, 0, 0.534]
+    angles = [0, 0, 0, 3.14159/4, 3.14159/4, 0]
+
+    for t in np.linspace(0, 4*np.pi, 5):
+        target_pos = [-0.5, 0, 0.534]
+        theta = np.pi * np.sin(t) * 0.25  # oscillates back and forth
+        target_orient = [
+            -np.cos(theta),  
+            0, 
+            -np.sin(theta)
+        ]
+    
+        prev_angles = angles
+        angles = chain.inverse_kinematics(
+            target_position=target_pos,
+            target_orientation=target_orient,
+            orientation_mode=target_orient_axis,
+            # initial_position=prev_angles
+        )
+
+        print(angles)
+
+        #position_theory = position_action[0]
         #position = calculate_real_position(position_theory)
-        position = position_theory
+        #position = position_theory
         #print("Real position: ", position)
         #action = position_action[1]
-        joint_positions = calculate_angles(*position, 49, 286, 372, 365.5, 115.5)
-        print(
-           list(map(lambda x: x * 180 / math.pi, joint_positions))
-        )  # Convert radians to degrees
+        #joint_positions = calculate_angles(*position, 49, 286, 372, 365.5, 115.5)
+        # print(
+        #    list(map(lambda x: x * 180 / math.pi, joint_positions))
+        # )  # Convert radians to degrees
 
         command = "MAP JA{:.2f} JB{:.2f} JC{:.2f} JD{:.2f} SP0.15 AC0.02".format(
-            180 * joint_positions[0] / math.pi,
-            180 * joint_positions[1] / math.pi,
-            180 * joint_positions[2] / math.pi,
-            min(180 * joint_positions[3] / math.pi, 110),
+            180 * angles[1] / math.pi,
+            180 * angles[2] / math.pi,
+            180 * angles[3] / math.pi,
+            min(180 * angles[4] / math.pi, 110),
         )
         #angles = solver.solve(position_theory, 90, 0)
         #print(angles)
@@ -80,7 +82,7 @@ def test_ik_1(port, baud, axes):
             client.send_command(command)
             reply = client.wait_for_prefix("MAP", 30)
             print("reply:", reply)
-    
+
         action = 3
         if action == 1:
             client.send_command("GRB")

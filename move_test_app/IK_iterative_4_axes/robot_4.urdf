@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot
+  name="Серебристый_робот_сборка_февраль_2026_Z_вверх_4-Оси_Петров.SLDASM">
+  <link
+    name="base_link">
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="meshes_4/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.56863 0.59608 0.62353 1" />
+      </material>
+    </visual>
+  </link>
+  <link
+    name="Axis_1_Link">
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="meshes_4/Axis_1_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.56863 0.59608 0.62353 1" />
+      </material>
+    </visual>
+  </link>
+  <joint
+    name="Axis_1_Joint"
+    type="revolute">
+    <origin
+      xyz="0 0 0.052"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="Axis_1_Link" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-3.1415"
+      upper="3.1415"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Axis_2_Link">
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="meshes_4/Axis_2_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.56863 0.59608 0.62353 1" />
+      </material>
+    </visual>
+  </link>
+  <joint
+    name="Axis_2_Joint"
+    type="revolute">
+    <origin
+      xyz="-0.049003 -0.0005 0.234"
+      rpy="0 0 0" />
+    <parent
+      link="Axis_1_Link" />
+    <child
+      link="Axis_2_Link" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-0.785398"
+      upper="0.785398"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Axis_3_Link">
+    <visual>
+      <origin
+        xyz="0 0 0.1"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="meshes_4/Axis_3_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.56863 0.59608 0.62353 1" />
+      </material>
+    </visual>
+  </link>
+  <joint
+    name="Axis_3_Joint"
+    type="revolute">
+    <origin
+      xyz="0.0 0.105 0.372"
+      rpy="0 0 0" />
+    <parent
+      link="Axis_2_Link" />
+    <child
+      link="Axis_3_Link" />
+     <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-2.3355"
+      upper="2.3355"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Axis_4_Link">
+    <visual>
+      <origin
+        xyz="0 0 0.055"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="meshes_4/Axis_4_Link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.75294 0.75294 0.75294 1" />
+      </material>
+    </visual>
+  </link>
+  <joint
+    name="Axis_4_Joint"
+    type="revolute">
+    <origin
+      xyz="0 -0.11325 0.365"
+      rpy="0 0 0" />
+    <parent
+      link="Axis_3_Link" />
+    <child
+      link="Axis_4_Link" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-1.9188"
+      upper="1.9188"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <joint
+    name="fixed_joint"
+    type="fixed">
+    <origin
+      xyz="0 0 0.124"
+      rpy="0 0 0" />
+    <parent
+      link="Axis_4_Link" />
+    <child
+      link="end_link" />
+  </joint>
+  <link
+    name="end_link">
+  </link>
+</robot>

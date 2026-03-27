@@ -69,7 +69,7 @@ def calc_ik_simple(goalX: float, goalY: float, goalZ: float, ikParams: IkParamet
         return False, jointGroupPositions
 
 
-def calculate_angles(x: float, y: float, z: float, du: float, dv: float, l1: float, l2: float, l3: float):
+def calculate_angles(x: float, y: float, z: float, du: float, dv: float, l1: float, l2: float, l3: float) -> tuple[float, float, float, float]:
     alpha_1 = math.atan2(x, y)
 
     uT = math.sqrt(x**2 + y**2)
@@ -85,4 +85,4 @@ def calculate_angles(x: float, y: float, z: float, du: float, dv: float, l1: flo
     alpha_3 = math.pi - gamma_2
     alpha_4 = math.pi - alpha_2 - alpha_3
 
-    return [alpha_1, alpha_2, alpha_3, alpha_4]
+    return (alpha_1, alpha_2, alpha_3, alpha_4)

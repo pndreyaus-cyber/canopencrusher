@@ -6,8 +6,6 @@ from typing import List
 import numpy as np
 from numpy import matmul
 
-from IK import FourAxisSolver
-
 transform_matrix = [[0.982685, -0.02253, 0.022949, 30.20585], # Changed -21.7568 to -17.7568
                     [-0.00843, 0.939357, 0.000573, 559.0083], # Changed 542.5955 to 546.5955
                     [-0.00948, -0.01456, 1.032103, 281.2634]]
@@ -43,7 +41,6 @@ def test_ik_1(port, baud, axes):
     # positions_actions = [((0, 307, 792.2), 0)]
     positions_actions = [([0+np.cos(i)*50, 414+np.sin(i)*50, 534], 0) for i in np.linspace(0, 6*math.pi, 48)]
     
-    solver = FourAxisSolver()
     # target = [0, 365+49, 534]
     #target = [0, 307, 792.2]
 
