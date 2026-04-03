@@ -20,6 +20,7 @@ uint8_t bufIndex = 0;       // хранилище данных с последо
 std::queue<String> outData; // очередь сообщений на отправку
 
 #define AIR PB5
+#define CONVEYOR PB6
 
 // Forward declarations
 void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConstants::Robot::AXES_COUNT> &params, RobotConstants::MoveUnits moveUnits);
@@ -50,6 +51,7 @@ void setup()
     // digitalWrite(PC13, HIGH);
 
     pinMode(AIR, OUTPUT);
+    pinMode(CONVEYOR, OUTPUT);
 
     Serial.begin(115200);
     while (!Serial)
@@ -188,6 +190,22 @@ void handleCommand()
     {
         digitalWrite(AIR, LOW);
         addDataToOutQueue(RobotConstants::Commands::LET_GO + " " + RobotConstants::Status::OK);
+    }
+    else if (function.equals(RobotConstants::Commands::CONV_ON))
+    {
+        digitalWrite(CONVEYOR, HIGH);
+        addDataToOutQueue(RobotConstants::Commands::CONV_ON + " " + RobotConstants::Status::OK);
+    }
+    else if (function.equals(RobotConstants::Commands::CONV_OFF))   
+    {
+        digitalWrite(CONVEYOR, LOW);
+        addDataToOutQueue(RobotConstants::Commands::CONV_OFF + " " + RobotConstants::Status::OK);
+    }
+    else if(function.equals(RobotConstants::Commands::START_TRAJ))
+    {
+        // Example: STJ EX100.0 EY200.0 EZ300.0 DSX1.0 DSY0.0 DSZ0.0 DEX0.0 DEY0.0 DEZ1.0 SP0.1 AC0.05
+        // It means to move around the point with coordinates (EX, EY, EZ). Start direction of end-effector is (DSX, DSY, DSZ). End direction of end-effector is (DEX, DEY, DEZ)
+         addDataToOutQueue(RobotConstants::Commands::START_TRAJ + " " + RobotConstants::Status::NOT_IMPLEMENTED);
     }
     else
     {

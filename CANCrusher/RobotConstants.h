@@ -109,6 +109,7 @@ namespace RobotConstants
         const String LET_GO = "LGO";
         const String CONV_ON = "CON";
         const String CONV_OFF = "COF";
+        const String START_TRAJ = "STJ";
         constexpr int COMMAND_LEN = 3;
         const float MIN_SPEED_UNITS = 0.0f;
         const float MAX_SPEED_UNITS = 100.0f;

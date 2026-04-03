@@ -560,32 +560,34 @@ namespace StepDirController
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             Axis &axis = axes[nodeId];
-            if (axis.moveStatus == RobotConstants::MoveStatus::MOVING && axis.status == RobotConstants::AxisStatus::NOT_ALIVE)
+            if (axis.moveStatus == RobotConstants::MoveStatus::MOVING)
             {
-                DBG_WARN(DBG_GROUP_MOVE, "MAJ failed for Axis " + String(nodeId) + ": Heartbeat timeout");
-                axis.moveStatus = RobotConstants::MoveStatus::MOVE_FAIL;
-                MAJ_finalResult();
-            }
-
-            uint32_t now = millis();
-            if (now - axis.lastRequestedStatusWord > 100 && axis.moveStatus == RobotConstants::MoveStatus::MOVING)
-            {
-                // Step 4
-                canOpen->set_callback_read_x6041_statusword([this](uint8_t cbNodeId, bool success, uint16_t statusWord)
-                                                            { this->MAJ_statusWordCallback(cbNodeId, success, statusWord); }, nodeId);
-                // Step 5
-                bool successSend = canOpen->sendSDORead(nodeId,
-                                                        RobotConstants::ODIndices::STATUSWORD,
-                                                        RobotConstants::ODIndices::DEFAULT_SUBINDEX);
-                // Step 6
-                if (!MAJ_checkResponseStatus(nodeId, successSend,
-                                             "MAJ: Failed to send statusword request for Axis " + String(nodeId)))
+                if (axis.status == RobotConstants::AxisStatus::NOT_ALIVE)
                 {
-                    // Step 7
-                    canOpen->set_callback_read_x6041_statusword(nullptr, nodeId);
+                    DBG_WARN(DBG_GROUP_MOVE, "MAJ failed for Axis " + String(nodeId) + ": Heartbeat timeout");
+                    axis.moveStatus = RobotConstants::MoveStatus::MOVE_FAIL;
+                    MAJ_finalResult();
                 }
+                uint32_t now = millis();
+                if (now - axis.lastRequestedStatusWord > 100)
+                {
+                    // Step 4
+                    canOpen->set_callback_read_x6041_statusword([this](uint8_t cbNodeId, bool success, uint16_t statusWord)
+                                                                { this->MAJ_statusWordCallback(cbNodeId, success, statusWord); }, nodeId);
+                    // Step 5
+                    bool successSend = canOpen->sendSDORead(nodeId,
+                                                            RobotConstants::ODIndices::STATUSWORD,
+                                                            RobotConstants::ODIndices::DEFAULT_SUBINDEX);
+                    // Step 6
+                    if (!MAJ_checkResponseStatus(nodeId, successSend,
+                                                 "MAJ: Failed to send statusword request for Axis " + String(nodeId)))
+                    {
+                        // Step 7
+                        canOpen->set_callback_read_x6041_statusword(nullptr, nodeId);
+                    }
 
-                axes[nodeId].lastRequestedStatusWord = now;
+                    axes[nodeId].lastRequestedStatusWord = now;
+                }
             }
         }
     }
@@ -990,7 +992,9 @@ namespace StepDirController
         // All axes are ready, send SYNC
         // DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");
         canOpen->sendSYNC();
-        delay(10); // Check for different
+        delay(10); // Check for different.
+        /* It is important to have a small delay after sending SYNC before requesting the status word to minimize the chance that we request the status word before the axis has processed the SYNC and updated its status.
+         This delay can be fine-tuned based on testing, but 10ms is a reasonable starting point for many systems. */
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             if (axes[nodeId].moveStatus == RobotConstants::MoveStatus::READY_TO_MOVE)
@@ -1478,13 +1482,14 @@ namespace StepDirController
             return;
         }
         String reply = RobotConstants::Commands::PI_CONTROL + " " +
-                              String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) +
-                              String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + " ";
+                       String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) +
+                       String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + " ";
         DBG_INFO(DBG_GROUP_PI, "saveParameter value is " + String(value));
         if (value == 2)
         {
             reply += RobotConstants::Status::OK;
-        } else 
+        }
+        else
         {
             reply += RobotConstants::Status::COMMAND_FULL_FAIL;
         }
