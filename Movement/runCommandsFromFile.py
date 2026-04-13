@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from parser import create_parser
 
 
-def run_commands_from_file(file_path: str, port: str, baudrate: int, axes_num: int, timeout: float = 0):
+def run_commands_from_file(file_path: str, port: str, baudrate: int, axes_num: int, timeout: float = 0, ask_for_confirmation: bool = False):
     if timeout == 0:
         client = SerialRobotClient(port, baudrate, axes_num)
     else:
@@ -26,6 +26,11 @@ def run_commands_from_file(file_path: str, port: str, baudrate: int, axes_num: i
         
             command_type = command.split()[0]  # Get the command type (e.g., "MOVE", "STOP")
             print(f"Sending command: {command}")
+            if ask_for_confirmation:
+                user_input = input("Do you want to send this command? (y/n): ")
+                if user_input.lower() != 'y':
+                    print("Command skipped.")
+                    continue
             client.send_command(command)
             reply = client.wait_for_prefix(command_type)
             ok = True
@@ -41,7 +46,7 @@ def run_commands_from_file(file_path: str, port: str, baudrate: int, axes_num: i
                     print(reply)
                     cnt += 1
         
-            if ok:
+            if not ok:
                 break
         print(f"Successful lines: {cnt}")
     except Exception as e:
@@ -50,10 +55,11 @@ def run_commands_from_file(file_path: str, port: str, baudrate: int, axes_num: i
 if __name__ == "__main__":
     parser = create_parser("Run commands from a file on the robot")
     
-    parser.add_argument("file", type=str, help="Path to the file containing the commands")
+    parser.add_argument("--file", type=str, help="Path to the file containing the commands")
+    parser.add_argument("--ask", type=bool, default=False, help="Ask for confirmation before sending each command")
     args = parser.parse_args()
 
     if args.timeout is not None:
-        run_commands_from_file(args.file, args.port, args.baud, args.axes, args.timeout)
+        run_commands_from_file(args.file, args.port, args.baud, args.axes, args.timeout, args.ask)
     else:
-        run_commands_from_file(args.file, args.port, args.baud, args.axes)
+        run_commands_from_file(args.file, args.port, args.baud, args.axes, ask_for_confirmation=args.ask)

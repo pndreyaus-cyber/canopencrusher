@@ -1,0 +1,11 @@
+python .\runCommandsFromFile.py --port=COM9 --axes=4 --file=paths/path_1_4_axes.txt --ask=true
+python .\runCommandsFromFile.py --port=COM9 --axes=4 --file=paths/path_1_4_axes.txt
+
+
+# Чтобы перемещать робота по мм в координатах робота
+python .\runMovesInRobotCoordinates.py --port=COM9 --axes=4 --file=robot_coordinates_paths/path_1_4_axes.txt --ask-before-send
+
+
+python .\Movement\runMovesInTheoryCoordinates.py --port=COM9 --axes=4 --file=Movement/theory_coordinates_paths/path_1_4_axes.txt --transform=Movement/3axes_transform_2.csv --ask-before-send
+
+python .\runMovesInTheoryCoordinates.py --port=COM9 --axes=4 --file=theory_coordinates_paths/path_1_4_axes.txt --transform=3axes_transform_2.csv --ask-before-send

@@ -8,6 +8,9 @@
 #include <cstring>
 #include <Arduino.h>
 
+#define ROBOT_CAN_RX PA11 // Used to be PB8
+#define ROBOT_CAN_TX PA12 // Used to be PB9
+
 using callback_x6064_positionActualValue = std::function<void(uint8_t, bool, int32_t)>;
 using callback_x260A_electronicGearMolecules = std::function<void(uint8_t, bool)>;
 using callback_x6040_controlword = std::function<void(uint8_t, bool)>;
@@ -94,23 +97,22 @@ namespace RobotConstants
     // Command identifiers sent to the robot controller
     namespace Commands
     {
-        const String MOVE_ABSOLUTE = "MAJ"; // Not implemented
-        const String MOVE_ABSOLUTE_PERCENT = "MAP";
-        const String MOVE_RELATIVE = "MRJ"; // Not implemented
-        const String ECHO = "ECH";
-        const String MOTOR_STATUS = "RMS";
-        const String ZERO_INITIALIZE = "ZEI";
-        const String REQUEST_POSITION = "RPS";
-        const String PREPAREMOVE_TEST = "PMT";
-        const String REQUEST_POSITION_ANGLES = "RPA";
-        const String PI_CONTROL = "PIC";
-        const String REQUEST_PI = "RPI";
-        const String GRAB = "GRB";
-        const String LET_GO = "LGO";
-        const String CONV_ON = "CON";
-        const String CONV_OFF = "COF";
-        const String START_TRAJ = "STJ";
-        constexpr int COMMAND_LEN = 3;
+        const String MOVE_ABSOLUTE = "MJ"; // Not implemented
+        const String MOVE_ABSOLUTE_PERCENT = "MA";
+        const String MOVE_RELATIVE = "MR"; // Not implemented
+        const String ECHO = "EC";
+        const String MOTOR_STATUS = "MS";
+        const String ZERO_INITIALIZE = "ZI";
+        const String REQUEST_POSITION_STEPS= "PS";
+        const String PREPAREMOVE_TEST = "MT";
+        const String REQUEST_POSITION_DEGREES = "PD";
+        const String PI_CONTROL = "PC";
+        const String REQUEST_PI = "RP";
+        const String GRAB = "GR";
+        const String LET_GO = "LG";
+        const String CONV_ON = "ON";
+        const String CONV_OFF = "OF";
+        constexpr int COMMAND_LEN = 2;
         const float MIN_SPEED_UNITS = 0.0f;
         const float MAX_SPEED_UNITS = 100.0f;
         const float MIN_ACCELERATION_UNITS = 0.0f;
@@ -272,20 +274,17 @@ namespace RobotConstants
         constexpr size_t SERIAL_MESSAGE_CAPACITY = 128;
     }
     // Status codes
-    namespace Status
+    namespace Result // Status --> Result
     {
         const String OK = "OK";
-        const String COMMAND_FULL_FAIL = "FF";
-        const String COMMAND_PARTIAL_FAIL = "PF";
+        const String FAIL = "FF";
         const String INCORRECT_COMMAND = "IC";
         const String INVALID_PARAMS = "IP";
-        const String UNKNOWN_ERROR = "UE";
+        const String ERROR_UNKNOWN = "EU";
         const String LOGIC_ERROR = "LE";
         const String NOT_IMPLEMENTED = "NI";
         const String NOT_INITIALIZED = "NZ";
-        const String OTHER_COMMAND_IN_PROGRESS = "OP";
-        const String CAN_SEND_FAIL = "CS";
-        const String PARAMETER_SET_FAIL = "PF";
+        const String OPERATION_FORBIDDEN = "OF";
     }
 
 } // namespace RobotConstants

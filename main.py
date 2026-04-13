@@ -12,23 +12,25 @@ CUBE_HEIGHT = 25 # mm
 def check_has_cubes_stability(detector, cap, tries=3):
     cube_count = 0
     for i in range(tries):
-        cap, frame = cap.read()
+        ret, frame = cap.read()
         has_objects = detector.has_objects(frame)
         if has_objects:
             centroids_mm = detector.get_centroids_mm(frame)
             cube_count += len(centroids_mm)
     return cube_count >= tries
 
-def run(port, baud, axes, move_conveyor=False):
+def run(port, baud, axes, transform_path: str, move_conveyor: bool =False,  ask_before_send: bool = True):
     client = SerialRobotClient(port=port, baud=baud, axes_num=axes)
+    
+    client.set_geometryKS4Axes(du=49, dv=286, l1=372, l2=305.5, l3=115.5)
 
     transform = CoordinateTransform()
-    transform.load_transform_matrix_from_file("../Movement/3axes_transform_1.csv")
+    transform.load_transform_matrix_from_file(transform_path)
 
     detector = WhiteObjectCentroidDetector(
-        model_path="Model/white_cube_yolo26s_finetune2/white_cube_yolo26s_finetune2/weights/best.pt",
-        camera_calibration_path="camera_calibration.npz",
-        homography_path="calibration_4pt_homography.npz",
+        model_path="Vision/Model/white_cube_yolo26s_finetune2_best.pt",
+        camera_calibration_path="Vision/camera_calibration.npz",
+        homography_path="Vision/calibration_4pt_homography.npz",
         conf_threshold=0.5,
         crop=(40, 430, 0, 640),
     )
@@ -79,9 +81,9 @@ def run(port, baud, axes, move_conveyor=False):
                     transform.theoretical_to_robot_coordinates(cube_position_theory),
                     cube_hover_dist=30,
                     move_sa = SpeedAcc(0.15, 0.01),
-                    cube_pick_delta = 3,
+                    cube_pick_delta = 5,
                     up_and_down_sa= SpeedAcc(0.1, 0.005),
-                    drop_position_robot_coordinates=Point(0, 300, 168 + successfull_cubes * CUBE_HEIGHT),
+                    drop_position_robot_coordinates=Point(50.0, 430.0, 340  + successfull_cubes * CUBE_HEIGHT),
                     drop_hover_dist=30,
                     move_immediately_to_pick_position=True
                 )
@@ -107,7 +109,9 @@ def run(port, baud, axes, move_conveyor=False):
 if __name__ == "__main__":
     parser = create_parser("Pick and Drop using camera detection")
     parser.add_argument("--move_conveyor", action="store_true", help="Whether to move the conveyor or not")
+    parser.add_argument("--transform", required=True, help="Path to transformation matrix")
+
 
     args = parser.parse_args()
-    run(args.port, args.baud, args.axes, move_conveyor=args.move_conveyor)
+    run(args.port, args.baud, args.axes, args.transform, move_conveyor=args.move_conveyor)
 

@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from testCoordinates import preprocess_like_runtime, draw_text_block, CROP_X1, CROP_Y1, CROP_X2, CROP_Y2, testCoordinates
 
 # ============================================
 # НАСТРОЙКИ ПОД ТВОЙ РАБОЧИЙ СКРИПТ
@@ -14,12 +15,6 @@ SQUARE_SIZE_MM = 20.0
 
 # Минимум кадров для калибровки камеры
 MIN_CALIB_FRAMES = 10
-
-# Crop, соответствующий рабочей программе
-CROP_Y1 = 40
-CROP_Y2 = 430
-CROP_X1 = 0
-CROP_X2 = 640
 
 # Имена файлов
 CAMERA_CALIB_FILE = "camera_calibration.npz"
@@ -44,20 +39,6 @@ def build_object_points(board_size, square_size_mm):
     return objp
 
 
-def draw_text_block(img, lines, x=10, y=25, dy=28, color=(0, 255, 0)):
-    for i, line in enumerate(lines):
-        cv2.putText(
-            img,
-            line,
-            (x, y + i * dy),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            color,
-            2,
-            cv2.LINE_AA
-        )
-
-
 def find_chessboard(gray, board_size):
     cols, rows = board_size
 
@@ -71,18 +52,8 @@ def find_chessboard(gray, board_size):
     if not found:
         return False, None
 
-    criteria = (
-        cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
-        40,
-        0.001
-    )
-    corners = cv2.cornerSubPix(
-        gray,
-        corners,
-        (11, 11),
-        (-1, -1),
-        criteria
-    )
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 40, 0.001)
+    corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
 
     # Приводим порядок к каноническому:
     # первая точка = верхняя левая на изображении,
@@ -101,18 +72,15 @@ def find_chessboard(gray, board_size):
     return True, corners
 
 
-def compute_reprojection_error(object_points, image_points, rvecs, tvecs,
-                               camera_matrix, dist_coeffs):
+def compute_reprojection_error(
+    object_points, image_points, rvecs, tvecs, camera_matrix, dist_coeffs
+):
     total_error = 0.0
     total_points = 0
 
     for i in range(len(object_points)):
         projected, _ = cv2.projectPoints(
-            object_points[i],
-            rvecs[i],
-            tvecs[i],
-            camera_matrix,
-            dist_coeffs
+            object_points[i], rvecs[i], tvecs[i], camera_matrix, dist_coeffs
         )
         err = cv2.norm(image_points[i], projected, cv2.NORM_L2)
         n = len(projected)
@@ -123,73 +91,6 @@ def compute_reprojection_error(object_points, image_points, rvecs, tvecs,
         return None
 
     return np.sqrt(total_error / total_points)
-
-
-def preprocess_like_runtime(frame, camera_matrix, dist_coeffs):
-    """
-    Делает ТОЧНО ту же предобработку, что и рабочая программа:
-    1) undistort без new_camera_matrix
-    2) crop [40:430, 0:640]
-    """
-    undistorted = cv2.undistort(frame, camera_matrix, dist_coeffs)
-
-    h, w = undistorted.shape[:2]
-    x1 = max(0, CROP_X1)
-    y1 = max(0, CROP_Y1)
-    x2 = min(w, CROP_X2)
-    y2 = min(h, CROP_Y2)
-
-    if x2 <= x1 or y2 <= y1:
-        raise RuntimeError("Crop size is not correct.")
-
-    cropped = undistorted[y1:y2, x1:x2]
-    return undistorted, cropped
-
-
-def pixel_to_mm(x, y, H_matrix):
-    pt = np.array([x, y, 1.0], dtype=np.float32)
-    res = H_matrix @ pt
-    if abs(res[2]) < 1e-9:
-        raise ValueError("Wrong matrix H")
-    X_mm = res[0] / res[2]
-    Y_mm = res[1] / res[2]
-    return float(X_mm), float(Y_mm)
-
-
-def mouse_callback(event, x, y, flags, param):
-    global clicked_points, current_H
-
-    if event == cv2.EVENT_LBUTTONDOWN:
-        if current_H is None:
-            return
-
-        try:
-            X_mm, Y_mm = pixel_to_mm(x, y, current_H)
-            clicked_points.append((x, y, X_mm, Y_mm))
-            print(f"Click: px=({x}, {y}) -> mm=({X_mm:.2f}, {Y_mm:.2f})")
-        except Exception as e:
-            print("Error of point transforming:", e)
-
-    elif event == cv2.EVENT_RBUTTONDOWN:
-        # Правая кнопка удаляет последнюю точку
-        if clicked_points:
-            clicked_points.pop()
-
-
-def draw_clicked_points(img, points):
-    for i, (x, y, X_mm, Y_mm) in enumerate(points):
-        cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
-        text = f"{i}: ({X_mm:.2f}, {Y_mm:.2f})"
-        cv2.putText(
-            img,
-            text,
-            (x + 8, y - 8),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.55,
-            (0, 0, 255),
-            1,
-            cv2.LINE_AA
-        )
 
 
 # ============================================
@@ -235,19 +136,19 @@ def main():
             f"Saved frames: {len(image_points)} / minimum frames {MIN_CALIB_FRAMES}",
             "S - save frame",
             "ENTER - calibrate",
-            "Q - exit"
+            "Q - exit",
         ]
         draw_text_block(display, lines, color=(0, 255, 0))
 
         cv2.imshow("Calibration", display)
         key = cv2.waitKey(1) & 0xFF
 
-        if key == ord('q'):
+        if key == ord("q"):
             cap.release()
             cv2.destroyAllWindows()
             return
 
-        elif key == ord('s'):
+        elif key == ord("s"):
             if not found:
                 print("Шахматная доска не найдена, кадр не сохранен.")
                 continue
@@ -265,20 +166,11 @@ def main():
     print("\nВыполняется калибровка камеры...")
 
     rms, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
-        object_points,
-        image_points,
-        image_size,
-        None,
-        None
+        object_points, image_points, image_size, None, None
     )
 
     reproj_error = compute_reprojection_error(
-        object_points,
-        image_points,
-        rvecs,
-        tvecs,
-        camera_matrix,
-        dist_coeffs
+        object_points, image_points, rvecs, tvecs, camera_matrix, dist_coeffs
     )
 
     print("\n=== КАЛИБРОВКА КАМЕРЫ ===")
@@ -320,9 +212,7 @@ def main():
             continue
 
         undistorted_full, runtime_view = preprocess_like_runtime(
-            frame,
-            camera_matrix,
-            dist_coeffs
+            frame, camera_matrix, dist_coeffs
         )
 
         display = runtime_view.copy()
@@ -336,7 +226,7 @@ def main():
             "Phasse 2: H computing",
             "Frame uses undistortion",
             "Press 'H' to compute H",
-            "Q - exit"
+            "Q - exit",
         ]
         draw_text_block(display, lines, color=(0, 255, 255))
 
@@ -345,12 +235,12 @@ def main():
 
         key = cv2.waitKey(1) & 0xFF
 
-        if key == ord('q'):
+        if key == ord("q"):
             cap.release()
             cv2.destroyAllWindows()
             return
 
-        elif key == ord('h'):
+        elif key == ord("h"):
             if not found:
                 print("Шахматная доска не найдена на cropped-undistorted кадре.")
                 continue
@@ -365,8 +255,7 @@ def main():
                 continue
 
             predicted_mm = cv2.perspectiveTransform(
-                src_pts.reshape(-1, 1, 2),
-                H
+                src_pts.reshape(-1, 1, 2), H
             ).reshape(-1, 2)
 
             errors = np.linalg.norm(predicted_mm - dst_pts, axis=1)
@@ -397,52 +286,8 @@ def main():
     # ============================================
     # ЭТАП 3. СРАЗУ ТЕСТИРОВАНИЕ
     # ============================================
-    current_H = H
-    clicked_points = []
-
-    print("\nЭтап 3: тестирование")
-    print("ЛКМ - добавить точку")
-    print("ПКМ - удалить последнюю точку")
-    print("C - очистить все точки")
-    print("Q - выход")
-
-    cv2.namedWindow("Runtime test")
-    cv2.setMouseCallback("Runtime test", mouse_callback)
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Не удалось получить кадр.")
-            continue
-
-        undistorted_full, runtime_view = preprocess_like_runtime(
-            frame,
-            camera_matrix,
-            dist_coeffs
-        )
-
-        test_view = runtime_view.copy()
-        draw_clicked_points(test_view, clicked_points)
-
-        lines = [
-            "Phase 3: live test",
-            "Press LMB to choose point",
-            "Press RMB to delete last point",
-            "Press C to clean all points",
-            "Press Q to exit"
-        ]
-        draw_text_block(test_view, lines, color=(255, 255, 0))
-
-        cv2.imshow("Orig", frame)
-        cv2.imshow("Runtime test", test_view)
-        cv2.imshow("Undistorted full", undistorted_full)
-
-        key = cv2.waitKey(1) & 0xFF
-
-        if key == ord('q'):
-            break
-        elif key == ord('c'):
-            clicked_points = []
+    print("\nЭтап 3: тестирование H")
+    testCoordinates(H, cap, camera_matrix, dist_coeffs)
 
     cap.release()
     cv2.destroyAllWindows()

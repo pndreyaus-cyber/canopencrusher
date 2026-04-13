@@ -3,8 +3,12 @@ from typing import Iterable, List, Optional, Tuple, LiteralString
 import serial  # type: ignore
 import time
 from math import pi
-from Movement.GeometryKS_4Axes_EndEffectorVertical import GeometryKS_4Axes_EndEffectorVertical
-from Point import Point, SpeedAcc
+try: 
+    from .GeometryKS_4Axes_EndEffectorVertical import GeometryKS_4Axes_EndEffectorVertical
+    from .Point import Point, SpeedAcc
+except ImportError:
+    from GeometryKS_4Axes_EndEffectorVertical import GeometryKS_4Axes_EndEffectorVertical
+    from Point import Point, SpeedAcc
 
 class SerialRobotClient:
     def __init__(
@@ -36,20 +40,28 @@ class SerialRobotClient:
         self.ser.flush()
 
     def move_to_degrees(self, joint_angles: List[float], sa: SpeedAcc, ask_before_send: bool = False) -> Optional[str]:
-        command = f"MAP"
+        command = f"MA"
+        # joint_angles[0] -=180
+        # joint_angles[1] = -joint_angles[1]
+        # joint_angles[2] = -joint_angles[2]
+        # joint_angles[3] = -joint_angles[3]
         for i, angle in enumerate(joint_angles):
-            command += f" J{chr(ord('A') + i)}{angle:0.4f}"
+            command += f" J{chr(ord('A') + i)}{ + angle:0.4f}"
         command += f" SP{sa.speed:0.4f} AC{sa.acc:0.4f}"
         print("Command to send: ", command)
+
         if ask_before_send:
             y = input("Send command? (y/n):")
             if y.lower() == "y":
                 self.send_command(command)
+            else:
+                print("Command not sent")
+                return None
         else:
             self.send_command(command)
 
 
-        reply = self.wait_for_prefix("MAP")
+        reply = self.wait_for_prefix("MA")
         if self.check_reply(reply):
             self.current_joint_angles = joint_angles
         
@@ -122,101 +134,100 @@ class SerialRobotClient:
 
         if not move_immediately_to_pick_position:
             # Step 1 -- move up at the current position
+            print("Step 1 -- move up at the current position")
             angles = self.geometry.ik(Point(current_robot_coordinates.x,
                                     current_robot_coordinates.y,
                                     cube_position_robot_coordinates.z + cube_hover_dist))
 
             self.move_to_radians(angles, up_and_down_sa, ask_before_steps)
             reply = self.wait_for_prefix("MAP", 20.0)
-            if self.check_reply(reply):
-                print("Successfully moved above the cube")
-            else:
+            if not reply:
                 return False
         
         # Step 2 -- move above the cube
+        print("Step 2 -- move above the cube")
         angles = self.geometry.ik(Point(cube_position_robot_coordinates.x,
                                   cube_position_robot_coordinates.y,
                                   cube_position_robot_coordinates.z + cube_hover_dist))
 
-        self.move_to_radians(angles, move_sa, ask_before_steps)
-        reply = self.wait_for_prefix("MAP", 20.0)
-        if self.check_reply(reply):
-            print("Successfully moved above the cube")
-        else:
+        reply = self.move_to_radians(angles, move_sa, ask_before_steps)
+        print("Moved successfully above the cube, waiting for reply...")
+        #reply = self.wait_for_prefix("MAP", 20.0)
+        if not reply:
             return False
         
         # Step 3 -- move down to the cube
+        print("Step 3 -- move down to the cube")
+
         angles = self.geometry.ik(Point(cube_position_robot_coordinates.x,
                                   cube_position_robot_coordinates.y,
                                   cube_position_robot_coordinates.z - cube_pick_delta))
-        self.move_to_radians(angles, up_and_down_sa, ask_before_steps)
-        reply = self.wait_for_prefix("MAP", 20.0)
-        if self.check_reply(reply):
-            print("Successfully moved down to the cube")
-        else:
+        reply = self.move_to_radians(angles, up_and_down_sa, ask_before_steps)
+        #reply = self.wait_for_prefix("MAP", 20.0)
+        if not reply:
             return False
         
         # Step 4 -- pick up the cube
+        print("Step 4 -- pick up the cube")
         self.send_command("GRB")
         reply = self.wait_for_prefix("GRB", 20.0)
-        if self.check_reply(reply):
-            print("Successfully picked up the cube")
-        else:
+        if not reply:
             return False
+        print("Successfully picked up the cube")
         time.sleep(0.1)
 
         # Step 5 -- move up with the cube
+        print("Step 5 -- move up with the cube")
         angles = self.geometry.ik(Point(cube_position_robot_coordinates.x,
                                   cube_position_robot_coordinates.y,
                                   cube_position_robot_coordinates.z + cube_hover_dist))
-        self.move_to_radians(angles, up_and_down_sa, ask_before_steps)
-        reply = self.wait_for_prefix("MAP", 20.0)
-        if self.check_reply(reply):
-            print("Successfully moved up with the cube")
-        else:
+        reply = self.move_to_radians(angles, up_and_down_sa, ask_before_steps)
+        #reply = self.wait_for_prefix("MAP", 20.0)
+        if not reply:
             return False
+        print("Successfully moved up with the cube")
         
         # Step 6 -- move above the drop position
+        print("Step 6 -- move above the drop position")
         angles = self.geometry.ik(Point(drop_position_robot_coordinates.x,
                                   drop_position_robot_coordinates.y,
                                   drop_position_robot_coordinates.z + drop_hover_dist))
-        self.move_to_radians(angles, move_sa, ask_before_steps)
-        reply = self.wait_for_prefix("MAP", 20.0)
-        if self.check_reply(reply):
-            print("Successfully moved above the drop position")
-        else:
+        reply = self.move_to_radians(angles, move_sa, ask_before_steps)
+        #reply = self.wait_for_prefix("MAP", 20.0)
+        if not reply:
             return False
+        print("Successfully moved above the drop position")
 
         # Step 7 -- move down to the drop position
+        print("Step 7 -- move down to the drop position")
         angles = self.geometry.ik(Point(drop_position_robot_coordinates.x,
                                   drop_position_robot_coordinates.y,
                                   drop_position_robot_coordinates.z))
-        self.move_to_radians(angles, up_and_down_sa, ask_before_steps)
-        reply = self.wait_for_prefix("MAP", 20.0)
-        if self.check_reply(reply):
-            print("Successfully moved down to the drop position")
-        else:
+        reply = self.move_to_radians(angles, up_and_down_sa, ask_before_steps)
+        #reply = self.wait_for_prefix("MAP", 20.0)
+        if not reply:
             return False
+        print("Successfully moved down to the drop position")
         
         # Step 8 -- drop the cube
+        print("Step 8 -- drop the cube")
         self.send_command("LGO")
         reply = self.wait_for_prefix("LGO", 20.0)
-        if self.check_reply(reply):
-            print("Successfully dropped the cube")
-        else:
+        if not reply:
             return False
+        print("Successfully dropped the cube")
         time.sleep(0.1)
 
-        # Step 8 -- move up after dropping the cube
+        # Step 9 -- move up after dropping the cube
+        print("Step 9 -- move up after dropping the cube")
         angles = self.geometry.ik(Point(drop_position_robot_coordinates.x,
                                   drop_position_robot_coordinates.y,
                                   drop_position_robot_coordinates.z + drop_hover_dist))
-        self.move_to_radians(angles, move_sa, ask_before_steps)
-        reply = self.wait_for_prefix("MAP", 20.0)
-        if self.check_reply(reply):
-            print("Successfully moved up after dropping the cube")
-        else:
+        reply = self.move_to_radians(angles, move_sa, ask_before_steps)
+        #reply = self.wait_for_prefix("MAP", 20.0)
+        if not reply:
             return False
+        print("Successfully moved up after dropping the cube")
 
         print("Finished all steps successfully")
         return True

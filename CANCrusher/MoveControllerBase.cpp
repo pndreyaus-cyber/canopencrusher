@@ -13,11 +13,12 @@ namespace StepDirController
 
     void MoveControllerBase::requestStatus()
     {
-        String reply = RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Status::OK + " ";
+        String reply = RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Result::OK + " ";
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             Axis &axis = axes.at(nodeId);
-            reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + " " + String(axis.status) + "," + String(axis.initStatus) + "," + String(axis.moveStatus) + "; ";
+            //reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + " " + String(axis.status) + "," + String(axis.initStatus) + "," + String(axis.moveStatus) + "; ";
+            reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(axis.status) + " ";
         }
         addDataToOutQueue(reply);
     }
@@ -98,12 +99,21 @@ namespace StepDirController
         if (!initialized)
         {
             DBG_VERBOSE(DBG_GROUP_MOVE, "MoveControllerBase::move failed. Not initialized");
-            return PrepareMoveStatus::NOT_INITIALIZED;
+            return PrepareMoveStatus::INTERNAL_ERROR;
         }
         if (isMAJInProgress)
         {
             DBG_ERROR(DBG_GROUP_MOVE, "Move already in progress. Aborting!");
             return PrepareMoveStatus::OTHER_COMMAND_IN_PROGRESS;
+        }
+
+        for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+        {
+            if(axes.at(nodeId).status != RobotConstants::AxisStatus::ALIVE)
+            {
+                DBG_ERROR(DBG_GROUP_MOVE, "Motor " + String(nodeId) + " not alive");
+                return PrepareMoveStatus::INTERNAL_ERROR;
+            }
         }
 
         moveCommandName = commandNameForLogging;
@@ -182,28 +192,43 @@ namespace StepDirController
 
         PrepareMoveComputationResult result;
         result.status = PrepareMoveStatus::OK;
-
-        if (input.velocity < 0 || RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_PERCENT < input.velocity)
+        double velocity, acceleration;
+        if (input.velocity < 0)
         {
-            result.status = PrepareMoveStatus::INVALID_SPEED;
+            result.status = PrepareMoveStatus::INVALID_PROFILE;
             result.reason = "SPEED_OUT_OF_LIMITS";
             return result;
         }
-
-        if (input.acceleration < 0 || RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_PERCENT < input.acceleration)
+        else if (RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_PERCENT < input.velocity)
         {
-            result.status = PrepareMoveStatus::INVALID_ACCELERATION;
+            velocity = RobotConstants::Control::MAXIMUM_PROFILE_VELOCITY_IN_PERCENT;
+        }
+        else
+        {
+            velocity = input.velocity;
+        }
+
+        if (input.acceleration < 0)
+        {
+            result.status = PrepareMoveStatus::INVALID_PROFILE;
             result.reason = "ACCELERATION_OUT_OF_LIMITS";
             return result;
         }
+        else if (RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_PERCENT < input.acceleration)
+        {
+            acceleration = RobotConstants::Control::MAXIMUM_PROFILE_ACCELERATION_IN_PERCENT;
+        }
+        else
+        {
+            acceleration = input.acceleration;
+        }
 
-        double velocity = input.velocity;
+        
         if (0 < velocity && velocity < RobotConstants::Control::MINIMUM_PROFILE_VELOCITY_IN_PERCENT)
         {
             velocity = RobotConstants::Control::MINIMUM_PROFILE_VELOCITY_IN_PERCENT;
         }
 
-        double acceleration = input.acceleration;
         if (0 < acceleration && acceleration < RobotConstants::Control::MINIMUM_PROFILE_ACCELERATION_IN_PERCENT)
         {
             acceleration = RobotConstants::Control::MINIMUM_PROFILE_ACCELERATION_IN_PERCENT;
@@ -238,14 +263,14 @@ namespace StepDirController
 
         if (velocity == 0)
         {
-            result.status = PrepareMoveStatus::INVALID_SPEED;
+            result.status = PrepareMoveStatus::INVALID_PROFILE;
             result.reason = "SPEED_IS_ZERO, BUT MOTION_REQUESTED";
             return result;
         }
 
         if (acceleration == 0)
         {
-            result.status = PrepareMoveStatus::INVALID_ACCELERATION;
+            result.status = PrepareMoveStatus::INVALID_PROFILE;
             result.reason = "ACCELERATION_IS_ZERO, BUT MOTION_REQUESTED";
             return result;
         }
@@ -325,7 +350,7 @@ namespace StepDirController
             if (!std::isfinite(axisResult.velocityStepsPerSec) || axisResult.velocityStepsPerSec <= 0.0 ||
                 !std::isfinite(axisResult.accelerationStepsPerSec2) || axisResult.accelerationStepsPerSec2 <= 0.0)
             {
-                result.status = PrepareMoveStatus::INVALID_SPEED;
+                result.status = PrepareMoveStatus::INVALID_PROFILE;
                 result.reason = "Axis " + String(nodeId) + ": velocityStepsPerSec or accelerationStepsPerSec2 infinite or non-positive";
                 break;
             }
@@ -340,7 +365,7 @@ namespace StepDirController
 
             if (!std::isfinite(velocityRpmDouble) || !std::isfinite(accelerationRpmPerSecDouble))
             {
-                result.status = PrepareMoveStatus::INVALID_SPEED;
+                result.status = PrepareMoveStatus::INVALID_PROFILE;
                 result.reason = "Axis " + String(nodeId) + ": velocityRpmDouble or accelerationRpmPerSecDouble infinite";
                 break;
             }
@@ -747,15 +772,15 @@ namespace StepDirController
             Axis &axis = axes[axisToInitialize];
             if (axis.initStatus == RobotConstants::InitStatus::ZEI_FINISHED)
             {
-                status = RobotConstants::Status::OK;
+                status = RobotConstants::Result::OK;
             }
             else if (axis.initStatus == RobotConstants::InitStatus::ZEI_FAILED)
             {
-                status = RobotConstants::Status::COMMAND_FULL_FAIL;
+                status = RobotConstants::Result::FAIL;
             }
             else
             {
-                status = RobotConstants::Status::UNKNOWN_ERROR;
+                status = RobotConstants::Result::ERROR_UNKNOWN;
             }
 
             String commandReply = RobotConstants::Commands::ZERO_INITIALIZE + " " + status + " " + String(axisToInitialize);
@@ -785,26 +810,22 @@ namespace StepDirController
         }
 
         String status;
-        if (failedAxes.length() > 0 && successfullAxes.length() > 0)
+        if (failedAxes.length() > 0)
         {
-            status = RobotConstants::Status::COMMAND_PARTIAL_FAIL;
-        }
-        else if (failedAxes.length() > 0)
-        {
-            status = RobotConstants::Status::COMMAND_FULL_FAIL;
+            status = RobotConstants::Result::FAIL;
         }
         else if (successfullAxes.length() > 0)
         {
-            status = RobotConstants::Status::OK;
+            status = RobotConstants::Result::OK;
         }
 
         zeroInitializeSingleAxis = true; // Reset to default for the next ZEI command
 
         String commandReply = RobotConstants::Commands::ZERO_INITIALIZE + " " + status;
-        if (status == RobotConstants::Status::COMMAND_PARTIAL_FAIL)
-        {
-            commandReply += " " + successfullAxes + " | " + failedAxes;
-        }
+        // if (status == RobotConstants::Result::FAIL)
+        // {
+        //     commandReply += " " + successfullAxes + " | " + failedAxes;
+        // }
         addDataToOutQueue(commandReply);
     }
 
@@ -824,6 +845,11 @@ namespace StepDirController
 
     void MoveControllerBase::MAJ_start(uint8_t nodeId)
     {
+        if (axes.at(nodeId).status != RobotConstants::AxisStatus::ALIVE)
+        {
+            MAJ_checkResponseStatus(nodeId, false, "MAJ: Axis not alive!");
+            return;
+        }
         // Step 3
         canOpen->set_callback_read_x6040_controlword([this](uint8_t callbackNodeId, bool success, uint16_t controlWord)
                                                      { this->MAJ_afterRequestOf_0x6040(callbackNodeId, success, controlWord); }, nodeId);
@@ -978,7 +1004,7 @@ namespace StepDirController
 
     void MoveControllerBase::MAJ_SYNCFunnel()
     {
-
+        bool containsFailedAxes = false;
         for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
         {
             RobotConstants::MoveStatus status = axes[nodeId].moveStatus;
@@ -986,8 +1012,21 @@ namespace StepDirController
             {
 
                 return; // Not all axes are ready yet
+            } else if (status == RobotConstants::MoveStatus::MOVE_FAIL)
+            {
+                containsFailedAxes = true;
             }
         }
+        if (containsFailedAxes)
+        {
+            for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+            {
+                axes.at(nodeId).moveStatus = RobotConstants::MoveStatus::MOVE_FAIL;
+            }
+            MAJ_finalResult();
+            return;
+        }
+
 
         // All axes are ready, send SYNC
         // DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");
@@ -1037,7 +1076,7 @@ namespace StepDirController
             return;
         }
         // Step 3 (Data processing)
-        // DBG_INFO(DBG_GROUP_MOVE, "MAJ Status Word from node " + String(nodeId) + ": 0x" + String(statusWord, HEX));
+        // DBG_INFO(DBG_GROUP_MOVE, "MAJ Result Word from node " + String(nodeId) + ": 0x" + String(statusWord, HEX));
         if (MAJ_checkTargetPositionReached(statusWord))
         {
             // DBG_INFO(DBG_GROUP_MOVE, "MAJ Target position reached for Axis " + String(nodeId));
@@ -1118,23 +1157,23 @@ namespace StepDirController
         String status;
         if ((failedAxes.length() + unknownErrorAxes.length()) > 0 && successfullAxes.length() > 0)
         {
-            status = RobotConstants::Status::COMMAND_PARTIAL_FAIL;
+            status = RobotConstants::Result::FAIL;
         }
         else if ((failedAxes.length() + unknownErrorAxes.length()) > 0)
         {
-            status = RobotConstants::Status::COMMAND_FULL_FAIL;
+            status = RobotConstants::Result::FAIL;
         }
         else if (successfullAxes.length() > 0)
         {
-            status = RobotConstants::Status::OK;
+            status = RobotConstants::Result::OK;
         }
 
-        String commandReply = (moveCommandName == nullptr ? RobotConstants::Status::UNKNOWN_ERROR : *moveCommandName) + " " + status;
-        if (status == RobotConstants::Status::COMMAND_PARTIAL_FAIL)
+        String commandReply = (moveCommandName == nullptr ? RobotConstants::Result::ERROR_UNKNOWN : *moveCommandName) + " " + status;
+        if (status == RobotConstants::Result::FAIL)
         {
             commandReply += " " + successfullAxes + " | " + failedAxes + " | " + unknownErrorAxes;
         }
-        else if (status == RobotConstants::Status::COMMAND_FULL_FAIL)
+        else if (status == RobotConstants::Result::FAIL)
         {
             commandReply += " " + failedAxes + " | " + unknownErrorAxes;
         }
@@ -1319,11 +1358,11 @@ namespace StepDirController
                        String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + " ";
         if (stepsCompleted < 4)
         {
-            reply += RobotConstants::Status::COMMAND_PARTIAL_FAIL + " ";
+            reply += RobotConstants::Result::FAIL + " ";
         }
         else
         {
-            reply += RobotConstants::Status::OK + " ";
+            reply += RobotConstants::Result::OK + " ";
         }
 
         Axis &a = axes.at(nodeId);
@@ -1386,14 +1425,14 @@ namespace StepDirController
         }
         else
         {
-            commandReply += RobotConstants::Status::INVALID_PARAMS;
+            commandReply += RobotConstants::Result::INVALID_PARAMS;
             addDataToOutQueue(commandReply);
             return;
         }
 
         if (value < min_value || value > max_value)
         {
-            commandReply += RobotConstants::Status::INVALID_PARAMS;
+            commandReply += RobotConstants::Result::INVALID_PARAMS;
             addDataToOutQueue(commandReply);
             return;
         }
@@ -1487,11 +1526,11 @@ namespace StepDirController
         DBG_INFO(DBG_GROUP_PI, "saveParameter value is " + String(value));
         if (value == 2)
         {
-            reply += RobotConstants::Status::OK;
+            reply += RobotConstants::Result::OK;
         }
         else
         {
-            reply += RobotConstants::Status::COMMAND_FULL_FAIL;
+            reply += RobotConstants::Result::FAIL;
         }
         addDataToOutQueue(reply);
     }
@@ -1504,7 +1543,7 @@ namespace StepDirController
             addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " +
                               String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) +
                               String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + " " +
-                              RobotConstants::Status::COMMAND_FULL_FAIL);
+                              RobotConstants::Result::FAIL);
         }
         return success;
     }
@@ -1521,22 +1560,18 @@ namespace StepDirController
             return "OK";
         case PrepareMoveStatus::NO_EFFECTIVE_MOTION:
             return "NM";
-        case PrepareMoveStatus::INVALID_SPEED:
-            return "IS";
-        case PrepareMoveStatus::INVALID_ACCELERATION:
-            return "IA";
         case PrepareMoveStatus::INVALID_PROFILE:
             return "IF";
         case PrepareMoveStatus::INVALID_PROFILE_OUT_OF_LIMITS:
             return "IL";
         case PrepareMoveStatus::INVALID_TIMING:
             return "IT";
-        case PrepareMoveStatus::NOT_INITIALIZED:
-            return "NI";
+        case PrepareMoveStatus::INTERNAL_ERROR:
+            return "LE";
         case PrepareMoveStatus::OTHER_COMMAND_IN_PROGRESS:
-            return "OC";
+            return "MP";
         default:
-            return "XE";
+            return RobotConstants::Result::ERROR_UNKNOWN;
         }
     }
 

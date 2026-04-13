@@ -50,7 +50,7 @@ private:
     callback_read_x2614_dataSaveFlag callbacks_read_x2614_dataSaveFlag = nullptr;
 
 public:
-    CanOpen() : Can(PB8, PB9, RX_SIZE_128, TX_SIZE_128) {};
+    CanOpen() : Can(ROBOT_CAN_RX, ROBOT_CAN_TX, RX_SIZE_128, TX_SIZE_128) {};
     bool startCan(uint32_t baudRate);
 
     bool send_x260A_electronicGearMolecules(uint8_t nodeId, uint16_t value);

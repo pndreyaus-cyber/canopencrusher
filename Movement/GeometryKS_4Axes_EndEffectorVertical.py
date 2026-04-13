@@ -1,6 +1,9 @@
 import math
 from typing import List
-from Point import Point
+try:
+    from .Point import Point
+except ImportError:
+    from Point import Point
 
 
 class GeometryKS_4Axes_EndEffectorVertical:
@@ -44,24 +47,34 @@ class GeometryKS_4Axes_EndEffectorVertical:
 
         return [alpha_1, alpha_2, alpha_3, alpha_4]
 
-    def fk(
-        self, alpha_1: float, alpha_2: float, alpha_3: float, alpha_4: float
-    ) -> Point:  # TODO: check
-        uT = (
-            self.du
-            + self.l1 * math.cos(alpha_2)
-            + self.l2 * math.cos(alpha_2 + alpha_3)
-            + self.l3 * math.cos(alpha_2 + alpha_3 + alpha_4)
-        )
-        vT = (
-            self.dv
-            - self.l1 * math.sin(alpha_2)
-            - self.l2 * math.sin(alpha_2 + alpha_3)
-            - self.l3 * math.sin(alpha_2 + alpha_3 + alpha_4)
-        )
+    # def fk(
+    #     self, alpha_1: float, alpha_2: float, alpha_3: float, alpha_4: float
+    # ) -> Point:  # TODO: check
+    #     uT = (
+    #         self.du
+    #         + self.l1 * math.cos(alpha_2)
+    #         + self.l2 * math.cos(alpha_2 + alpha_3)
+    #         + self.l3 * math.cos(alpha_2 + alpha_3 + alpha_4)
+    #     )
+    #     vT = (
+    #         self.dv
+    #         - self.l1 * math.sin(alpha_2)
+    #         - self.l2 * math.sin(alpha_2 + alpha_3)
+    #         - self.l3 * math.sin(alpha_2 + alpha_3 + alpha_4)
+    #     )
 
-        x = uT * math.sin(alpha_1)
-        y = uT * math.cos(alpha_1)
-        z = vT
+    #     x = uT * math.sin(alpha_1)
+    #     y = uT * math.cos(alpha_1)
+    #     z = vT
 
-        return Point(x, y, z)
+    #     return Point(x, y, z)
+
+    def fk(self, alpha_0: float, alpha_1: float, alpha_2: float, alpha_3: float):
+        l = self.l1 * math.sin(alpha_1) + self.l2 * math.sin(alpha_1 + alpha_2)
+        h = self.l1 * math.cos(alpha_1) + self.l2 * math.cos(alpha_1 + alpha_2) - self.l3
+
+        return Point(
+            l * math.sin(alpha_0) + self.du * math.sin(alpha_0),
+            l * math.cos(alpha_0) + self.du * math.cos(alpha_0),
+            h + self.dv,
+        )

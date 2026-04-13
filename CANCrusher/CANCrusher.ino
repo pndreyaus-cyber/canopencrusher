@@ -10,7 +10,7 @@
 #include "Debug.h"
 #include "PrepareMoveTest.h"
 
-//HardwareSerial Serial2(PA3, PA2);
+HardwareSerial Serial2(PA3, PA2);
 
 CanOpen canOpen;
 MoveController moveController;
@@ -50,41 +50,45 @@ void setup()
     // pinMode(PC13, OUTPUT);
     // digitalWrite(PC13, HIGH);
 
+    Serial2.setRx(PA3);
+    Serial2.setTx(PA2);
+
+    Serial2.begin(115200);
+    while (!Serial2)
+    {
+    }
+
     pinMode(AIR, OUTPUT);
     pinMode(CONVEYOR, OUTPUT);
 
-    Serial.begin(115200);
-    while (!Serial)
-    {
-    }
-    Serial.println("SER OK");
+    Serial2.println("SER OK");
 
     if (!canOpen.startCan(1000000))
     {
-        Serial.println("COP FF");
+        Serial2.println("COP FF");
         while (1)
         {
         }
     }
     else
     {
-        Serial.println("COP OK");
+        Serial2.println("COP OK");
     }
 
-    uint8_t nodesToInvert[] = {3, 4};    
-    ParamsStatusStruct moveControllerInitStatus = moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 2); 
+    uint8_t nodesToInvert[] = {3, 4};
+    ParamsStatusStruct moveControllerInitStatus = moveController.start(&canOpen, RobotConstants::Robot::AXES_COUNT, true, nodesToInvert, 2);
     if (moveControllerInitStatus.status == ParamsStatus::INVALID_PARAMS)
     {
-        Serial.println("MVC FF " + moveControllerInitStatus.errorMsg.value_or("no error message"));
+        Serial2.println("MVC FF " + moveControllerInitStatus.errorMsg.value_or("no error message"));
         while (1)
             ;
     }
     else
     {
-        Serial.println("MVC OK");
+        Serial2.println("MVC OK");
     }
     inData.reserve(128); // Reserve space to avoid dynamic allocations during command reception
-    Serial.println("Setup complete!!!!");
+    Serial2.println("Setup complete!!!!");
 }
 
 void loop()
@@ -112,9 +116,9 @@ void loop()
 bool receiveCommand()
 {
     char received = 0x00;
-    if (Serial.available())
+    if (Serial2.available())
     {
-        received = Serial.read();
+        received = Serial2.read();
         inData += received;
     }
     return received == '\n';
@@ -128,22 +132,22 @@ void handleCommand()
 
     if (inData.length() < RobotConstants::Commands::COMMAND_LEN)
     {
-        addDataToOutQueue(inData + " " + RobotConstants::Status::INCORRECT_COMMAND);
+        addDataToOutQueue(inData + " " + RobotConstants::Result::INCORRECT_COMMAND);
         inData = "";
         return;
     }
 
     String function = inData.substring(0, RobotConstants::Commands::COMMAND_LEN);
     if (function.equals(RobotConstants::Commands::MOVE_ABSOLUTE))
-    {   
-        addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Status::NOT_IMPLEMENTED);
-        //handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), RobotConstants::Commands::MOVE_ABSOLUTE, true);
+    {
+        addDataToOutQueue(RobotConstants::Commands::MOVE_ABSOLUTE + " " + RobotConstants::Result::NOT_IMPLEMENTED);
+        // handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), RobotConstants::Commands::MOVE_ABSOLUTE, true);
     }
 
     else if (function.equals(RobotConstants::Commands::MOVE_RELATIVE))
     {
-        addDataToOutQueue(RobotConstants::Commands::MOVE_RELATIVE + " " + RobotConstants::Status::NOT_IMPLEMENTED);
-        //handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), RobotConstants::Commands::MOVE_RELATIVE, false);
+        addDataToOutQueue(RobotConstants::Commands::MOVE_RELATIVE + " " + RobotConstants::Result::NOT_IMPLEMENTED);
+        // handleMove(stringToMoveParams(inData, RobotConstants::MoveUnits::UNITS_DEG), RobotConstants::Commands::MOVE_RELATIVE, false);
     }
     else if (function.equals(RobotConstants::Commands::ECHO))
     {
@@ -157,11 +161,11 @@ void handleCommand()
     {
         handleZeroInitialize(stringToMotorIndices(inData));
     }
-    else if (function.equals(RobotConstants::Commands::REQUEST_POSITION))
+    else if (function.equals(RobotConstants::Commands::REQUEST_POSITION_STEPS))
     {
         handleRequestPosition(stringToMotorIndices(inData));
     }
-    else if (function.equals(RobotConstants::Commands::REQUEST_POSITION_ANGLES))
+    else if (function.equals(RobotConstants::Commands::REQUEST_POSITION_DEGREES))
     {
         handleRequestPositionAngles(stringToMotorIndices(inData));
     }
@@ -181,35 +185,29 @@ void handleCommand()
     {
         handleRequestPI(stringToMotorIndices(inData));
     }
-        else if (function.equals(RobotConstants::Commands::GRAB))
+    else if (function.equals(RobotConstants::Commands::GRAB))
     {
         digitalWrite(AIR, HIGH);
-        addDataToOutQueue(RobotConstants::Commands::GRAB + " " + RobotConstants::Status::OK);
+        addDataToOutQueue(RobotConstants::Commands::GRAB + " " + RobotConstants::Result::OK);
     }
     else if (function.equals(RobotConstants::Commands::LET_GO))
     {
         digitalWrite(AIR, LOW);
-        addDataToOutQueue(RobotConstants::Commands::LET_GO + " " + RobotConstants::Status::OK);
+        addDataToOutQueue(RobotConstants::Commands::LET_GO + " " + RobotConstants::Result::OK);
     }
     else if (function.equals(RobotConstants::Commands::CONV_ON))
     {
         digitalWrite(CONVEYOR, HIGH);
-        addDataToOutQueue(RobotConstants::Commands::CONV_ON + " " + RobotConstants::Status::OK);
+        addDataToOutQueue(RobotConstants::Commands::CONV_ON + " " + RobotConstants::Result::OK);
     }
-    else if (function.equals(RobotConstants::Commands::CONV_OFF))   
+    else if (function.equals(RobotConstants::Commands::CONV_OFF))
     {
         digitalWrite(CONVEYOR, LOW);
-        addDataToOutQueue(RobotConstants::Commands::CONV_OFF + " " + RobotConstants::Status::OK);
-    }
-    else if(function.equals(RobotConstants::Commands::START_TRAJ))
-    {
-        // Example: STJ EX100.0 EY200.0 EZ300.0 DSX1.0 DSY0.0 DSZ0.0 DEX0.0 DEY0.0 DEZ1.0 SP0.1 AC0.05
-        // It means to move around the point with coordinates (EX, EY, EZ). Start direction of end-effector is (DSX, DSY, DSZ). End direction of end-effector is (DEX, DEY, DEZ)
-         addDataToOutQueue(RobotConstants::Commands::START_TRAJ + " " + RobotConstants::Status::NOT_IMPLEMENTED);
+        addDataToOutQueue(RobotConstants::Commands::CONV_OFF + " " + RobotConstants::Result::OK);
     }
     else
     {
-        addDataToOutQueue(function + " " + RobotConstants::Status::INCORRECT_COMMAND);
+        addDataToOutQueue(function + " " + RobotConstants::Result::INCORRECT_COMMAND);
     }
     inData = "";
 }
@@ -236,7 +234,7 @@ void sendData() // отправка сообщений на компьютер
     outData.pop();
     interrupts();
 
-    Serial.println(data);
+    Serial2.println(data);
 }
 
 bool isFloat(String str)
@@ -296,14 +294,14 @@ void stringToVelocityAndAcceleration(String paramsSubStr, MoveParams<RobotConsta
 
     if (moveUnits == RobotConstants::MoveUnits::UNITS_PERCENT)
     {
-        if (velocity < 0.0f || velocity > 1.0f || acceleration < 0.0f || acceleration > 1.0f)
+        if (velocity < 0.0f || velocity > 100.0f || acceleration < 0.0f || acceleration > 100.0f)
         {
             params.status.status = ParamsStatus::INVALID_PARAMS;
-            params.status.errorMsg = "For percentage-based moves, speed and acceleration must be in the range [0, 1]: speed: " + String(velocity) + ", acceleration: " + String(acceleration);
+            params.status.errorMsg = "For percentage-based moves, speed and acceleration must be in the range [0, 100]: speed: " + String(velocity) + ", acceleration: " + String(acceleration);
             return;
         }
-        params.speed = velocity;
-        params.acceleration = acceleration;
+        params.speed = velocity / 100.0;
+        params.acceleration = acceleration / 100.0;
     }
     else if (moveUnits == RobotConstants::MoveUnits::UNITS_DEG_PER_SEC)
     {
@@ -423,7 +421,7 @@ MoveParams<RobotConstants::Robot::AXES_COUNT> stringToMoveParams(String command,
 
 MotorIndices stringToMotorIndices(String command)
 {
-    String params = command.substring(3); // Only parameters, without command and space
+    String params = command.substring(RobotConstants::Commands::COMMAND_LEN); // Only parameters, without command and space
     MotorIndices motorIndices;
     motorIndices.status.status = ParamsStatus::OK;
     if (params.length() == 0)
@@ -484,7 +482,7 @@ void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const Stri
     if (params.status.status != ParamsStatus::OK)
     {
         DBG_WARN(DBG_GROUP_COMMAND, params.status.errorMsg.value_or("no error message"));
-        addDataToOutQueue(command + " " + RobotConstants::Status::INVALID_PARAMS);
+        addDataToOutQueue(command + " " + RobotConstants::Result::INVALID_PARAMS);
         return;
     }
 
@@ -496,7 +494,7 @@ void handleMove(MoveParams<RobotConstants::Robot::AXES_COUNT> params, const Stri
     DBG_VERBOSE(DBG_GROUP_MOVE, moveInputStr);
 
     MoveController::PrepareMoveStatus movePrepareStatus = moveController.move(params, isAbsoluteMove, &command);
-    if (movePrepareStatus != MoveController::PrepareMoveStatus::OK) // If something went wrong during preparation (before sending to CAN bus). 
+    if (movePrepareStatus != MoveController::PrepareMoveStatus::OK) // If something went wrong during preparation (before sending to CAN bus).
     // If the preparation was successful, the reply will be sent later, after the move is completed or if an error occurs during the move (in MAJ_finalResult callback).
     {
         addDataToOutQueue(command + " " + MoveController::prepareMoveStatusToString(movePrepareStatus));
@@ -508,7 +506,7 @@ void handleMotorStatus(String params)
     if (params != RobotConstants::Commands::MOTOR_STATUS)
     {
         DBG_VERBOSE(DBG_GROUP_COMMAND, RobotConstants::Commands::MOTOR_STATUS + " does not take any parameters");
-        addDataToOutQueue(RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Status::INVALID_PARAMS);
+        addDataToOutQueue(RobotConstants::Commands::MOTOR_STATUS + " " + RobotConstants::Result::INVALID_PARAMS);
         return;
     }
     moveController.requestStatus();
@@ -522,48 +520,69 @@ void handlePIControl(String params)
     if (!paramsSubStr.startsWith("J") || paramsSubStr.length() < 2)
     {
         DBG_ERROR(DBG_GROUP_PI, "Does not start with J followed by node identifier or not long enough");
-        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Status::INVALID_PARAMS);
+        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Result::INVALID_PARAMS);
         return;
     }
-    
+
     uint8_t nodeId = static_cast<uint8_t>(paramsSubStr.charAt(1) - RobotConstants::Robot::MIN_NODE_ID) + 1;
     if (nodeId < 1 || RobotConstants::Robot::AXES_COUNT < nodeId)
     {
-        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Status::INVALID_PARAMS);
+        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Result::INVALID_PARAMS);
         return;
     }
     DBG_INFO(DBG_GROUP_PI, "RPI for node " + String(nodeId));
     // Find spaces
-    int firstSpace = paramsSubStr.indexOf('P', 0); // Start searching after position 1
-    if (firstSpace == -1){
-        DBG_ERROR(DBG_GROUP_PI, "No 'P'");
-        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Status::INVALID_PARAMS);
-        return;
-    }
-    
-    int secondSpace = paramsSubStr.indexOf('V', firstSpace + 1);
-    if (secondSpace == -1){
-        DBG_ERROR(DBG_GROUP_PI, "No 'V'");
-        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Status::INVALID_PARAMS);
-        return;
-    }
-    
-    // Extract second parameter
-    String secondParamStr = paramsSubStr.substring(firstSpace + 1, secondSpace);
-    long parameterId = secondParamStr.toInt();
-    DBG_INFO(DBG_GROUP_PI, "Parameter ID: " + String(parameterId));
-    if (parameterId <= 0 || 4 < parameterId) // For now, we only support parameters 1-4, which correspond to P and I gains of velocity and position controllers. This can be expanded in the future if needed.
+
+    int vpIndex = paramsSubStr.indexOf("VP", 0);
+    int viIndex = paramsSubStr.indexOf("VI", 0);
+    int ppIndex = paramsSubStr.indexOf("PP", 0);
+    int ffIndex = paramsSubStr.indexOf("FF", 0);
+    bool valueOk = true;
+    if (vpIndex != -1)
     {
-        DBG_ERROR(DBG_GROUP_PI, "ParameterId invalid");
-        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Status::INVALID_PARAMS);
-        return;
+        String valueStr = paramsSubStr.substring(vpIndex + 2);
+        valueOk = isFloat(valueStr);
+        if (valueOk)
+        {
+            moveController.setPIControlParameter(nodeId, 1, valueStr.toFloat());
+        } 
     }
-    
-    // Extract third parameter
-    String thirdParamStr = paramsSubStr.substring(secondSpace + 1);
-    long value = thirdParamStr.toInt();
-    DBG_INFO(DBG_GROUP_PI, "third param value " + String(value));
-    moveController.setPIControlParameter(nodeId, parameterId, value);
+    else if (viIndex != -1)
+    {
+        String valueStr = paramsSubStr.substring(viIndex + 2);
+        valueOk = isFloat(valueStr);
+        if (valueOk)
+        {
+            moveController.setPIControlParameter(nodeId, 2, valueStr.toFloat());
+        }
+    }
+    else if (ppIndex != -1)
+    {
+        String valueStr = paramsSubStr.substring(ppIndex + 2);
+        valueOk = isFloat(valueStr);
+        if (valueOk)
+        {
+            moveController.setPIControlParameter(nodeId, 3, valueStr.toFloat());
+        }
+    }
+    else if (ffIndex != -1)
+    {
+        String valueStr = paramsSubStr.substring(ffIndex + 2);
+        valueOk = isFloat(valueStr);
+        if (valueOk)
+        {
+            moveController.setPIControlParameter(nodeId, 4, valueStr.toFloat());
+        }
+    }
+    else
+    {
+        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Result::INVALID_PARAMS);
+    }
+
+    if (!valueOk)
+    {
+        addDataToOutQueue(RobotConstants::Commands::PI_CONTROL + " " + RobotConstants::Result::INVALID_PARAMS);
+    }
 }
 
 void handleRequestPI(MotorIndices motorIndices)
@@ -571,19 +590,18 @@ void handleRequestPI(MotorIndices motorIndices)
     if (motorIndices.status.status != ParamsStatus::OK || motorIndices.nodeIds.size() != 1) // For simplicity, for now we only support requesting PI parameters for a single axis at a time. This can be expanded in the future if needed.
     {
         DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_PI + " " + motorIndices.status.errorMsg.value_or("no error message"));
-        addDataToOutQueue(RobotConstants::Commands::REQUEST_PI + " " + RobotConstants::Status::INVALID_PARAMS);
+        addDataToOutQueue(RobotConstants::Commands::REQUEST_PI + " " + RobotConstants::Result::INVALID_PARAMS);
         return;
     }
     moveController.startRequestPI(motorIndices.nodeIds[0]);
 }
-
 
 void handleZeroInitialize(MotorIndices motorIndices)
 {
     if (motorIndices.status.status != ParamsStatus::OK)
     {
         DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::ZERO_INITIALIZE + " " + motorIndices.status.errorMsg.value_or("no error message"));
-        addDataToOutQueue(RobotConstants::Commands::ZERO_INITIALIZE + " " + RobotConstants::Status::INVALID_PARAMS);
+        addDataToOutQueue(RobotConstants::Commands::ZERO_INITIALIZE + " " + RobotConstants::Result::INVALID_PARAMS);
         return;
     }
     if (motorIndices.nodeIds.size() == RobotConstants::Robot::AXES_COUNT)
@@ -599,7 +617,7 @@ void handleZeroInitialize(MotorIndices motorIndices)
     else
     {
         DBG_VERBOSE(DBG_GROUP_ZEI, RobotConstants::Commands::ZERO_INITIALIZE + " ZEI supports only single axis initialization or all axes initialization");
-        addDataToOutQueue(RobotConstants::Commands::ZERO_INITIALIZE + " " + RobotConstants::Status::INVALID_PARAMS);
+        addDataToOutQueue(RobotConstants::Commands::ZERO_INITIALIZE + " " + RobotConstants::Result::INVALID_PARAMS);
     }
 }
 
@@ -607,14 +625,14 @@ void handleRequestPosition(MotorIndices motorIndices)
 {
     if (motorIndices.status.status != ParamsStatus::OK)
     {
-        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_POSITION + " " + motorIndices.status.errorMsg.value_or("no error message"));
-        addDataToOutQueue(RobotConstants::Commands::REQUEST_POSITION + " " + RobotConstants::Status::INVALID_PARAMS);
+        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_POSITION_STEPS + " " + motorIndices.status.errorMsg.value_or("no error message"));
+        addDataToOutQueue(RobotConstants::Commands::REQUEST_POSITION_STEPS + " " + RobotConstants::Result::INVALID_PARAMS);
         return;
     }
-    String reply = RobotConstants::Commands::REQUEST_POSITION + " " + RobotConstants::Status::OK + " ";
+    String reply = RobotConstants::Commands::REQUEST_POSITION_STEPS + " " + RobotConstants::Result::OK + " ";
     for (uint8_t nodeId : motorIndices.nodeIds)
     {
-        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId).value_or(0)) + "; ";
+        reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(moveController.axisPosition(nodeId).value_or(0)) + " ";
     }
     addDataToOutQueue(reply);
 }
@@ -623,11 +641,11 @@ void handleRequestPositionAngles(MotorIndices motorIndices)
 {
     if (motorIndices.status.status != ParamsStatus::OK)
     {
-        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + motorIndices.status.errorMsg.value_or("no error message"));
-        addDataToOutQueue(RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + RobotConstants::Status::INVALID_PARAMS);
+        DBG_WARN(DBG_GROUP_COMMAND, RobotConstants::Commands::REQUEST_POSITION_DEGREES + " " + motorIndices.status.errorMsg.value_or("no error message"));
+        addDataToOutQueue(RobotConstants::Commands::REQUEST_POSITION_DEGREES + " " + RobotConstants::Result::INVALID_PARAMS);
         return;
     }
-    String reply = RobotConstants::Commands::REQUEST_POSITION_ANGLES + " " + RobotConstants::Status::OK + " ";
+    String reply = RobotConstants::Commands::REQUEST_POSITION_DEGREES + " " + RobotConstants::Result::OK + " ";
     for (uint8_t nodeId : motorIndices.nodeIds)
     {
         reply += String((char)RobotConstants::Robot::AXIS_IDENTIFIER_CHAR) + String((char)(RobotConstants::Robot::MIN_NODE_ID + nodeId - 1)) + String(Axis::stepsToUnits(moveController.axisPosition(nodeId).value_or(0)), 3) + "; ";
@@ -651,11 +669,11 @@ void handlePrepareMoveTest(String command)
         }
         else
         {
-            addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_TEST + " " + RobotConstants::Status::INVALID_PARAMS);
+            addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_TEST + " " + RobotConstants::Result::INVALID_PARAMS);
             return;
         }
     }
-    
+
     // digitalWrite(PC13, LOW);
     // delay(100);
     // digitalWrite(PC13, HIGH);
@@ -663,12 +681,12 @@ void handlePrepareMoveTest(String command)
     // digitalWrite(PC13, LOW);
     // delay(100);
     // digitalWrite(PC13, HIGH);
-    
+
     bool success = runPrepareMoveTests(isVerbose);
     if (!success)
     {
-        addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_TEST + " " + RobotConstants::Status::LOGIC_ERROR);
+        addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_TEST + " " + RobotConstants::Result::LOGIC_ERROR);
         return;
     }
-    addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_TEST + " " + RobotConstants::Status::OK);
+    addDataToOutQueue(RobotConstants::Commands::PREPAREMOVE_TEST + " " + RobotConstants::Result::OK);
 }

@@ -1,5 +1,8 @@
 import numpy as np
-from Point import Point
+try:
+    from .Point import Point
+except ImportError:
+    from Point import Point
 
 class CoordinateTransform:
     def __init__(self):
@@ -12,7 +15,7 @@ class CoordinateTransform:
 
     def load_transform_matrix_from_file(self, file_path):
         try:
-            loaded_matrix = np.loadtxt(file_path, delimiter=',')
+            loaded_matrix = np.loadtxt(file_path, delimiter=' ')
             self.transform_matrix = loaded_matrix
             print(loaded_matrix)
             self.matrix_loaded = True

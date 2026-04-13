@@ -21,12 +21,10 @@ namespace StepDirController
         {
             OK = 0,
             NO_EFFECTIVE_MOTION = 1,
-            INVALID_SPEED = 2,
-            INVALID_ACCELERATION = 3,
             INVALID_PROFILE = 4,
             INVALID_PROFILE_OUT_OF_LIMITS = 5,
             INVALID_TIMING = 6,
-            NOT_INITIALIZED = 7,
+            INTERNAL_ERROR = 7,
             OTHER_COMMAND_IN_PROGRESS = 8,
         };
 
@@ -102,6 +100,8 @@ namespace StepDirController
         bool initialized = false;
 
         void positionUpdate(uint8_t nodeId, int32_t position);
+
+        void ik(float x, float y, float z);
 
         // Helper, so that not to write the long time every time
         void setRegularPositionActualValueCallback(uint8_t nodeId);

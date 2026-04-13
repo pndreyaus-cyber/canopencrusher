@@ -1,4 +1,8 @@
 import numpy as np
+try:
+    from .Point import Point
+except ImportError:
+    from Point import Point
 
 class GeometryIK_4Axes_AnyAngleOfEndEffector: 
     def __init__(
@@ -86,6 +90,9 @@ class GeometryIK_4Axes_AnyAngleOfEndEffector:
                      self.rad(base_angle - lower_angle + 180)]
 
         return  ik_angles
+    
+    def fk(self, alpha_1: float, alpha_2: float, alpha_3: float, alpha_4: float) -> Point:
+        raise NotImplementedError("FK is not implemented for GeometryIK_4Axes_AnyAngleOfEndEffector")
 
 if __name__ == '__main__':
     solver = GeometryIK_4Axes_AnyAngleOfEndEffector()
