@@ -3,3 +3,15 @@
 dist/
 build/
 .github/
+Movement/__pycache__/
+Movement/venv/
+Movement/.*/
+notes/
+Vision/__pycache__/
+Vision/venv/
+Vision/old_homography/
+Vision/vision_centroid_lib/__pycache__/
+URDF_visualizer/__pycache__/
+URDF_visualizer/venv/
+RobotGUI/
+__pycache__

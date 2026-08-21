@@ -22,12 +22,21 @@ namespace StepDirController
         enum class PrepareMoveStatus : uint8_t
         {
             OK = 0,
+<<<<<<< HEAD:MoveControllerBase.h
             NO_EFFECTIVE_MOTION,
             INVALID_PROFILE,
             OUT_OF_LIMITS,
             OTHER_COMMAND_IN_PROGRESS,
             FAIL,
             INVALID_PARAMS,
+=======
+            NO_EFFECTIVE_MOTION = 1,
+            INVALID_PROFILE = 4,
+            INVALID_PROFILE_OUT_OF_LIMITS = 5,
+            INVALID_TIMING = 6,
+            INTERNAL_ERROR = 7,
+            OTHER_COMMAND_IN_PROGRESS = 8,
+>>>>>>> 225486cc46096ae65e797de06ac8f7314908ed27:CANCrusher/MoveControllerBase.h
         };
 
         struct PrepareMoveAxisResult
@@ -132,7 +141,11 @@ namespace StepDirController
 
         void positionUpdate(uint8_t nodeId, int32_t position);
 
+<<<<<<< HEAD:MoveControllerBase.h
         // void ik(float x, float y, float z);
+=======
+        void ik(float x, float y, float z);
+>>>>>>> 225486cc46096ae65e797de06ac8f7314908ed27:CANCrusher/MoveControllerBase.h
 
         // Helper, so that not to write the long time every time
         void setRegularPositionActualValueCallback(uint8_t nodeId);

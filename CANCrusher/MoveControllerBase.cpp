@@ -1068,6 +1068,9 @@ namespace StepDirController
             {
 
                 return; // Not all axes are ready yet
+            } else if (status == RobotConstants::MoveStatus::MOVE_FAIL)
+            {
+                containsFailedAxes = true;
             }
             else if (status == RobotConstants::MoveStatus::MOVE_FAIL)
             {
@@ -1083,6 +1086,16 @@ namespace StepDirController
             MAJ_finalResult();
             return;
         }
+        if (containsFailedAxes)
+        {
+            for (uint8_t nodeId = 1; nodeId <= axesCnt; ++nodeId)
+            {
+                axes.at(nodeId).moveStatus = RobotConstants::MoveStatus::MOVE_FAIL;
+            }
+            MAJ_finalResult();
+            return;
+        }
+
 
         // All axes are ready, send SYNC
         // DBG_INFO(DBG_GROUP_MOVE, "MAJ_SYNCFunnel: All axes are ready. Sending SYNC and starting movement.");

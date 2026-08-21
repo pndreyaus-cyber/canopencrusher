@@ -1,0 +1,5 @@
+numpy>=2.1
+opencv-python>=4.10
+ultralytics>=8.3
+pyserial>=3.5
+openpyxl>=3.1.0
