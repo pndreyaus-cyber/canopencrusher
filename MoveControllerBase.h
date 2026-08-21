@@ -6,9 +6,11 @@
 #include <string>
 #include <unordered_map>
 #include <optional>
+#include <memory>
 
 #include "CanOpen.h"
 #include "Params.h"
+#include "KinematicSolver.h"
 #include "Axis.h"
 
 namespace StepDirController
@@ -20,14 +22,12 @@ namespace StepDirController
         enum class PrepareMoveStatus : uint8_t
         {
             OK = 0,
-            NO_EFFECTIVE_MOTION = 1,
-            INVALID_SPEED = 2,
-            INVALID_ACCELERATION = 3,
-            INVALID_PROFILE = 4,
-            INVALID_PROFILE_OUT_OF_LIMITS = 5,
-            INVALID_TIMING = 6,
-            NOT_INITIALIZED = 7,
-            OTHER_COMMAND_IN_PROGRESS = 8,
+            NO_EFFECTIVE_MOTION,
+            INVALID_PROFILE,
+            OUT_OF_LIMITS,
+            OTHER_COMMAND_IN_PROGRESS,
+            FAIL,
+            INVALID_PARAMS,
         };
 
         struct PrepareMoveAxisResult
@@ -60,24 +60,29 @@ namespace StepDirController
             int32_t relativeMotions[RobotConstants::Robot::AXES_COUNT];
         };
 
-        void requestStatus();
+        String requestStatus();
         std::optional<int32_t> axisPosition(uint8_t nodeId);
 
-        ParamsStatusStruct start(CanOpen *canOpen, uint8_t axesCnt, bool writeNewLimitsToEEPROM = false, uint8_t *nodesToInvert = nullptr, uint8_t nodesToInvertCnt = 0);
+        ParamsStatusStruct start(CanOpen *canOpen,
+                                 uint8_t axesCnt,
+                                 std::unique_ptr<KinematicSolver<RobotConstants::Robot::AXES_COUNT>> solver_ptr,
+                                 uint8_t *nodesToInvert = nullptr,
+                                 uint8_t nodesToInvertCnt = 0);
 
         uint8_t getAxesCount() const { return axesCnt; }
         Axis &getAxis(uint8_t nodeId) { return axes.at(nodeId); }
 
-        void startZeroInitializationAllAxes();
+        // void startZeroInitializationAllAxes();
         void startZeroInitializationSingleAxis(uint8_t nodeId);
 
-        void startRequestPI(uint8_t nodeId)
+        void startRequestPI(uint8_t nodeId, String commandName = RobotConstants::Commands::PI_CONTROLLER_READ)
         {
+            RPI_commandName = commandName;
             RPI_start(nodeId);
         }
-    
 
         PrepareMoveStatus move(MoveParams<RobotConstants::Robot::AXES_COUNT> params, bool isAbsoluteMove, const String *commandNameForLogging = nullptr);
+        PrepareMoveStatus moveCartesian(MoveCartesianParams targetPosition, bool isAbsoluteMove, const String *commandNameForLogging = nullptr);
 
         bool isInitialized() const { return initialized; }
 
@@ -89,7 +94,31 @@ namespace StepDirController
         static String prepareMoveStatusToString(PrepareMoveStatus status);
 
         bool isMoveInProgress() const { return isMAJInProgress; }
-        void setPIControlParameter(uint8_t nodeId, uint8_t parameterId, int16_t value);
+
+        // void setPIControlParameter(uint8_t nodeId, uint8_t parameterId, int16_t value);
+
+        void setPIController(uint8_t nodeId, PIValue piValue);
+
+        bool setMajMoveToleranceSteps(uint8_t nodeId, uint32_t toleranceSteps);
+        std::optional<uint32_t> getMajMoveToleranceSteps(uint8_t nodeId) const;
+
+        void setMajMoveTimeoutMs(uint32_t ms);
+        uint32_t getMajMoveTimeoutMs() const;
+
+        String jointPositions(bool inSteps = false);
+        String cartesianPosition();
+
+        static String jointsToString(const float *joints)
+        {   
+            String result;
+            for (size_t i = 0; i < RobotConstants::Robot::AXES_COUNT; i++)
+            {
+                if (i > 0)
+                    result += " ";
+                result += "J" + String((char)(RobotConstants::Robot::MIN_NODE_ID + i)) + String(joints[i], 3);
+            }
+            return result;
+        }
 
     protected:
         PrepareMoveComputationResult prepareMove(const MoveParams<RobotConstants::Robot::AXES_COUNT> &params, bool isAbsoluteMove);
@@ -103,34 +132,40 @@ namespace StepDirController
 
         void positionUpdate(uint8_t nodeId, int32_t position);
 
+        // void ik(float x, float y, float z);
+
         // Helper, so that not to write the long time every time
         void setRegularPositionActualValueCallback(uint8_t nodeId);
 
         // ======== Timer functions ========
         void tick_checkTimeouts();
-        void tick_checkZEITimeouts();
+        void tick_checkZOETimeouts();
         void tick_requestPosition();
-        void tick_checkMAJStatusWord();
+        void tick_checkMajMoveTimeout();
+        void tick_pollMajPositionDuringMove();
         // ======== Timer functions end ========
 
-        // ======== ZEI Sequence ========
-        bool zeroInitializeSingleAxis = true;
+        // ======== ZOE Sequence ========
+        // bool zeroInitializeSingleAxis = true;
         uint8_t axisToInitialize = 0;
 
-        void ZEI_start(uint8_t nodeId);
-        void ZEI_AfterWriteTo_0x6081(uint8_t nodeId, bool success);
-        void ZEI_AfterFirstWriteTo_0x6040(uint8_t nodeId, bool success);
-        void ZEI_AfterFirstWriteTo_0x260A(uint8_t nodeId, bool success);
-        void ZEI_AfterSecondWriteTo_0x260A(uint8_t nodeId, bool success);
-        void ZEI_AfterSecondWriteTo_0x6040(uint8_t nodeId, bool success);
-        void ZEI_finalResult();
+        void ZOE_start(uint8_t nodeId);
+        void ZOE_AfterWriteTo_0x6081(uint8_t nodeId, bool success);
+        void ZOE_AfterFirstWriteTo_0x6040(uint8_t nodeId, bool success);
+        void ZOE_AfterFirstWriteTo_0x260A(uint8_t nodeId, bool success);
+        void ZOE_AfterSecondWriteTo_0x260A(uint8_t nodeId, bool success);
+        void ZOE_AfterSecondWriteTo_0x6040(uint8_t nodeId, bool success);
+        void ZOE_finalResult();
 
-        bool ZEI_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
-        // ======== ZEI Sequence End ========
+        bool ZOE_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
+        // ======== ZOE Sequence End ========
 
         // ======== MAJ Sequence ========
         bool isMAJInProgress = false;
         const String *moveCommandName = nullptr; // For logging purposes, to know which command triggered the MAJ
+        uint32_t majMoveStartMs = 0;
+        bool majMoveTimedOut = false;
+        uint32_t majMoveTimeoutMs = RobotConstants::Control::MAJ_MOVE_TIMEOUT_MS;
 
         void MAJ_start(uint8_t nodeId);
         void MAJ_afterRequestOf_0x6040(uint8_t nodeId, bool success, uint16_t controlWord);
@@ -140,13 +175,14 @@ namespace StepDirController
         void MAJ_afterWriteTo_0x6083(uint8_t nodeId, bool success);
         void MAJ_TPDO4(uint8_t nodeId, int32_t actualLocation, uint16_t statusWord);
         void MAJ_SYNCFunnel();
-        void MAJ_requestStatusWord(uint8_t nodeId);
-        void MAJ_statusWordCallback(uint8_t nodeId, bool success, uint16_t statusWord);
-        void MAJ_afterRequestPosition(uint8_t nodeId, bool success, int32_t positionActualValue);
+        void MAJ_requestPositionPollDuringMove(uint8_t nodeId);
+        void MAJ_requestFaultStatusWordAfterPositionPoll(uint8_t nodeId);
+        void MAJ_faultOnlyStatusWordCallback(uint8_t nodeId, bool success, uint16_t statusWord);
+        void MAJ_positionPollDuringMove(uint8_t nodeId, bool success, int32_t positionActualValue);
+        void MAJ_finishAxisAfterVerifiedPositionRead(uint8_t nodeId, bool success, int32_t positionActualValue);
         void MAJ_finalResult();
 
         bool MAJ_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
-        bool MAJ_checkTargetPositionReached(uint16_t statusWord);
 
         void MAJ_clearMoveStatusesAfterMoveCompletion()
         {
@@ -173,21 +209,35 @@ namespace StepDirController
         void RPI_finalResult(uint8_t nodeId, uint8_t stepsCompleted);
 
         bool RPI_checkResponseStatus(uint8_t nodeId, uint8_t step, bool success, String errorMessage);
+
+        String RPI_commandName;
         // ======== Request PI Sequence End ========
 
         // ======== Update PI Sequence ========
-        void UPS_start (uint8_t nodeId, uint8_t parameterId, int16_t value);
-        void UPS_OnReplyFrom_PIRegister (uint8_t nodeId, uint16_t index, uint8_t subindex, bool success);
-        void UPS_OnReplyFrom_0x2614_DataSaveFlag_Write (uint8_t nodeId, bool success);
-        void UPS_OnReplyFrom_0x2614_DataSaveFlag_Read (uint8_t nodeId, bool success, uint8_t value);
+        void UPS_start(uint8_t nodeId, PIValue piValue);
+
+        void UPS_onReplyFrom_x60F9_01(uint8_t nodeId, bool success);
+        void UPS_onReplyFrom_x60F9_02(uint8_t nodeId, bool success);
+        void UPS_onReplyFrom_x60FB_01(uint8_t nodeId, bool success);
+        void UPS_onReplyFrom_x60FB_02(uint8_t nodeId, bool success);
+
+        // void UPS_OnReplyFrom_PIRegister (uint8_t nodeId, uint16_t index, uint8_t subindex, bool success);
+        void UPS_OnReplyFrom_0x2614_DataSaveFlag_Write(uint8_t nodeId, bool success);
+        void UPS_OnReplyFrom_0x2614_DataSaveFlag_Read(uint8_t nodeId, bool success, uint8_t value);
 
         bool UPS_checkResponseStatus(uint8_t nodeId, bool success, String errorMessage);
+
+        PIValue UPS_PIValue;
         // ======== Update PI Sequence End ========
 
         // ======== Regular callbacks ========
         void regularHeartbeatCallback(uint8_t nodeId, uint8_t status);
         void regularPositionActualValueCallback(uint8_t nodeId, bool success, int32_t position);
         // ======== Regular callbacks end ========
+
+        // ======== Kinematic Solver ========
+        std::unique_ptr<KinematicSolver<RobotConstants::Robot::AXES_COUNT>> solver;
+        // ======== Kinematic Solver End ========
     };
 
 }

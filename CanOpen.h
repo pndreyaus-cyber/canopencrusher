@@ -24,8 +24,7 @@ private:
     bool loopbackTest();
     uint32_t canBaudRate;
 
-    bool send(uint32_t id, const uint8_t *data, uint8_t len);
-    bool receive(uint16_t &cob_id, uint8_t *data, uint8_t &len);
+
 
     callback_x6064_positionActualValue callbacks_x6064_positionActualValue[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};         // index 0 is unused
     callback_x260A_electronicGearMolecules callbacks_x260A_electronicGearMolecules[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr}; // index 0 is unused
@@ -36,6 +35,7 @@ private:
     callback_x6083_profileAcceleration callbacks_x6083_profileAcceleration[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};         // index 0 is unused
     callback_TPDO1 callbacks_TPDO1[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                                                 // index 0 is unused
     callback_TPDO4 callbacks_TPDO4[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};                                                 // index 0 is unused
+    
 
     callback_x2614_dataSaveFlag callbacks_x2614_dataSaveFlag = nullptr;
 
@@ -44,13 +44,19 @@ private:
     callback_read_x6041_statusword callbacks_read_x6041_statusword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};   // index 0 is unused
     callback_read_x6040_controlword callbacks_read_x6040_controlword[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr}; // index 0 is unused
 
-    callback_PI_controller callbacks_PI_controller = nullptr;
-
     callback_read_PI_controller callbacks_read_PI_controller = nullptr; // Won't call simultaneously for multiple nodes, so we don't need an array
     callback_read_x2614_dataSaveFlag callbacks_read_x2614_dataSaveFlag = nullptr;
 
+    callback_x60F9_01_VP callbacks_x60F9_01_VP[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};
+    callback_x60F9_02_VI callbacks_x60F9_02_VI[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};
+    callback_x60FB_01_PP callbacks_x60FB_01_PP[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};
+    callback_x60FB_02_FF callbacks_x60FB_02_FF[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};
+
 public:
-    CanOpen() : Can(PB8, PB9, RX_SIZE_128, TX_SIZE_128) {};
+    bool send(uint32_t id, const uint8_t *data, uint8_t len);
+    bool receive(uint16_t &cob_id, uint8_t *data, uint8_t &len);
+
+    CanOpen() : Can(ROBOT_CAN_RX, ROBOT_CAN_TX, RX_SIZE_128, TX_SIZE_128) {};
     bool startCan(uint32_t baudRate);
 
     bool send_x260A_electronicGearMolecules(uint8_t nodeId, uint16_t value);
@@ -131,11 +137,6 @@ public:
         callbacks_read_x6040_controlword[nodeId] = callback;
     }
 
-    void set_callback_PI_controller(callback_PI_controller callback)
-    {
-        callbacks_PI_controller = callback;
-    }
-
     void set_callback_read_PI_controller(callback_read_PI_controller callback)
     {
         callbacks_read_PI_controller = callback;
@@ -149,6 +150,26 @@ public:
     void set_callback_read_x2614_dataSaveFlag(callback_read_x2614_dataSaveFlag callback)
     {
         callbacks_read_x2614_dataSaveFlag = callback;
+    }
+
+    void set_callback_x60F9_01_VP(callback_x60F9_01_VP callback, uint8_t nodeId)
+    {
+        callbacks_x60F9_01_VP[nodeId] = callback;
+    }
+
+    void set_callback_x60F9_02_VI(callback_x60F9_02_VI callback, uint8_t nodeId)
+    {
+        callbacks_x60F9_02_VI[nodeId] = callback;
+    }
+
+    void set_callback_x60FB_01_PP(callback_x60FB_01_PP callback, uint8_t nodeId)
+    {
+        callbacks_x60FB_01_PP[nodeId] = callback;
+    }
+
+    void set_callback_x60FB_02_FF(callback_x60FB_02_FF callback, uint8_t nodeId)
+    {
+        callbacks_x60FB_02_FF[nodeId] = callback;
     }
 
     bool read();

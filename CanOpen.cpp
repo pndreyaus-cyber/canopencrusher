@@ -335,8 +335,12 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
         DBG_ERROR(DBG_GROUP_CANOPEN, "Invalid data length in CAN send: " + String(msgDataLen));
         return false;
     }
-
-    CAN_TX_msg.id = id;
+    if (id == 0){
+        CAN_TX_msg.id = id;
+    } else 
+    {
+        CAN_TX_msg.id = (id + 2);
+    }
     CAN_TX_msg.flags.extended = 0;
     CAN_TX_msg.len = msgDataLen;
 
@@ -354,7 +358,7 @@ bool CanOpen::send(uint32_t id, const uint8_t *msgData, uint8_t msgDataLen) // d
     bool ok = Can.write(CAN_TX_msg);
     if (!ok)
     {
-        DBG_ERROR(DBG_GROUP_CANOPEN, "CAN send failed for ID: " + String(id, HEX));
+        DBG_ERROR(DBG_GROUP_CANOPEN, "CAN send failed for ID: " + String(id + 2, HEX));
     }
     delay(1);
     return ok;
@@ -383,7 +387,9 @@ bool CanOpen::read()
 
     if (receive(id, data, len))
     {
-        uint16_t nodeId = id & 0x7F; // Extract node ID from COB-ID
+        //Serial2.println("New read");
+        uint16_t nodeId_raw = id & 0x7F; // Extract node ID from COB-ID
+        uint16_t nodeId = nodeId_raw - 2;
         if (nodeId <= 0 || RobotConstants::Robot::AXES_COUNT < nodeId)
         {
             DBG_ERROR(DBG_GROUP_CANOPEN, "Received message from invalid node ID: " + String(nodeId));
@@ -396,7 +402,7 @@ bool CanOpen::read()
         {
             if (callbacks_heartbeat != nullptr)
             {
-                callbacks_heartbeat(nodeId, data[0]);
+                callbacks_heartbeat(nodeId , data[0]);
             }
         }
         else if (function_code == RobotConstants::CANOpen::COB_ID_SDO_CLIENT_BASE)
@@ -421,6 +427,24 @@ bool CanOpen::read()
             }
             else if (registerAddress == RobotConstants::ODIndices::CONTROLWORD)
             { // 0x6040
+                // Serial2.print("CONTROLWORD");
+                // Serial2.print(data[0], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[1], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[2], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[3], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[4], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[5], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[6], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[7], HEX);
+                // Serial2.println();
+                // Serial2.println("HELP");
                 if (data[0] == 0x60)
                 { // Write to control word ack
                     if (callbacks_x6040_controlword[nodeId] != nullptr)
@@ -455,6 +479,7 @@ bool CanOpen::read()
             }
             else if (registerAddress == RobotConstants::ODIndices::MODES_OF_OPERATION)
             { // 0x6060
+                //Serial2.println("Read from 0x6060: " + String(data[0]) + String(data[1]) + String(data[2]) + String(data[3]) + String(data[4]));
                 if (callbacks_x6060_modesOfOperation[nodeId] != nullptr)
                 {
                     callbacks_x6060_modesOfOperation[nodeId](nodeId, (data[0] == 0x60));
@@ -504,6 +529,24 @@ bool CanOpen::read()
             }
             else if (registerAddress == RobotConstants::ODIndices::STATUSWORD)
             { // 0x6041
+                // Serial2.print("STATUSWORD");
+                // Serial2.print(data[0], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[1], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[2], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[3], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[4], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[5], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[6], HEX);
+                // Serial2.print(' ');
+                // Serial2.print(data[7], HEX);
+                // Serial2.println();
+                // Serial2.println("HELP");
                 if (callbacks_read_x6041_statusword[nodeId] != nullptr)
                 {
                     bool success = (data[0] != 0x80);
@@ -519,9 +562,29 @@ bool CanOpen::read()
             { // 0x60F9, 0x60FB
                 if (data[0] == 0x60)
                 { // Write to PI ack
-                    if (callbacks_PI_controller != nullptr)
+                    if (registerAddress == RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL &&
+                        data[3] == 1 &&
+                        callbacks_x60F9_01_VP[nodeId] != nullptr)
                     {
-                        callbacks_PI_controller(nodeId, registerAddress, data[3], true);
+                        callbacks_x60F9_01_VP[nodeId](nodeId, true);
+                    }
+                    else if (registerAddress == RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL &&
+                        data[3] == 2 &&
+                        callbacks_x60F9_02_VI[nodeId] != nullptr)
+                    {
+                        callbacks_x60F9_02_VI[nodeId](nodeId, true);
+                    }
+                    else if(registerAddress == RobotConstants::ODIndices::POSITION_LOOP_CONTROL &&
+                        data[3] == 1 &&
+                        callbacks_x60FB_01_PP[nodeId] != nullptr)
+                    {
+                        callbacks_x60FB_01_PP[nodeId](nodeId, true);
+                    }
+                    else if(registerAddress == RobotConstants::ODIndices::POSITION_LOOP_CONTROL &&
+                        data[3] == 2 &&
+                        callbacks_x60FB_02_FF[nodeId] != nullptr)
+                    {
+                        callbacks_x60FB_02_FF[nodeId](nodeId, true);
                     }
                 }
                 else if (data[0] != 0x80)
@@ -535,10 +598,31 @@ bool CanOpen::read()
                 }
                 else
                 {
-                    if (callbacks_PI_controller != nullptr)
+                    if (registerAddress == RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL &&
+                        data[3] == 1 &&
+                        callbacks_x60F9_01_VP[nodeId] != nullptr)
                     {
-                        callbacks_PI_controller(nodeId, registerAddress, data[3], false);
+                        callbacks_x60F9_01_VP[nodeId](nodeId, false);
                     }
+                    else if (registerAddress == RobotConstants::ODIndices::VELOCITY_LOOP_CONTROL &&
+                        data[3] == 2 &&
+                        callbacks_x60F9_02_VI[nodeId] != nullptr)
+                    {
+                       callbacks_x60F9_02_VI[nodeId](nodeId, false);
+                    }
+                    else if(registerAddress == RobotConstants::ODIndices::POSITION_LOOP_CONTROL &&
+                        data[3] == 1 &&
+                        callbacks_x60FB_01_PP[nodeId] != nullptr)
+                    {
+                        callbacks_x60FB_01_PP[nodeId](nodeId, false);
+                    }
+                    else if(registerAddress == RobotConstants::ODIndices::POSITION_LOOP_CONTROL &&
+                        data[3] == 2 &&
+                        callbacks_x60FB_02_FF[nodeId] != nullptr)
+                    {
+                        callbacks_x60FB_02_FF[nodeId](nodeId, false);
+                    }
+
                     if (callbacks_read_PI_controller != nullptr)
                     {
                         callbacks_read_PI_controller(nodeId, registerAddress, data[3], false, 0);

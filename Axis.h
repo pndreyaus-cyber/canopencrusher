@@ -39,15 +39,22 @@ namespace StepDirController
         std::optional<int32_t> getCurrentPositionInSteps() const;
         std::optional<int32_t> getTargetPositionInSteps() const;
         std::optional<uint32_t> getProfileVelocityInRPM() const;
+
+        uint32_t getMajMoveToleranceSteps() const;
+        void setMajMoveToleranceSteps(uint32_t toleranceSteps);
+        bool isPositionWithinMajTolerance(int32_t positionActualValueFromDrive) const;
         std::optional<uint32_t> getProfileAccelerationInRPMPerSec() const;
         // ============================= Getters end =============================
 
         // ============================= Static methods =============================
-        static double stepsToUnits(int32_t steps); // Convert steps to units (degrees)
-        static int32_t unitsToSteps(double units); // Convert units (degrees) to steps
+        static double stepsToDegrees(int32_t steps); // Convert steps to degrees
+        static int32_t degreesToSteps(double units); // Convert degrees to steps
 
-        static uint32_t speedUnitsToMotorRPM(double speedUnits); // Convert degrees/sec to RPM
-        static double motorRPMToSpeedUnits(uint32_t rpm);        // Convert RPM to degrees/sec
+        static double stepsToRadians(int32_t steps); // Convert steps to radians
+        static int32_t radiansToSteps(double units); // Convert radians to steps
+
+        static uint32_t degreesPerSecToMotorRPM(double speedUnits); // Convert degrees/sec to RPM
+        static double motorRPMToDegreesPerSec(uint32_t rpm);        // Convert RPM to degrees/sec
 
         static double motorRPMToStepsPerSec(uint32_t rpm);          // Convert RPM to steps/sec
         static double motorRPMPSToStepsPerSec2(uint32_t rpmPerSec); // Convert RPM/sec to steps/sec^2
@@ -58,8 +65,8 @@ namespace StepDirController
         static double stepsPerSecToMotorRPMDouble(double stepsPerSec); // Convert steps/sec to RPM
         static double stepsPerSec2ToRPMPSDouble(double stepsPerSec2);  // Convert degrees/sec^2 to RPM/sec
 
-        static uint32_t accelerationUnitsToRPMPS(double accelerationUnits); // Convert degrees/sec^2 to RPM/sec
-        static double RPMPSToAccelerationUnits(uint32_t rpmPerSecond);      // Convert RPM/sec to degrees/sec^2
+        static uint32_t degreesPerSecSqToRPMPS(double accelerationUnits); // Convert degrees/sec^2 to RPM/sec
+        static double RPMPSToDegreesPerSecSq(uint32_t rpmPerSecond);      // Convert RPM/sec to degrees/sec^2
 
         static double stepsToMotorRevs(int32_t steps);
         // ============================= Static methods end =============================
@@ -83,17 +90,19 @@ namespace StepDirController
 
         friend class MoveControllerBase;
 
-        // For ZEI
+        // For ZOE
         RobotConstants::InitStatus initStatus;
         uint32_t lastHeartbeatMs = 0;
         // bool isAlive = true;
 
-        // For MAJ
-        uint32_t lastRequestedStatusWord = 0;
+        // For MAJ (throttle for host-initiated 0x6064 polls while MOVING)
+        uint32_t lastMajPositionPollMs = 0;
         RobotConstants::MoveStatus moveStatus;
+        uint32_t majMoveToleranceSteps = RobotConstants::Axis::DEFAULT_MAJ_MOVE_TOLERANCE_STEPS;
 
         // Status
         RobotConstants::AxisStatus status;
+
 
     };
 }

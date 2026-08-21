@@ -14,7 +14,7 @@ namespace StepDirController
     Axis::Axis() : nodeId(kInvalidNodeId)
     {
         initialized = false;
-        initStatus = RobotConstants::InitStatus::ZEI_NONE;
+        initStatus = RobotConstants::InitStatus::ZOE_NONE;
         moveStatus = RobotConstants::MoveStatus::NOT_TASKED_WITH_MOVE;
         status = RobotConstants::AxisStatus::NOT_ALIVE;
     }
@@ -23,11 +23,25 @@ namespace StepDirController
     {
         init_od_ram(&params);
         params.x6064_positionActualValue = 0;
-        initStatus = RobotConstants::InitStatus::ZEI_NONE;
+        initStatus = RobotConstants::InitStatus::ZOE_NONE;
         moveStatus = RobotConstants::MoveStatus::NOT_TASKED_WITH_MOVE;
         status = RobotConstants::AxisStatus::NOT_ALIVE;
         initialized = true;
         limitsEnabled = false;
+
+        if (nodeId == 1)
+        {
+            majMoveToleranceSteps = 100;
+        } else if (nodeId == 2)
+        {
+            majMoveToleranceSteps = 1000;
+        } else if (nodeId == 3)
+        {
+            majMoveToleranceSteps = 1000;
+        } else if (nodeId == 4)
+        {
+            majMoveToleranceSteps = 100;
+        }
     }
 
     // ===================== Setters =====================
@@ -70,7 +84,7 @@ namespace StepDirController
             return false;
         }
 
-        return setTargetPositionInSteps(unitsToSteps(units));
+        return setTargetPositionInSteps(degreesToSteps(units));
     }
 
     bool Axis::setTargetPositionInSteps(int32_t steps)
@@ -103,7 +117,7 @@ namespace StepDirController
             return false;
         }
 
-        return setProfileVelocityInRPM(speedUnitsToMotorRPM(velocityUnits));
+        return setProfileVelocityInRPM(degreesPerSecToMotorRPM(velocityUnits));
     }
 
     bool Axis::setProfileVelocityInRPM(uint32_t rpm)
@@ -126,7 +140,7 @@ namespace StepDirController
             return false;
         }
 
-        return setProfileAccelerationInRPMPerSec(accelerationUnitsToRPMPS(accelerationUnits));
+        return setProfileAccelerationInRPMPerSec(degreesPerSecSqToRPMPS(accelerationUnits));
     }
 
     bool Axis::setProfileAccelerationInRPMPerSec(uint32_t rpmPerSec)
@@ -191,6 +205,27 @@ namespace StepDirController
         return targetPosition;
     }
 
+    uint32_t Axis::getMajMoveToleranceSteps() const
+    {
+        return majMoveToleranceSteps;
+    }
+
+    void Axis::setMajMoveToleranceSteps(uint32_t toleranceSteps)
+    {
+        majMoveToleranceSteps = toleranceSteps;
+    }
+
+    bool Axis::isPositionWithinMajTolerance(int32_t positionActualValueFromDrive) const
+    {
+        if (!initialized)
+        {
+            return false;
+        }
+        const int64_t err = static_cast<int64_t>(positionActualValueFromDrive) - static_cast<int64_t>(params.x607A_targetPosition);
+        const int64_t absErr = err >= 0 ? err : -err;
+        return static_cast<uint64_t>(absErr) <= static_cast<uint64_t>(majMoveToleranceSteps);
+    }
+
     std::optional<uint32_t> Axis::getProfileVelocityInRPM() const
     {
         if (!initialized)
@@ -216,28 +251,38 @@ namespace StepDirController
     // ===================== Getters end =====================
 
     // ============================= Static methods =============================
-    double Axis::stepsToUnits(int32_t steps) // Convert steps to degrees
+    double Axis::stepsToDegrees(int32_t steps) // Convert steps to degrees
     {
         return steps * RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV / (RobotConstants::Axis::GEAR_RATIO * RobotConstants::Axis::STEPS_PER_MOTOR_REV);
     }
 
-    int32_t Axis::unitsToSteps(double units) // Convert degrees to steps
+    int32_t Axis::degreesToSteps(double units) // Convert degrees to steps
     {
         return static_cast<int32_t>(units * RobotConstants::Axis::GEAR_RATIO * RobotConstants::Axis::STEPS_PER_MOTOR_REV / RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV);
     }
 
-    uint32_t Axis::speedUnitsToMotorRPM(double speedUnits) // Convert degrees/sec to RPM
+    double Axis::stepsToRadians(int32_t steps) // Convert steps to radians
+    {
+        return steps * RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV * M_PI / (RobotConstants::Axis::GEAR_RATIO * RobotConstants::Axis::STEPS_PER_MOTOR_REV * 180);
+    }
+
+    int32_t Axis::radiansToSteps(double units) // Convert radians to steps
+    {
+        return static_cast<int32_t>(units * 180 * RobotConstants::Axis::GEAR_RATIO * RobotConstants::Axis::STEPS_PER_MOTOR_REV / (RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV * M_PI));
+    }
+
+    uint32_t Axis::degreesPerSecToMotorRPM(double speedUnits) // Convert degrees/sec to RPM
     {
         if (speedUnits < 0)
         {
-            DBG_WARN(DBG_GROUP_AXIS, "Axis::speedUnitsToMotorRPM -- negative speed units not allowed");
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::degreesPerSecToMotorRPM -- negative speed units not allowed");
             return 0;
         }
 
         return static_cast<uint32_t>(speedUnits * RobotConstants::Math::SECONDS_IN_MINUTE * RobotConstants::Axis::GEAR_RATIO / RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV);
     }
 
-    double Axis::motorRPMToSpeedUnits(uint32_t rpm) // Convert RPM to degrees/sec
+    double Axis::motorRPMToDegreesPerSec(uint32_t rpm) // Convert RPM to degrees/sec
     {
         return static_cast<double>(rpm) * RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV / (RobotConstants::Math::SECONDS_IN_MINUTE * RobotConstants::Axis::GEAR_RATIO);
     }
@@ -282,17 +327,17 @@ namespace StepDirController
         return stepsPerSec2 * RobotConstants::Math::SECONDS_IN_MINUTE / RobotConstants::Axis::STEPS_PER_MOTOR_REV;
     }
 
-    uint32_t Axis::accelerationUnitsToRPMPS(double accelerationUnits) // Convert degrees/sec^2 to rev/(min*sec)
+    uint32_t Axis::degreesPerSecSqToRPMPS(double accelerationUnits) // Convert degrees/sec^2 to rev/(min*sec)
     {
         if (accelerationUnits < 0)
         {
-            DBG_WARN(DBG_GROUP_AXIS, "Axis::accelerationUnitsToRPMPS -- negative acceleration units not allowed");
+            DBG_WARN(DBG_GROUP_AXIS, "Axis::degreesPerSecSqToRPMPS -- negative acceleration units not allowed");
             return 0;
         }
         return static_cast<uint32_t>(accelerationUnits * RobotConstants::Math::SECONDS_IN_MINUTE * RobotConstants::Axis::GEAR_RATIO / RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV);
     }
 
-    double Axis::RPMPSToAccelerationUnits(uint32_t rpmPerSecond)
+    double Axis::RPMPSToDegreesPerSecSq(uint32_t rpmPerSecond)
     {
         return static_cast<double>(rpmPerSecond) * RobotConstants::Axis::UNITS_PER_OUTPUT_SHAFT_REV / (RobotConstants::Math::SECONDS_IN_MINUTE * RobotConstants::Axis::GEAR_RATIO);
     }
@@ -330,8 +375,8 @@ namespace StepDirController
             return false;
         }
 
-        lowLimitSteps = unitsToSteps(lowLimitUnits);
-        highLimitSteps = unitsToSteps(highLimitUnits);
+        lowLimitSteps = degreesToSteps(lowLimitUnits);
+        highLimitSteps = degreesToSteps(highLimitUnits);
         if(reversedLogic)
         {
             lowLimitSteps = -lowLimitSteps;

@@ -12,10 +12,11 @@
 #define DBG_GROUP_CANOPEN (1u << 2)
 #define DBG_GROUP_COMMAND (1u << 3)
 #define DBG_GROUP_HEARTBEAT (1u << 4)
-#define DBG_GROUP_ZEI (1u << 5)
+#define DBG_GROUP_ZOE (1u << 5)
 #define DBG_GROUP_SERIAL (1u << 6)
 #define DBG_GROUP_INIT (1u << 7)
 #define DBG_GROUP_PI (1u << 8)
+#define DBG_GROUP_MAC (1u << 9)
 #define DBG_GROUP_ALL 0xFFFFu
 
 #define DBG_LEVEL_SHIFT 16u

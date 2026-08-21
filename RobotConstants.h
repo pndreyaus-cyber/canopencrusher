@@ -8,6 +8,35 @@
 #include <cstring>
 #include <Arduino.h>
 
+#define ROBOT_CAN_RX PA11 // Used to be PB8
+#define ROBOT_CAN_TX PA12 // Used to be PB9
+
+#define GRIPPER_PIN PC13
+
+#define PIN_OUT_NUM 1
+// const uint32_t userPinMap[] = {
+//   PB13,
+//   PB14,
+//   PB15,
+//   PB3,
+//   PB4,
+//   PB12,
+//   PB6,
+//   PB7,
+//   PC13,
+// };
+
+const uint32_t userPinMap[] = {
+    PB0,
+    //PB13,
+   // PB14,
+    //PB15,
+    //PB3,
+    //PB4,
+    //PC13,
+    //PB7
+};
+
 using callback_x6064_positionActualValue = std::function<void(uint8_t, bool, int32_t)>;
 using callback_x260A_electronicGearMolecules = std::function<void(uint8_t, bool)>;
 using callback_x6040_controlword = std::function<void(uint8_t, bool)>;
@@ -24,20 +53,23 @@ using callback_heartbeat = std::function<void(uint8_t, uint8_t)>;
 using callback_read_x6041_statusword = std::function<void(uint8_t, bool, uint16_t)>;
 using callback_read_x6040_controlword = std::function<void(uint8_t, bool, uint16_t)>;
 
-using callback_PI_controller = std::function<void(uint8_t, uint16_t, uint8_t, bool)>; // node-id, index, subindex, success
-
 using callback_read_PI_controller = std::function<void(uint8_t, uint16_t, uint8_t, bool, int16_t)>; // node-id, index, subindex, success, value
 
 using callback_read_x2614_dataSaveFlag = std::function<void(uint8_t, bool, uint8_t)>;
+
+using callback_x60F9_01_VP = std::function<void(uint8_t, bool)>;
+using callback_x60F9_02_VI = std::function<void(uint8_t, bool)>;
+using callback_x60FB_01_PP = std::function<void(uint8_t, bool)>;
+using callback_x60FB_02_FF = std::function<void(uint8_t, bool)>;
 
 namespace RobotConstants
 {
     enum InitStatus : uint8_t
     {
-        ZEI_NONE = 0,
-        ZEI_FAILED = 1,
-        ZEI_ONGOING = 2,
-        ZEI_FINISHED = 3
+        ZOE_NONE = 0,
+        ZOE_FAILED = 1,
+        ZOE_ONGOING = 2,
+        ZOE_FINISHED = 3
     };
 
     enum MoveStatus : uint8_t
@@ -45,7 +77,6 @@ namespace RobotConstants
         NOT_TASKED_WITH_MOVE = 0,
         TASKED_WITH_MOVE = 1,
         MOVE_PREPARATION_FAIL = 2,
-        MOVE_PREPARATION_FAIL_OUT_OF_LIMITS = 3,
         MOVE_PREPARATION_SUCCESS = 4,
         READY_TO_MOVE = 5,
         MOVING = 6,
@@ -72,14 +103,14 @@ namespace RobotConstants
     {
         switch (status)
         {
-        case InitStatus::ZEI_NONE:
-            return "ZEI_NONE";
-        case InitStatus::ZEI_FAILED:
-            return "ZEI_FAILED";
-        case InitStatus::ZEI_ONGOING:
-            return "ZEI_ONGOING";
-        case InitStatus::ZEI_FINISHED:
-            return "ZEI_FINISHED";
+        case InitStatus::ZOE_NONE:
+            return "ZOE_NONE";
+        case InitStatus::ZOE_FAILED:
+            return "ZOE_FAILED";
+        case InitStatus::ZOE_ONGOING:
+            return "ZOE_ONGOING";
+        case InitStatus::ZOE_FINISHED:
+            return "ZOE_FINISHED";
         default:
             return "UNKNOWN";
         }
@@ -94,38 +125,51 @@ namespace RobotConstants
     // Command identifiers sent to the robot controller
     namespace Commands
     {
-        const String MOVE_ABSOLUTE = "MAJ"; // Not implemented
-        const String MOVE_ABSOLUTE_PERCENT = "MAP";
-        const String MOVE_RELATIVE = "MRJ"; // Not implemented
+        const String MOVE_ABSOLUTE_JOINT = "MAJ";
         const String ECHO = "ECH";
-        const String MOTOR_STATUS = "RMS";
-        const String ZERO_INITIALIZE = "ZEI";
-        const String REQUEST_POSITION = "RPS";
-        const String PREPAREMOVE_TEST = "PMT";
-        const String REQUEST_POSITION_ANGLES = "RPA";
-        const String PI_CONTROL = "PIC";
-        const String REQUEST_PI = "RPI";
-        const String GRAB = "GRB";
-        const String LET_GO = "LGO";
+        const String REQUEST_MOTOR_STATUS = "RMS";
+        const String ZERO_OUT_ENCODER = "ZOE";
+        const String JOINT_POSITIONS_STEPS = "JPS";
+        const String JOINT_POSITIONS_DEGREES = "JPD";
+        const String ROBOT_POSITION_CARTESIAN = "RPC";
+        const String PI_CONTROLLER_READ = "PIR";
+        const String PI_CONTROLLER_WRITE = "PIW";
+        const String GRIPPER_WRITE = "GRW";
+        const String GRIPPER_READ = "GRR";
+        const String MOVE_HOME_JOINT = "MHJ";
+        const String HOME_JOINT_WRITE = "WHJ";
+        const String HOME_JOINT_READ = "RHJ";
+        const String MOVE_TIMEOUT_WRITE = "WMT";
+        const String MOVE_TIMEOUT_READ = "RMT";
+        const String MOVE_ABSOLUTE_CARTESIAN = "MAC";
+        const String PIN_OUT_WRITE = "POW";
+        const String PIN_OUT_READ = "POR";
+        const String READ_MODEL = "RMD";
+        const String READ_SOFTWARE_VERSION = "RSV";
+        const String READ_SERIAL_NUMBER = "RSN";
+        const String WRITE_SERIAL_NUMBER = "WSN";
+        const String MOVE_TOLERANCE_WRITE = "MTW";
+        const String MOVE_TOLERANCE_READ = "MTR";
+
         constexpr int COMMAND_LEN = 3;
-        const float MIN_SPEED_UNITS = 0.0f;
-        const float MAX_SPEED_UNITS = 100.0f;
-        const float MIN_ACCELERATION_UNITS = 0.0f;
-        const float MAX_ACCELERATION_UNITS = 100.0f;
     }
 
     // Robot specifications
     namespace Robot
     {
-        constexpr uint8_t AXES_COUNT = 4;
+        constexpr uint8_t AXES_COUNT = 1;
         constexpr uint8_t MAX_AXES_COUNT = 6;
         constexpr uint8_t MIN_NODE_ID = 'A';
         constexpr uint8_t MAX_NODE_ID = (AXES_COUNT == 0) ? MIN_NODE_ID : static_cast<uint8_t>(MIN_NODE_ID + AXES_COUNT - 1);
         constexpr uint8_t AXIS_IDENTIFIER_CHAR = 'J';
-        constexpr uint32_t CONTROL_LOOP_HZ = 1000;
         constexpr uint32_t CAN_BAUD_RATE = 1000000; // 1 Mbps
         constexpr uint32_t HEARTBEAT_INTERVAL_MS = 1000;
         constexpr uint32_t HEARTBEAT_TIMEOUT_MS = static_cast<uint32_t>(HEARTBEAT_INTERVAL_MS * 2);
+
+        const String MODEL = "MAI-1";
+        const String SOFTWARE_VERSION = "SW-1";
+        const int SERIAL_NUMBER_MAX_LENGTH = 24;
+
     }
 
     // CANopen communication constants
@@ -228,10 +272,11 @@ namespace RobotConstants
         constexpr int32_t STEPS_PER_MOTOR_REV = 32768;
         constexpr double UNITS_PER_OUTPUT_SHAFT_REV = 360; // 1 revolution of output shaft corresponds to 360 degrees
         constexpr int GEAR_RATIO = 50;
-        constexpr double UNITS_PER_MOTOR_REV = UNITS_PER_OUTPUT_SHAFT_REV / GEAR_RATIO;       // 1 revolution of motor corresponds to UNITS_PER_MOTOR_REV degrees
-        constexpr double DEFAULT_MAX_LIMITS[] = {180.0, 120.0, 135.0, 180.0, 110.0, 0.0};      // Max velocity in degrees per second for each axis
-        constexpr double DEFAULT_MIN_LIMITS[] = {-180.0, -45.0, -135.0, -180.0, -110.0, 0.0}; // Min velocity in degrees per second for each axis
-        constexpr double LIMIT_TOLERANCE = 0.1;                                               // Tolerance in degrees for limit checking
+        constexpr double UNITS_PER_MOTOR_REV = UNITS_PER_OUTPUT_SHAFT_REV / GEAR_RATIO;     // 1 revolution of motor corresponds to UNITS_PER_MOTOR_REV degrees
+        constexpr double DEFAULT_MAX_LIMITS[] = {360, 360.0, 360.0, 360.0, 360.0, 360.0};      // Max velocity in degrees per second for each axis
+        constexpr double DEFAULT_MIN_LIMITS[] = {-360, -360.0, -360.0, -360.0, -360.0, -360.0}; // Min velocity in degrees per second for each axis
+        constexpr double LIMIT_TOLERANCE = 0.1;                                             // Tolerance in degrees for limit checking
+        constexpr uint32_t DEFAULT_MAJ_MOVE_TOLERANCE_STEPS = 1000;                           // Host MAJ completion: |6064 - 607A| <= this (drive units)
     }
 
     // Control parameters
@@ -258,6 +303,12 @@ namespace RobotConstants
         constexpr uint32_t MINIMUM_PROFILE_ACCELERATION_IN_STEPS_PER_SEC2 = Axis::STEPS_PER_MOTOR_REV * MINIMUM_PROFILE_ACCELERATION_IN_RPM_PER_S / Math::SECONDS_IN_MINUTE;
 
         constexpr double MINIMUM_ABSOLUTE_ANGLE = 9.0 / 40960.0; // 0.0002197265
+
+        /** Wall-clock limit for a single MAJ (host-side); default when EEPROM has no saved value. */
+        constexpr uint32_t MAJ_MOVE_TIMEOUT_MS = 10000;
+
+        constexpr uint32_t MIN_MAJ_MOVE_TIMEOUT_SEC = 1;
+        constexpr uint32_t MAX_MAJ_MOVE_TIMEOUT_SEC = 3600;
     }
 
     // Buffer sizes
@@ -269,20 +320,48 @@ namespace RobotConstants
         constexpr size_t SERIAL_MESSAGE_CAPACITY = 128;
     }
     // Status codes
-    namespace Status
+    namespace Result // Status --> Result
     {
         const String OK = "OK";
-        const String COMMAND_FULL_FAIL = "FF";
-        const String COMMAND_PARTIAL_FAIL = "PF";
+        const String FAIL = "FF";
         const String INCORRECT_COMMAND = "IC";
         const String INVALID_PARAMS = "IP";
-        const String UNKNOWN_ERROR = "UE";
-        const String LOGIC_ERROR = "LE";
-        const String NOT_IMPLEMENTED = "NI";
+        const String ERROR_UNKNOWN = "EU";
         const String NOT_INITIALIZED = "NZ";
-        const String OTHER_COMMAND_IN_PROGRESS = "OP";
-        const String CAN_SEND_FAIL = "CS";
-        const String PARAMETER_SET_FAIL = "PF";
+        const String OPERATION_FORBIDDEN = "OF";
+        const String UNSUPPORTED_COMMAND = "UC";
+        const String NO_DATA = "ND";
+        const String TIMEOUT = "TO";
+    }
+
+    namespace Eeprom
+    {
+        struct SerialNumber
+        {
+            uint32_t magic;
+            char serial[25];
+        };
+
+        struct Home
+        {
+            uint32_t magic;
+            float joints[6];
+        };
+
+        struct MoveTimeout
+        {
+            uint32_t magic;
+            uint32_t timeoutSec;
+        };
+
+        const uint32_t SERIAL_MAGIC = 0x534E3031;     // "SN01"
+        const uint32_t HOME_JOINT_MAGIC = 0x484A3031; // "HJ01"
+        const uint32_t MOVE_TIMEOUT_MAGIC = 0x4D543031; // "MT01"
+
+        const int SERIAL_NUMBER_ADDR = 0;
+        const int HOME_JOINT_ADDR = SERIAL_NUMBER_ADDR + sizeof(SerialNumber);
+        const int MOVE_TIMEOUT_ADDR = HOME_JOINT_ADDR + sizeof(Home);
+
     }
 
 } // namespace RobotConstants
