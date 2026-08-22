@@ -53,12 +53,9 @@ private:
     callback_x60FB_02_FF callbacks_x60FB_02_FF[RobotConstants::Robot::AXES_COUNT + 1] = {nullptr};
 
 public:
-<<<<<<< HEAD:CanOpen.h
     bool send(uint32_t id, const uint8_t *data, uint8_t len);
     bool receive(uint16_t &cob_id, uint8_t *data, uint8_t &len);
 
-=======
->>>>>>> 225486cc46096ae65e797de06ac8f7314908ed27:CANCrusher/CanOpen.h
     CanOpen() : Can(ROBOT_CAN_RX, ROBOT_CAN_TX, RX_SIZE_128, TX_SIZE_128) {};
     bool startCan(uint32_t baudRate);
 
